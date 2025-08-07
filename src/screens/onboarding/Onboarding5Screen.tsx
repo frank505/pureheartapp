@@ -1,17 +1,15 @@
 /**
- * Onboarding Screen 5 - Assessment Questions
+ * Onboarding Screen 6 - Faith Background & Customization
  * 
- * Fifth onboarding screen for understanding the user's struggle through
- * assessment questions to personalize their recovery journey.
+ * Sixth onboarding screen for collecting faith background information
+ * to customize the spiritual experience.
  * 
  * Features:
- * - Progress indicator (Step 4 of 7)
- * - Hero image with name personalization
- * - Assessment questions with text input fields
- * - Auto-save functionality for user responses
- * - Bible verse for encouragement
- * - Back button navigation
- * - Continue to next step
+ * - Progress indicator (Step 5 of 7)
+ * - Faith-focused form fields
+ * - Church imagery and cross icon
+ * - Spiritual customization options
+ * - Bible verse encouragement
  */
 
 import React, { useState } from 'react';
@@ -19,170 +17,209 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   ImageBackground,
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
-import { Text, TextInput } from 'react-native-paper';
+import { Text, TextInput, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import { Picker } from '@react-native-picker/picker';
 
 import OnboardingButton from '../../components/OnboardingButton';
 import OnboardingCard from '../../components/OnboardingCard';
 import ProgressIndicator from '../../components/ProgressIndicator';
-import { Colors } from '../../constants';
+import { Colors, ColorUtils } from '../../constants';
 
 // Redux imports
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { saveAssessmentData } from '../../store/slices/onboardingSlice';
+import { saveFaithData } from '../../store/slices/onboardingSlice';
 
 interface Onboarding5ScreenProps {
   navigation: any;
   route: {
     params?: {
       userData?: any;
+      assessmentData?: any;
     };
   };
 }
 
-interface AssessmentQuestion {
-  id: string;
-  question: string;
-  currentAnswer: string;
-  icon: string;
-  type: 'text' | 'options';
-  options?: { label: string; value: string }[];
+interface FaithData {
+  relationshipWithJesus: string;
+  churchInvolvement: string;
+  prayerFrequency: string;
+  christianInfluences: string;
+  bibleTranslation: string;
+  spiritualStruggle: string;
 }
 
 /**
- * Fifth Onboarding Screen Component
+ * Sixth Onboarding Screen Component
  * 
- * Assessment questions to understand user's journey.
+ * Faith background and customization form.
  */
-const Onboarding5Screen: React.FC<Onboarding5ScreenProps> = ({ navigation, route }) => {
+const Onboarding5Screen: React.FC<Onboarding5ScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
-  
-  // Get user data from Redux store (persisted) or route params (fallback)
-  const storedPersonalInfo = useAppSelector(state => state.onboarding.personalInfo);
-  const existingAssessmentData = useAppSelector(state => state.onboarding.assessmentData);
-  
-  const userData = route.params?.userData || storedPersonalInfo;
-  const userName = userData?.firstName || storedPersonalInfo.firstName || 'Friend';
+  const existingFaithData = useAppSelector(state => state.onboarding.faithData);
+  const userName = useAppSelector(state => state.onboarding.personalInfo?.firstName) || 'Friend';
 
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [formData, setFormData] = useState<FaithData>({
+    relationshipWithJesus: existingFaithData.relationshipWithJesus || '',
+    churchInvolvement: existingFaithData.churchInvolvement || '',
+    prayerFrequency: existingFaithData.prayerFrequency || '',
+    christianInfluences: existingFaithData.christianInfluences || '',
+    bibleTranslation: existingFaithData.bibleTranslation || '',
+    spiritualStruggle: existingFaithData.spiritualStruggle || '',
+  });
 
-  // Initialize assessment data with existing data if available or defaults
-  const [assessmentData, setAssessmentData] = useState<AssessmentQuestion[]>(
-    existingAssessmentData.questions || [
-      {
-        id: 'triggers',
-        question: 'What are your primary triggers for unwanted behavior?',
-        currentAnswer: '',
-        icon: '⚡',
-        type: 'text',
-      },
-      {
-        id: 'frequency',
-        question: 'How often do you engage in this behavior?',
-        currentAnswer: '',
-        icon: '📊',
-        type: 'options',
-        options: [
-          { label: 'Multiple times a day', value: 'daily-multiple' },
-          { label: 'Once a day', value: 'daily-once' },
-          { label: 'A few times a week', value: 'weekly-few' },
-          { label: 'Once a week', value: 'weekly-once' },
-          { label: 'A few times a month', value: 'monthly-few' },
-          { label: 'Rarely', value: 'rarely' },
-        ],
-      },
-      {
-        id: 'fear',
-        question: 'What is your biggest fear or concern related to this struggle?',
-        currentAnswer: '',
-        icon: '😰',
-        type: 'text',
-      },
-      {
-        id: 'vulnerability',
-        question: 'In which situations do you feel most vulnerable?',
-        currentAnswer: '',
-        icon: '🌙',
-        type: 'options',
-        options: [
-          { label: 'When I\'m alone', value: 'alone' },
-          { label: 'When I\'m stressed or anxious', value: 'stressed' },
-          { label: 'Late at night', value: 'late-night' },
-          { label: 'When I\'m bored', value: 'bored' },
-          { label: 'After a conflict or disappointment', value: 'conflict' },
-          { label: 'Other', value: 'other' },
-        ],
-      },
-      {
-        id: 'motivation',
-        question: 'What is your primary motivation for seeking freedom?',
-        currentAnswer: '',
-        icon: '🙏',
-        type: 'options',
-        options: [
-          { label: 'My relationship with God', value: 'god' },
-          { label: 'My spouse or partner', value: 'partner' },
-          { label: 'My family', value: 'family' },
-          { label: 'My own mental and emotional health', value: 'self-health' },
-          { label: 'A desire for a life of integrity', value: 'integrity' },
-          { label: 'Other', value: 'other' },
-        ],
-      },
-    ]
-  );
+  const [christianInfluencesList, setChristianInfluencesList] = useState<string[]>(() => {
+    const existing = existingFaithData.christianInfluences || '';
+    return existing ? existing.split(',').map(influence => influence.trim()).filter(Boolean) : [];
+  });
 
-  const updateQuestionAnswer = (questionId: string, answer: string) => {
-    const updatedData = assessmentData.map(question => 
-      question.id === questionId 
-        ? { ...question, currentAnswer: answer }
-        : question
-    );
-    setAssessmentData(updatedData);
-    
-    // Auto-save the data
-    dispatch(saveAssessmentData({ questions: updatedData }));
-  };
+  const [currentInfluenceInput, setCurrentInfluenceInput] = useState('');
 
-  const handleNext = () => {
-    if (currentQuestionIndex < assessmentData.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else {
-      handleContinue();
-    }
-  };
+  const questions = [
+    {
+      id: 'relationshipWithJesus',
+      title: 'How would you describe your relationship with Jesus?',
+      field: 'relationshipWithJesus' as keyof FaithData,
+      type: 'picker',
+      options: [
+        { label: 'Growing closer', value: 'growing-closer' },
+        { label: 'Just starting', value: 'just-starting' },
+        { label: "It's complicated", value: 'complicated' },
+        { label: 'Strong', value: 'strong' },
+      ],
+      required: true,
+    },
+    {
+      id: 'churchInvolvement',
+      title: 'How involved are you in a church community?',
+      field: 'churchInvolvement' as keyof FaithData,
+      type: 'picker',
+      options: [
+        { label: 'Very involved', value: 'very-involved' },
+        { label: 'Somewhat involved', value: 'somewhat-involved' },
+        { label: 'Not currently involved', value: 'not-involved' },
+        { label: 'Looking for a church', value: 'looking' },
+      ],
+      required: true,
+    },
+    {
+      id: 'prayerFrequency',
+      title: 'How often do you pray?',
+      field: 'prayerFrequency' as keyof FaithData,
+      type: 'picker',
+      options: [
+        { label: 'Daily', value: 'daily' },
+        { label: 'A few times a week', value: 'few-times-week' },
+        { label: 'Occasionally', value: 'occasionally' },
+        { label: 'Rarely', value: 'rarely' },
+      ],
+      required: true,
+    },
+    {
+      id: 'christianInfluences',
+      title: 'Who are your biggest Christian influences?',
+      subtitle: 'Add influences one by one or separate multiple with commas. Tap the X to remove.',
+      field: 'christianInfluences' as keyof FaithData,
+      type: 'chip-input',
+      required: false,
+    },
+    {
+      id: 'bibleTranslation',
+      title: 'What is your preferred Bible translation?',
+      field: 'bibleTranslation' as keyof FaithData,
+      type: 'picker',
+      options: [
+        { label: 'NIV', value: 'niv' },
+        { label: 'ESV', value: 'esv' },
+        { label: 'KJV', value: 'kjv' },
+        { label: 'NLT', value: 'nlt' },
+        { label: 'Other', value: 'other' },
+      ],
+      required: true,
+    },
+    {
+      id: 'spiritualStruggle',
+      title: 'What is your biggest spiritual struggle?',
+      subtitle: 'e.g., Consistency in prayer, doubt',
+      field: 'spiritualStruggle' as keyof FaithData,
+      type: 'text-input',
+      required: false,
+    },
+  ];
+
+  const activeQuestions = questions;
+  const currentQuestionData = activeQuestions[currentQuestion];
 
   const handleBack = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
     } else {
       navigation.goBack();
     }
   };
 
-  const currentQuestion = assessmentData[currentQuestionIndex];
-  const isLastQuestion = currentQuestionIndex === assessmentData.length - 1;
+  const handleValueChange = (field: keyof FaithData, value: string) => {
+    const updatedData = { ...formData, [field]: value };
+    setFormData(updatedData);
+};
 
-  const handleContinue = () => {
-    // Save assessment data to Redux store (persisted to AsyncStorage)
-    dispatch(saveAssessmentData({ questions: assessmentData }));
-    
-    // Debug log to see what we're saving
-    console.log('Assessment data saved to Redux store:', assessmentData);
-    
-    // Navigate to next screen (data is now persisted)
-    navigation.navigate('Onboarding6', { 
-      userData: userData,
-      assessmentData: assessmentData 
-    });
+  const addInfluence = (influence: string) => {
+    const trimmedInfluence = influence.trim();
+    if (trimmedInfluence && !christianInfluencesList.includes(trimmedInfluence)) {
+      const newList = [...christianInfluencesList, trimmedInfluence];
+      setChristianInfluencesList(newList);
+      handleValueChange('christianInfluences', newList.join(', '));
+      setCurrentInfluenceInput('');
+    }
+  };
+
+  const removeInfluence = (influenceToRemove: string) => {
+    const newList = christianInfluencesList.filter(influence => influence !== influenceToRemove);
+    setChristianInfluencesList(newList);
+    handleValueChange('christianInfluences', newList.join(', '));
+  };
+
+  const handleInfluenceInputSubmit = () => {
+    if (currentInfluenceInput.includes(',')) {
+      const influences = currentInfluenceInput.split(',');
+      influences.forEach(influence => {
+        const trimmed = influence.trim();
+        if (trimmed && !christianInfluencesList.includes(trimmed)) {
+          addInfluence(trimmed);
+        }
+      });
+      setCurrentInfluenceInput('');
+    } else if (currentInfluenceInput.trim()) {
+      addInfluence(currentInfluenceInput);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentQuestionData?.required && !formData[currentQuestionData.field]) {
+      Alert.alert('Response Required', 'Please select an option to continue.');
+      return;
+    }
+
+    if (currentQuestion < activeQuestions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      handleFinish();
+    }
+  };
+   
+  const handleFinish = () => {
+    dispatch(saveFaithData(formData));  
+    navigation.navigate('Onboarding6');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -196,7 +233,7 @@ const Onboarding5Screen: React.FC<Onboarding5ScreenProps> = ({ navigation, route
           <View style={styles.progressWrapper}>
             <ProgressIndicator
               currentStep={5}
-              totalSteps={10}
+              totalSteps={9}
               variant="bars"
               showStepText={true}
             />
@@ -208,88 +245,122 @@ const Onboarding5Screen: React.FC<Onboarding5ScreenProps> = ({ navigation, route
         {/* Question Progress */}
         <View style={styles.questionProgressContainer}>
           <Text style={styles.questionProgress}>
-            Question {currentQuestionIndex + 1} of {assessmentData.length}
+            {currentQuestion + 1} of {activeQuestions.length}
           </Text>
         </View>
 
-        {/* Main Content */}
-        <View style={styles.contentContainer}>
-          {/* Assessment Question */}
+        {/* Question Card */}
+        <View style={styles.questionContainer}>
           <OnboardingCard style={styles.questionCard}>
-            <View style={styles.questionHeader}>
-              <Text style={styles.questionIcon}>{currentQuestion.icon}</Text>
-              <Text style={styles.questionText}>
-                {currentQuestion.question}
-              </Text>
-            </View>
+            <Text style={styles.questionTitle}>
+              {currentQuestionData.title}
+            </Text>
+            {currentQuestionData.subtitle && (
+                <Text style={styles.questionSubtitle}>
+                    {currentQuestionData.subtitle}
+                </Text>
+            )}
 
-            {currentQuestion.type === 'text' ? (
-              <TextInput
-                mode="outlined"
-                placeholder="Enter your response..."
-                value={currentQuestion.currentAnswer}
-                onChangeText={(text) => updateQuestionAnswer(currentQuestion.id, text)}
-                multiline={true}
-                numberOfLines={4}
-                style={styles.questionInput}
-                contentStyle={styles.questionInputContent}
-                outlineStyle={styles.questionInputOutline}
-                theme={{
-                  colors: {
-                    onSurfaceVariant: Colors.text.secondary,
-                    outline: '#4a4a4a',
-                    primary: '#f5993d',
-                    surface: '#2d2d2d',
-                    onSurface: Colors.text.primary,
-                  }
-                }}
-              />
-            ) : (
+            {/* Conditional Input */}
+            {currentQuestionData.type === 'picker' && currentQuestionData.options && (
               <View style={styles.optionsContainer}>
-                {currentQuestion.options?.map((option) => (
-                  <TouchableOpacity
-                    key={option.value}
-                    onPress={() => updateQuestionAnswer(currentQuestion.id, option.value)}
-                    style={
-                      currentQuestion.currentAnswer === option.value
-                        ? [styles.optionCard, styles.selectedOptionCard]
-                        : styles.optionCard
-                    }
-                    activeOpacity={0.7}
-                  >
-                    <OnboardingCard style={[
-                      styles.optionCardInner,
-                      currentQuestion.currentAnswer === option.value && styles.selectedOptionCardInner
-                    ] as any}>
-                      <View style={styles.optionContent}>
-                        <View style={styles.optionTextContainer}>
-                          <Text style={
-                            currentQuestion.currentAnswer === option.value
-                              ? [styles.optionLabel, styles.selectedOptionLabel]
-                              : styles.optionLabel
-                          }>{option.label}</Text>
+                {currentQuestionData.options.map((option) => (
+                  option.value ? (
+                    <TouchableOpacity
+                      key={option.value}
+                      onPress={() => handleValueChange(currentQuestionData.field, option.value)}
+                      style={
+                        formData[currentQuestionData.field] === option.value
+                          ? [styles.optionCard, styles.selectedOptionCard]
+                          : styles.optionCard
+                      }
+                      activeOpacity={0.7}
+                    >
+                      <OnboardingCard style={[
+                        styles.optionCardInner,
+                        formData[currentQuestionData.field] === option.value && styles.selectedOptionCardInner
+                      ] as any}>
+                        <View style={styles.optionContent}>
+                          <View style={styles.optionTextContainer}>
+                            <Text style={
+                              formData[currentQuestionData.field] === option.value
+                                ? [styles.optionLabel, styles.selectedOptionLabel]
+                                : styles.optionLabel
+                            }>{option.label}</Text>
+                          </View>
+                          {formData[currentQuestionData.field] === option.value ? (
+                            <Text style={styles.checkIcon}>✓</Text>
+                          ) : (
+                            <Text style={styles.chevronIcon}>›</Text>
+                          )}
                         </View>
-                        {currentQuestion.currentAnswer === option.value ? (
-                          <Text style={styles.checkIcon}>✓</Text>
-                        ) : (
-                          <Text style={styles.chevronIcon}>›</Text>
-                        )}
-                      </View>
-                    </OnboardingCard>
-                  </TouchableOpacity>
+                      </OnboardingCard>
+                    </TouchableOpacity>
+                  ) : null
                 ))}
               </View>
+            )}
+
+            {currentQuestionData.type === 'chip-input' && (
+              <View>
+                {christianInfluencesList.length > 0 && (
+                  <View style={styles.influencesContainer}>
+                    {christianInfluencesList.map((influence, index) => (
+                      <Chip
+                        key={index}
+                        mode="outlined"
+                        onClose={() => removeInfluence(influence)}
+                        style={styles.influenceChip}
+                        textStyle={styles.influenceChipText}
+                        closeIconAccessibilityLabel={`Remove ${influence}`}
+                      >
+                        {influence}
+                      </Chip>
+                    ))}
+                  </View>
+                )}
+                <TextInput
+                  mode="outlined"
+                  label="Add an influence"
+                  placeholder="e.g., C.S. Lewis, Pastor John"
+                  value={currentInfluenceInput}
+                  onChangeText={setCurrentInfluenceInput}
+                  onSubmitEditing={handleInfluenceInputSubmit}
+                  onBlur={handleInfluenceInputSubmit}
+                  style={styles.input}
+                  right={
+                    currentInfluenceInput.trim() ? (
+                      <TextInput.Icon
+                        icon="plus"
+                        onPress={handleInfluenceInputSubmit}
+                      />
+                    ) : null
+                  }
+                />
+              </View>
+            )}
+
+            {currentQuestionData.type === 'text-input' && (
+              <TextInput
+                mode="outlined"
+                label={currentQuestionData.title}
+                placeholder={currentQuestionData.subtitle}
+                value={formData[currentQuestionData.field]}
+                onChangeText={(text) => handleValueChange(currentQuestionData.field, text)}
+                style={styles.input}
+              />
             )}
           </OnboardingCard>
         </View>
       </ScrollView>
 
-      {/* Bottom Action */}
-      <View style={styles.bottomContainer}>
+      {/* Action Buttons */}
+      <View style={styles.buttonContainer}>
         <OnboardingButton
-          title={isLastQuestion ? "Continue" : "Next"}
+          title={currentQuestion === activeQuestions.length - 1 ? "Finish" : "Next"}
           onPress={handleNext}
           variant="primary"
+          style={styles.nextButton}
         />
       </View>
     </SafeAreaView>
@@ -303,14 +374,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 100, // Space for bottom button
+    paddingBottom: 120,
   },
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: Colors.background.primary,
   },
   backButton: {
     width: 40,
@@ -326,6 +396,7 @@ const styles = StyleSheet.create({
   progressWrapper: {
     flex: 1,
     alignItems: 'center',
+    marginHorizontal: 16,
   },
   headerSpacer: {
     width: 40,
@@ -340,41 +411,27 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     fontWeight: '500',
   },
-  contentContainer: {
+  questionContainer: {
     paddingHorizontal: 24,
+    gap: 24,
   },
   questionCard: {
     backgroundColor: Colors.background.secondary,
     padding: 24,
-    borderRadius: 12,
   },
-  questionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 24,
-  },
-  questionIcon: {
-    fontSize: 28,
-  },
-  questionText: {
-    fontSize: 18,
-    fontWeight: '600',
+  questionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
     color: Colors.text.primary,
-    flex: 1,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  questionSubtitle: {
+    fontSize: 16,
+    color: Colors.text.secondary,
+    textAlign: 'center',
     lineHeight: 24,
-  },
-  questionInput: {
-    backgroundColor: Colors.background.tertiary,
-    minHeight: 120,
-  },
-  questionInputContent: {
-    color: Colors.text.primary,
-    paddingTop: 12,
-  },
-  questionInputOutline: {
-    borderColor: Colors.border.primary,
-    borderWidth: 1,
+    marginBottom: 32,
   },
   optionsContainer: {
     gap: 12,
@@ -423,7 +480,23 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: Colors.text.secondary,
   },
-  bottomContainer: {
+  influencesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  influenceChip: {
+    backgroundColor: `${Colors.primary.main}10`,
+    borderColor: Colors.primary.main,
+  },
+  influenceChipText: {
+    color: Colors.text.primary,
+  },
+  input: {
+    backgroundColor: Colors.background.tertiary,
+  },
+  buttonContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -434,6 +507,12 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: Colors.border.primary,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  nextButton: {
+    flex: 1,
+    borderRadius: 12,
   },
 });
 

@@ -18,12 +18,15 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
+  Platform,
 } from 'react-native';
 import {
   Text,
   ActivityIndicator,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import appleAuth from '@invertase/react-native-apple-authentication';
 
 // Redux imports
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -50,6 +53,14 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   const onboardingData = useAppSelector(state => state.onboarding);
 
   useEffect(() => {
+    // Configure Google Sign-In
+    GoogleSignin.configure({
+      webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', // Replace with your Web Client ID
+      offlineAccess: true, // if you want to access Google API on behalf of the user FROM YOUR SERVER
+    });
+  }, []);
+
+  useEffect(() => {
     console.log({onboardingData})
     console.log('--- Onboarding Data Collected ---');
     console.log('Personal Info:', JSON.stringify(onboardingData.personalInfo, null, 2));
@@ -59,7 +70,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
     console.log('How They Heard:', JSON.stringify(onboardingData.howTheyHeard, null, 2));
     console.log('Accountability Preferences:', JSON.stringify(onboardingData.accountabilityPreferences, null, 2));
     console.log('--- End of Onboarding Data ---');
-  }, []);
+  }, [onboardingData]);
 
   /**
    * Handle Google Login
@@ -68,24 +79,26 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
    */
   const handleGoogleLogin = async () => {
     try {
-      // TODO: Implement actual Google authentication
-      console.log('Google login initiated');
+      await GoogleSignin.hasPlayServices();
+      const { idToken }:any = await GoogleSignin.signIn();
+      console.log('Google User Info:', idToken);
       
-      // For now, show a placeholder message
-      Alert.alert(
-        'Google Login',
-        'Google authentication integration coming soon!',
-        [{ text: 'OK' }]
-      );
-      
-      // Future implementation would include:
-      // 1. Google Sign-In SDK integration
-      // 2. Backend authentication with Google token
-      // 3. Redux state update
-      // 4. Navigation to main app
-    } catch (error) {
+      // The idToken is what you'll use to authenticate with your backend
+      if (idToken) {
+        console.log('Google ID Token:', idToken);
+        Alert.alert('Google Login Success', `Token: ${idToken.substring(0, 30)}...`);
+        // Here you would typically send the token to your backend
+        // dispatch(loginUser({ token: idToken, provider: 'google' }));
+      } else {
+        throw new Error('Google Sign-In failed to return an ID token.');
+      }
+    } catch (error: any) {
       console.error('Google login error:', error);
-      Alert.alert('Error', 'Failed to login with Google. Please try again.');
+      if (error.code) {
+        Alert.alert('Google Login Error', `Code: ${error.code} - ${error.message}`);
+      } else {
+        Alert.alert('Error', 'Failed to login with Google. Please try again.');
+      }
     }
   };
 
@@ -96,24 +109,31 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
    */
   const handleAppleLogin = async () => {
     try {
-      // TODO: Implement actual Apple authentication
-      console.log('Apple login initiated');
-      
-      // For now, show a placeholder message
-      Alert.alert(
-        'Apple Login',
-        'Apple authentication integration coming soon!',
-        [{ text: 'OK' }]
-      );
-      
-      // Future implementation would include:
-      // 1. Apple Sign-In SDK integration
-      // 2. Backend authentication with Apple token
-      // 3. Redux state update
-      // 4. Navigation to main app
-    } catch (error) {
+      const appleAuthRequestResponse = await appleAuth.performRequest({
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+      });
+
+      console.log('Apple Auth Response:', appleAuthRequestResponse);
+
+      const { identityToken, nonce } = appleAuthRequestResponse;
+
+      if (identityToken) {
+        console.log('Apple ID Token:', identityToken);
+        Alert.alert('Apple Login Success', `Token: ${identityToken.substring(0, 30)}...`);
+        // Here you would typically send the token to your backend
+        // dispatch(loginUser({ token: identityToken, provider: 'apple' }));
+      } else {
+        throw new Error('Apple Sign-In failed to return an identity token.');
+      }
+
+    } catch (error: any) {
       console.error('Apple login error:', error);
-      Alert.alert('Error', 'Failed to login with Apple. Please try again.');
+      if (error.code === appleAuth.Error.CANCELED) {
+        console.log('User canceled Apple Sign-In.');
+      } else {
+        Alert.alert('Error', 'Failed to login with Apple. Please try again.');
+      }
     }
   };
 
@@ -166,19 +186,21 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
           </TouchableOpacity>
 
           {/* Apple Login Button */}
-          <TouchableOpacity 
-            style={[styles.socialButton, styles.appleButton]}
-            onPress={handleAppleLogin}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            <Icon 
-              name={Icons.social.apple.name} 
-              color="#000000" 
-              size="lg" 
-            />
-            <Text style={[styles.socialButtonText, styles.appleButtonText]}>Continue with Apple</Text>
-          </TouchableOpacity>
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity 
+              style={[styles.socialButton, styles.appleButton]}
+              onPress={handleAppleLogin}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <Icon 
+                name={Icons.social.apple.name} 
+                color="#000000" 
+                size="lg" 
+              />
+              <Text style={[styles.socialButtonText, styles.appleButtonText]}>Continue with Apple</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 

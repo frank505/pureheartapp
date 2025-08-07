@@ -1,14 +1,17 @@
 /**
- * Onboarding Screen 4 - Personal Information
+ * Onboarding Screen 5 - Assessment Questions
  * 
- * Fourth onboarding screen for collecting user's personal information
- * to personalize their recovery journey.
+ * Fifth onboarding screen for understanding the user's struggle through
+ * assessment questions to personalize their recovery journey.
  * 
  * Features:
- * - Progress indicator (Step 3 of 7)
- * - Personal information form (name, email, age, life season)
+ * - Progress indicator (Step 4 of 7)
+ * - Hero image with name personalization
+ * - Assessment questions with text input fields
+ * - Auto-save functionality for user responses
+ * - Bible verse for encouragement
  * - Back button navigation
- * - Privacy policy agreement
+ * - Continue to next step
  */
 
 import React, { useState } from 'react';
@@ -17,93 +20,165 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
+  ImageBackground,
 } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Picker } from '@react-native-picker/picker';
+import LinearGradient from 'react-native-linear-gradient';
 
 import OnboardingButton from '../../components/OnboardingButton';
+import OnboardingCard from '../../components/OnboardingCard';
 import ProgressIndicator from '../../components/ProgressIndicator';
 import { Colors } from '../../constants';
 
 // Redux imports
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { savePersonalInfo, savePartialPersonalInfo } from '../../store/slices/onboardingSlice';
+import { saveAssessmentData } from '../../store/slices/onboardingSlice';
 
 interface Onboarding4ScreenProps {
   navigation: any;
+  route: {
+    params?: {
+      userData?: any;
+    };
+  };
 }
 
-interface FormData {
-  firstName: string;
-  email: string;
-  gender: string;
-  ageRange: string;
-  lifeSeason: string;
+interface AssessmentQuestion {
+  id: string;
+  question: string;
+  currentAnswer: string;
+  icon: string;
+  type: 'text' | 'options';
+  options?: { label: string; value: string }[];
 }
 
 /**
- * Fourth Onboarding Screen Component
+ * Fifth Onboarding Screen Component
  * 
- * Collects personal information for journey personalization.
+ * Assessment questions to understand user's journey.
  */
-const Onboarding4Screen: React.FC<Onboarding4ScreenProps> = ({ navigation }) => {
+const Onboarding4Screen: React.FC<Onboarding4ScreenProps> = ({ navigation, route }) => {
   const dispatch = useAppDispatch();
   
-  // Get any existing onboarding data from Redux store
-  const existingPersonalInfo = useAppSelector(state => state.onboarding.personalInfo);
+  // Get user data from Redux store (persisted) or route params (fallback)
+  const storedPersonalInfo = useAppSelector(state => state.onboarding.personalInfo);
+  const existingAssessmentData = useAppSelector(state => state.onboarding.assessmentData);
   
-  // Initialize form data with existing data if available
-  const [formData, setFormData] = useState<FormData>({
-    firstName: existingPersonalInfo.firstName || '',
-    email: existingPersonalInfo.email || '',
-    gender: existingPersonalInfo.gender || '',
-    ageRange: existingPersonalInfo.ageRange || '',
-    lifeSeason: existingPersonalInfo.lifeSeason || '',
-  });
+  const userData = route.params?.userData || storedPersonalInfo;
+  const userName = userData?.firstName || storedPersonalInfo.firstName || 'Friend';
 
-  // Add back button handler
-  const handleBack = () => {
-    navigation.goBack();
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+  // Initialize assessment data with existing data if available or defaults
+  const [assessmentData, setAssessmentData] = useState<AssessmentQuestion[]>(
+    existingAssessmentData.questions || [
+      {
+        id: 'triggers',
+        question: 'What are your primary triggers?',
+        currentAnswer: '',
+        icon: '⚡',
+        type: 'text',
+      },
+      {
+        id: 'frequency',
+        question: 'How often do you watch pornography?',
+        currentAnswer: '',
+        icon: '📊',
+        type: 'options',
+        options: [
+          { label: 'Multiple times a day', value: 'daily-multiple' },
+          { label: 'Once a day', value: 'daily-once' },
+          { label: 'A few times a week', value: 'weekly-few' },
+          { label: 'Once a week', value: 'weekly-once' },
+          { label: 'A few times a month', value: 'monthly-few' },
+          { label: 'Rarely', value: 'rarely' },
+        ],
+      },
+      {
+        id: 'fear',
+        question: 'What is your biggest fear or concern right now?',
+        currentAnswer: '',
+        icon: '😰',
+        type: 'text',
+      },
+      {
+        id: 'vulnerability',
+        question: 'In which situations do you feel most vulnerable?',
+        currentAnswer: '',
+        icon: '🌙',
+        type: 'options',
+        options: [
+          { label: 'When I\'m alone', value: 'alone' },
+          { label: 'When I\'m stressed or anxious', value: 'stressed' },
+          { label: 'Late at night', value: 'late-night' },
+          { label: 'When I\'m bored', value: 'bored' },
+          { label: 'After a conflict or disappointment', value: 'conflict' },
+          { label: 'Other', value: 'other' },
+        ],
+      },
+      {
+        id: 'motivation',
+        question: 'What is your primary motivation for seeking freedom?',
+        currentAnswer: '',
+        icon: '🙏',
+        type: 'options',
+        options: [
+          { label: 'My relationship with God', value: 'god' },
+          { label: 'My spouse or partner', value: 'partner' },
+          { label: 'My family', value: 'family' },
+          { label: 'My own mental and emotional health', value: 'self-health' },
+          { label: 'A desire for a life of integrity', value: 'integrity' },
+          { label: 'Other', value: 'other' },
+        ],
+      },
+    ]
+  );
+
+  const updateQuestionAnswer = (questionId: string, answer: string) => {
+    const updatedData = assessmentData.map(question => 
+      question.id === questionId 
+        ? { ...question, currentAnswer: answer }
+        : question
+    );
+    setAssessmentData(updatedData);
+    
+    // Auto-save the data
+    dispatch(saveAssessmentData({ questions: updatedData }));
   };
+
+  const handleNext = () => {
+    if (currentQuestionIndex < assessmentData.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else {
+      handleContinue();
+    }
+  };
+
+  const handleBack = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  const currentQuestion = assessmentData[currentQuestionIndex];
+  const isLastQuestion = currentQuestionIndex === assessmentData.length - 1;
 
   const handleContinue = () => {
-    // Basic validation
-    if (!formData.firstName || !formData.email) {
-      Alert.alert('Missing Information', 'Please fill in all required fields.');
-      return;
-    }
-
-    // Enhanced validation for dropdowns
-    if (!formData.gender) {
-      Alert.alert('Missing Information', 'Please select your gender.');
-      return;
-    }
-
-    if (!formData.ageRange) {
-      Alert.alert('Missing Information', 'Please select your age range.');
-      return;
-    }
-
-    if (!formData.lifeSeason) {
-      Alert.alert('Missing Information', 'Please select your current life season.');
-      return;
-    }
-
-    // Save personal info to Redux store (persisted to AsyncStorage)
-    dispatch(savePersonalInfo(formData));
+    // Save assessment data to Redux store (persisted to AsyncStorage)
+    dispatch(saveAssessmentData({ questions: assessmentData }));
     
     // Debug log to see what we're saving
-    console.log('Personal info saved to Redux store:', formData);
-
+    console.log('Assessment data saved to Redux store:', assessmentData);
+    
     // Navigate to next screen (data is now persisted)
-    navigation.navigate('Onboarding9', { userData: formData });
+    navigation.navigate('Onboarding5', { 
+      userData: userData,
+      assessmentData: assessmentData 
+    });
   };
-
-
-
-
 
   return (
     <SafeAreaView style={styles.container}>
@@ -120,8 +195,8 @@ const Onboarding4Screen: React.FC<Onboarding4ScreenProps> = ({ navigation }) => 
           
           <View style={styles.progressWrapper}>
             <ProgressIndicator
-              currentStep={3}
-              totalSteps={7}
+              currentStep={4}
+              totalSteps={9}
               variant="bars"
               showStepText={true}
             />
@@ -130,231 +205,91 @@ const Onboarding4Screen: React.FC<Onboarding4ScreenProps> = ({ navigation }) => 
           <View style={styles.headerSpacer} />
         </View>
 
-        {/* Title Section */}
-        <View style={styles.titleContainer}>
-          <Text style={styles.mainTitle}>
-            Let's Personalize Your Recovery Journey
-          </Text>
-          <Text style={styles.subtitle}>
-            To tailor your experience, we need a few details about you.
+        {/* Question Progress */}
+        <View style={styles.questionProgressContainer}>
+          <Text style={styles.questionProgress}>
+            Question {currentQuestionIndex + 1} of {assessmentData.length}
           </Text>
         </View>
 
-        {/* Form */}
-        <View style={styles.formContainer}>
-          {/* First Name */}
-          <View style={styles.inputContainer}>
-            <TextInput
-              mode="outlined"
-              label="First Name"
-              placeholder="Enter your first name"
-              value={formData.firstName}
-              onChangeText={(text) => {
-                const updatedData = {...formData, firstName: text};
-                setFormData(updatedData);
-                // Auto-save partial data for better user experience
-                dispatch(savePartialPersonalInfo({ firstName: text }));
-              }}
-              style={styles.input}
-              contentStyle={styles.inputContent}
-              outlineStyle={styles.inputOutline}
-              theme={{
-                colors: {
-                  onSurfaceVariant: Colors.text.secondary,
-                  outline: '#4a4a4a',
-                  primary: '#f5993d',
-                  surface: '#2d2d2d',
-                  onSurface: Colors.text.primary,
-                }
-              }}
-            />
-          </View>
+        {/* Main Content */}
+        <View style={styles.contentContainer}>
+          {/* Assessment Question */}
+          <OnboardingCard style={styles.questionCard}>
+            <View style={styles.questionHeader}>
+              <Text style={styles.questionIcon}>{currentQuestion.icon}</Text>
+              <Text style={styles.questionText}>
+                {currentQuestion.question}
+              </Text>
+            </View>
 
-          {/* Email */}
-          <View style={styles.inputContainer}>
-            <TextInput
-              mode="outlined"
-              label="Email"
-              placeholder="Enter your email"
-              value={formData.email}
-              onChangeText={(text) => {
-                const updatedData = {...formData, email: text};
-                setFormData(updatedData);
-                // Auto-save partial data for better user experience
-                dispatch(savePartialPersonalInfo({ email: text }));
-              }}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-              contentStyle={styles.inputContent}
-              outlineStyle={styles.inputOutline}
-              theme={{
-                colors: {
-                  onSurfaceVariant: Colors.text.secondary,
-                  outline: '#4a4a4a',
-                  primary: '#f5993d',
-                  surface: '#2d2d2d',
-                  onSurface: Colors.text.primary,
-                }
-              }}
-            />
-          </View>
-
-          {/* Gender */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Gender</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={formData.gender}
-                onValueChange={(value) => {
-                  console.log('Gender selected:', value); // Debug log
-                  const updatedData = {...formData, gender: value};
-                  setFormData(updatedData);
-                  // Auto-save partial data
-                  dispatch(savePartialPersonalInfo({ gender: value }));
+            {currentQuestion.type === 'text' ? (
+              <TextInput
+                mode="outlined"
+                placeholder="Enter your response..."
+                value={currentQuestion.currentAnswer}
+                onChangeText={(text) => updateQuestionAnswer(currentQuestion.id, text)}
+                multiline={true}
+                numberOfLines={4}
+                style={styles.questionInput}
+                contentStyle={styles.questionInputContent}
+                outlineStyle={styles.questionInputOutline}
+                theme={{
+                  colors: {
+                    onSurfaceVariant: Colors.text.secondary,
+                    outline: '#4a4a4a',
+                    primary: '#f5993d',
+                    surface: '#2d2d2d',
+                    onSurface: Colors.text.primary,
+                  }
                 }}
-                style={styles.picker}
-                dropdownIconColor={Colors.text.secondary}
-                mode="dropdown"
-              >
-                <Picker.Item label="Select your gender" value="" color={Colors.text.secondary} />
-                <Picker.Item label="Male" value="male" color={Colors.text.primary} />
-                <Picker.Item label="Female" value="female" color={Colors.text.primary} />
-                <Picker.Item label="Non-binary" value="non-binary" color={Colors.text.primary} />
-                <Picker.Item label="Prefer not to say" value="prefer-not-to-say" color={Colors.text.primary} />
-              </Picker>
-            </View>
-            {/* Debug display */}
-            {formData.gender && (
-              <Text style={styles.debugText}>Selected: {formData.gender}</Text>
+              />
+            ) : (
+              <View style={styles.optionsContainer}>
+                {currentQuestion.options?.map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    onPress={() => updateQuestionAnswer(currentQuestion.id, option.value)}
+                    style={
+                      currentQuestion.currentAnswer === option.value
+                        ? [styles.optionCard, styles.selectedOptionCard]
+                        : styles.optionCard
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <OnboardingCard style={[
+                      styles.optionCardInner,
+                      currentQuestion.currentAnswer === option.value && styles.selectedOptionCardInner
+                    ] as any}>
+                      <View style={styles.optionContent}>
+                        <View style={styles.optionTextContainer}>
+                          <Text style={
+                            currentQuestion.currentAnswer === option.value
+                              ? [styles.optionLabel, styles.selectedOptionLabel]
+                              : styles.optionLabel
+                          }>{option.label}</Text>
+                        </View>
+                        {currentQuestion.currentAnswer === option.value ? (
+                          <Text style={styles.checkIcon}>✓</Text>
+                        ) : (
+                          <Text style={styles.chevronIcon}>›</Text>
+                        )}
+                      </View>
+                    </OnboardingCard>
+                  </TouchableOpacity>
+                ))}
+              </View>
             )}
-          </View>
-
-          {/* Age Range */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Age Range</Text>
-            <View style={styles.pickerContainer}>
-                              <Picker
-                  selectedValue={formData.ageRange}
-                  onValueChange={(value) => {
-                    console.log('Age range selected:', value); // Debug log
-                    const updatedData = {...formData, ageRange: value};
-                    setFormData(updatedData);
-                    // Auto-save partial data
-                    dispatch(savePartialPersonalInfo({ ageRange: value }));
-                  }}
-                style={styles.picker}
-                dropdownIconColor={Colors.text.secondary}
-                mode="dropdown"
-              >
-                <Picker.Item label="Select your age range" value="" color={Colors.text.secondary} />
-                <Picker.Item label="18-24" value="18-24" color={Colors.text.primary} />
-                <Picker.Item label="25-34" value="25-34" color={Colors.text.primary} />
-                <Picker.Item label="35-44" value="35-44" color={Colors.text.primary} />
-                <Picker.Item label="45+" value="45+" color={Colors.text.primary} />
-              </Picker>
-            </View>
-            {/* Debug display */}
-            {formData.ageRange && (
-              <Text style={styles.debugText}>Selected: {formData.ageRange}</Text>
-            )}
-          </View>
-
-          {/* Life Season */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Current Life Season</Text>
-            <View style={styles.pickerContainer}>
-                              <Picker
-                  selectedValue={formData.lifeSeason}
-                  onValueChange={(value) => {
-                    console.log('Life season selected:', value); // Debug log
-                    const updatedData = {...formData, lifeSeason: value};
-                    setFormData(updatedData);
-                    // Auto-save partial data
-                    dispatch(savePartialPersonalInfo({ lifeSeason: value }));
-                  }}
-                style={styles.picker}
-                dropdownIconColor={Colors.text.secondary}
-                mode="dropdown"
-              >
-                <Picker.Item label="Select your current life season" value="" color={Colors.text.secondary} />
-                
-                {/* Educational & Career Starting */}
-                <Picker.Item label="High School Student" value="high-school-student" color={Colors.text.primary} />
-                <Picker.Item label="College Student" value="college-student" color={Colors.text.primary} />
-                <Picker.Item label="Graduate Student" value="graduate-student" color={Colors.text.primary} />
-                <Picker.Item label="Recent Graduate" value="recent-graduate" color={Colors.text.primary} />
-                <Picker.Item label="Starting Career" value="starting-career" color={Colors.text.primary} />
-                
-                {/* Relationship Status */}
-                <Picker.Item label="Single" value="single" color={Colors.text.primary} />
-                <Picker.Item label="Dating" value="dating" color={Colors.text.primary} />
-                <Picker.Item label="Engaged" value="engaged" color={Colors.text.primary} />
-                <Picker.Item label="Newlywed" value="newlywed" color={Colors.text.primary} />
-                <Picker.Item label="Married" value="married" color={Colors.text.primary} />
-                <Picker.Item label="Separated" value="separated" color={Colors.text.primary} />
-                <Picker.Item label="Divorced" value="divorced" color={Colors.text.primary} />
-                <Picker.Item label="Widowed" value="widowed" color={Colors.text.primary} />
-                
-                {/* Family Life */}
-                <Picker.Item label="Trying to Conceive" value="trying-to-conceive" color={Colors.text.primary} />
-                <Picker.Item label="Expecting Parent" value="expecting-parent" color={Colors.text.primary} />
-                <Picker.Item label="New Parent" value="new-parent" color={Colors.text.primary} />
-                <Picker.Item label="Parent of Young Children" value="parent-young-children" color={Colors.text.primary} />
-                <Picker.Item label="Parent of Teenagers" value="parent-teenagers" color={Colors.text.primary} />
-                <Picker.Item label="Empty Nester" value="empty-nester" color={Colors.text.primary} />
-                <Picker.Item label="Grandparent" value="grandparent" color={Colors.text.primary} />
-                
-                {/* Career & Life Transitions */}
-                <Picker.Item label="Career Building" value="career-building" color={Colors.text.primary} />
-                <Picker.Item label="Career Change" value="career-change" color={Colors.text.primary} />
-                <Picker.Item label="Mid-Life Transition" value="mid-life-transition" color={Colors.text.primary} />
-                <Picker.Item label="Pre-Retirement" value="pre-retirement" color={Colors.text.primary} />
-                <Picker.Item label="Retired" value="retired" color={Colors.text.primary} />
-                
-                {/* Challenges & Recovery */}
-                <Picker.Item label="Health Challenges" value="health-challenges" color={Colors.text.primary} />
-                <Picker.Item label="Financial Stress" value="financial-stress" color={Colors.text.primary} />
-                <Picker.Item label="Job Loss/Unemployment" value="unemployment" color={Colors.text.primary} />
-                <Picker.Item label="Grief/Loss" value="grief-loss" color={Colors.text.primary} />
-                <Picker.Item label="Recovery/Healing" value="recovery-healing" color={Colors.text.primary} />
-                
-                {/* Spiritual & Personal Growth */}
-                <Picker.Item label="Spiritual Seeking" value="spiritual-seeking" color={Colors.text.primary} />
-                <Picker.Item label="New Believer" value="new-believer" color={Colors.text.primary} />
-                <Picker.Item label="Spiritual Growth" value="spiritual-growth" color={Colors.text.primary} />
-                <Picker.Item label="Spiritual Struggle" value="spiritual-struggle" color={Colors.text.primary} />
-                <Picker.Item label="Ministry/Service" value="ministry-service" color={Colors.text.primary} />
-                
-                {/* Other */}
-                <Picker.Item label="Military Service" value="military-service" color={Colors.text.primary} />
-                <Picker.Item label="Caregiver" value="caregiver" color={Colors.text.primary} />
-                <Picker.Item label="Other" value="other" color={Colors.text.primary} />
-              </Picker>
-            </View>
-            {/* Debug display */}
-            {formData.lifeSeason && (
-              <Text style={styles.debugText}>Selected: {formData.lifeSeason}</Text>
-            )}
-          </View>
-
-
-
-          {/* Privacy Policy */}
-          <Text style={styles.privacyText}>
-            By continuing, you agree to our{' '}
-            <Text style={styles.privacyLink}>Privacy Policy</Text>.
-          </Text>
+          </OnboardingCard>
         </View>
       </ScrollView>
 
-      {/* Bottom Actions */}
+      {/* Bottom Action */}
       <View style={styles.bottomContainer}>
         <OnboardingButton
-          title="Continue My Journey"
-          onPress={handleContinue}
+          title={isLastQuestion ? "Continue" : "Next"}
+          onPress={handleNext}
           variant="primary"
-          style={styles.primaryButton}
         />
       </View>
     </SafeAreaView>
@@ -368,7 +303,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 200, // Space for bottom actions
+    paddingBottom: 100, // Space for bottom button
   },
   headerContainer: {
     flexDirection: 'row',
@@ -395,68 +330,98 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40,
   },
-  titleContainer: {
+  questionProgressContainer: {
     paddingHorizontal: 24,
-    marginBottom: 32,
+    paddingVertical: 16,
     alignItems: 'center',
   },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.text.primary,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    maxWidth: 300,
-  },
-  formContainer: {
-    paddingHorizontal: 24,
-    gap: 20,
-  },
-  inputContainer: {
-    marginBottom: 4,
-  },
-  inputLabel: {
+  questionProgress: {
     fontSize: 14,
-    fontWeight: '500',
-    color: Colors.text.primary,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#2d2d2d',
-  },
-  inputContent: {
-    color: Colors.text.primary,
-  },
-  inputOutline: {
-    borderColor: '#4a4a4a',
-    borderWidth: 1,
-  },
-  pickerContainer: {
-    backgroundColor: '#2d2d2d',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#4a4a4a',
-    overflow: 'hidden',
-  },
-  picker: {
-    color: Colors.text.primary,
-    backgroundColor: 'transparent',
-  },
-
-  privacyText: {
-    fontSize: 12,
     color: Colors.text.secondary,
-    textAlign: 'center',
-    marginTop: 8,
+    fontWeight: '500',
   },
-  privacyLink: {
-    color: '#f5993d',
-    textDecorationLine: 'underline',
+  contentContainer: {
+    paddingHorizontal: 24,
+  },
+  questionCard: {
+    backgroundColor: Colors.background.secondary,
+    padding: 24,
+    borderRadius: 12,
+  },
+  questionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 24,
+  },
+  questionIcon: {
+    fontSize: 28,
+  },
+  questionText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    flex: 1,
+    lineHeight: 24,
+  },
+  questionInput: {
+    backgroundColor: Colors.background.tertiary,
+    minHeight: 120,
+  },
+  questionInputContent: {
+    color: Colors.text.primary,
+    paddingTop: 12,
+  },
+  questionInputOutline: {
+    borderColor: Colors.border.primary,
+    borderWidth: 1,
+  },
+  optionsContainer: {
+    gap: 12,
+  },
+  optionCard: {
+    transform: [{ scale: 1 }],
+  },
+  selectedOptionCard: {
+    transform: [{ scale: 1.02 }],
+  },
+  optionCardInner: {
+    margin: 0,
+    padding: 16,
+    backgroundColor: Colors.background.tertiary,
+    borderWidth: 1,
+    borderColor: Colors.border.primary,
+  },
+  selectedOptionCardInner: {
+    borderColor: Colors.primary.main,
+    borderWidth: 2,
+    backgroundColor: `${Colors.primary.main}10`,
+  },
+  optionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  optionTextContainer: {
+    flex: 1,
+  },
+  optionLabel: {
+    fontSize: 16,
+    color: Colors.text.primary,
+    fontWeight: '500',
+  },
+  selectedOptionLabel: {
+    color: Colors.primary.main,
+    fontWeight: '600',
+  },
+  checkIcon: {
+    fontSize: 24,
+    color: Colors.primary.main,
+    fontWeight: 'bold',
+  },
+  chevronIcon: {
+    fontSize: 24,
+    color: Colors.text.secondary,
   },
   bottomContainer: {
     position: 'absolute',
@@ -467,16 +432,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 32,
     paddingTop: 16,
-    gap: 12,
-  },
-  primaryButton: {
-    // No additional margin needed since it's the only button now
-  },
-  debugText: {
-    fontSize: 12,
-    color: '#f5993d',
-    marginTop: 4,
-    fontWeight: '500',
+    borderTopWidth: 1,
+    borderTopColor: Colors.border.primary,
   },
 });
 

@@ -8,7 +8,7 @@
  * @format
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar, useColorScheme, Linking, Alert } from 'react-native';
@@ -92,16 +92,25 @@ const appTheme = {
  */
 const AppContent: React.FC = () => {
   const dispatch = useAppDispatch();
-  
+  AsyncStorage.clear();
   // Get authentication and onboarding state from Redux
   const { isAuthenticated } = useAppSelector(state => state.user);
   const { isFirstLaunch, hasCompletedOnboarding } = useAppSelector(state => state.app);
   const { processingInvitation, isProcessingDeepLink } = useAppSelector(state => state.invitation);
+  const [shouldClearAsyncStorage, setShouldClearAsyncStorage] = useState(false);
+
   
-  useEffect(()=> {
-   // clear all asyncstorage 
- AsyncStorage.clear();
-   }, [])
+  
+
+
+//   useEffect(()=> {
+//    // clear all asyncstorage 
+//  if(shouldClearAsyncStorage || !shouldClearAsyncStorage){
+//   AsyncStorage.clear();
+//   setShouldClearAsyncStorage(false);
+//  }
+  
+//    }, [shouldClearAsyncStorage])
 
   /**
    * Deep Link Handler
@@ -316,6 +325,7 @@ const LoadingScreen: React.FC = () => {
  * - StatusBar configuration based on system theme
  */
 function App(): React.JSX.Element {
+ 
   return (
     <StoreProvider store={store}>
       <PersistGate loading={<LoadingScreen />} persistor={persistor}>

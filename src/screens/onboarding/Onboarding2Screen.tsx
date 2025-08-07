@@ -1,16 +1,16 @@
 /**
- * Onboarding Screen 2 - Struggle Recognition
+ * Onboarding Screen 3 - Vision of Freedom
  * 
- * Second onboarding screen that acknowledges the user's struggle and provides
- * encouragement with statistics and biblical support.
+ * Third onboarding screen that paints a picture of life free from struggle.
+ * Shows the benefits and positive outcomes of transformation.
  * 
  * Features:
- * - Progress indicator (Step 1 of 7)
- * - Background image with overlay
- * - Encouraging message about not being alone
- * - Statistics card showing prevalence
- * - Bible verse for comfort
- * - Confidentiality assurance
+ * - Progress indicator (Step 2 of 7)
+ * - Split background image
+ * - Vision of freedom message
+ * - Benefits list with icons
+ * - Bible verse for encouragement
+ * - Commitment question and action
  */
 
 import React from 'react';
@@ -24,10 +24,8 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 
 import OnboardingButton from '../../components/OnboardingButton';
-import OnboardingCard from '../../components/OnboardingCard';
 import ProgressIndicator from '../../components/ProgressIndicator';
 import { Colors } from '../../constants';
 
@@ -35,12 +33,12 @@ interface Onboarding2ScreenProps {
   navigation: any;
 }
 
-const { height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
 /**
- * Second Onboarding Screen Component
+ * Third Onboarding Screen Component
  * 
- * Acknowledges struggle and provides encouragement.
+ * Shows vision of life free from struggle.
  */
 const Onboarding2Screen: React.FC<Onboarding2ScreenProps> = ({ navigation }) => {
   
@@ -54,99 +52,115 @@ const Onboarding2Screen: React.FC<Onboarding2ScreenProps> = ({ navigation }) => 
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with Back Button and Progress */}
-      <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.progressWrapper}>
-          <ProgressIndicator
-            currentStep={1}
-            totalSteps={7}
-            variant="bars"
-            showStepText={true}
-          />
-        </View>
-        
-        <View style={styles.headerSpacer} />
-      </View>
-
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Background Image with Overlay */}
-        <ImageBackground
-          source={{
-            uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCWlBkmCX9EhVIacDadxpdw8mVhN0wdFpj3MA-TweHRfKNbCX7wC4HtVM6rc1XLx1ENYUUbbOBtCTy5jJd2_Q4CodzsncQedSyZHMXUqVJ4JQe5jo8BXmdoAFNv0xc3t-TKqzgz66G3dxzsyJnnaOa9dSx5fFUkSMDiGZh3gfRF4Slit7vGJqj13F7d4Cg6L-jXeL-fAUZ11CkXtq_tWlFNzNvnFDxmY97Ild_IsYg4jPX88_IJcJJftR3EG-pi0CGPgY1yw2E8gvQO'
-          }}
-          style={styles.backgroundImage}
-          resizeMode="cover"
-        >
-          <LinearGradient
-            colors={[
-              'rgba(18, 18, 18, 0.8)',
-              'rgba(18, 18, 18, 1)',
-            ]}
-            style={styles.gradientOverlay}
-          />
-        </ImageBackground>
+        {/* Header with Back Button and Progress */}
+        <View style={styles.headerContainer}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.progressWrapper}>
+            <ProgressIndicator
+              currentStep={2}
+              totalSteps={9}
+              variant="bars"
+              showStepText={true}
+            />
+          </View>
+          
+          <View style={styles.headerSpacer} />
+        </View>
+
+        {/* Split Background Images */}
+        <View style={styles.imageContainer}>
+          <View style={styles.imageRow}>
+            <ImageBackground
+              source={{
+                uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBV4HHu9kpZIzuEy9tM_-sylW_peQZ8tMrN5WcQNvAiZUaWviX879eOpTST2dMFrEnplBPpWsO5iMzphAj-yt5zbvslOGyFp9i9O0SvaUByh31AVOOjOKPP54XH4U6gXvjVoGWgmoOK-D_pJF7bCqu0Th0WLYVZlCiX7PV85n0h5xLiHrkTxk68G8nlRuXO8t1GoZTJGAesBcKxmNsZ2gKo67PoXDDcuWotFTyVKBqDmawxRYp-1CLI-QIxtH0_XAqA6x_gGs0hFAjl'
+              }}
+              style={[styles.backgroundImage, styles.leftImage]}
+              resizeMode="cover"
+            >
+              <View style={styles.imageOverlay} />
+            </ImageBackground>
+            
+            <ImageBackground
+              source={{
+                uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBV4HHu9kpZIzuEy9tM_-sylW_peQZ8tMrN5WcQNvAiZUaWviX879eOpTST2dMFrEnplBPpWsO5iMzphAj-yt5zbvslOGyFp9i9O0SvaUByh31AVOOjOKPP54XH4U6gXvjVoGWgmoOK-D_pJF7bCqu0Th0WLYVZlCiX7PV85n0h5xLiHrkTxk68G8nlRuXO8t1GoZTJGAesBcKxmNsZ2gKo67PoXDDcuWotFTyVKBqDmawxRYp-1CLI-QIxtH0_XAqA6x_gGs0hFAjl'
+              }}
+              style={[styles.backgroundImage, styles.rightImage]}
+              resizeMode="cover"
+            />
+          </View>
+        </View>
 
         {/* Main Content */}
         <View style={styles.contentContainer}>
           <Text style={styles.mainTitle}>
-            You Are Not Alone in This Battle
-          </Text>
-          
-          <Text style={styles.subtitle}>
-            It's okay to admit you're struggling. Many Christian men face this
-            challenge, and you're not alone in seeking freedom.
+            Imagine Your Life Free from This Struggle
           </Text>
 
-          {/* Statistics Card */}
-          <OnboardingCard style={styles.statisticsCard} withBorder>
-            <Text style={styles.didYouKnowLabel}>
-              DID YOU KNOW?
-            </Text>
-            <Text style={styles.statisticNumber}>
-              68%
-            </Text>
-            <Text style={styles.statisticDescription}>
-              of Christian men view pornography at least once a month.
-            </Text>
-          </OnboardingCard>
+          {/* Benefits List */}
+          <View style={styles.benefitsList}>
+            {/* Restored Relationships */}
+            <View style={styles.benefitItem}>
+              <View style={styles.benefitIcon}>
+                <Text style={styles.iconText}>👥</Text>
+              </View>
+              <View style={styles.benefitContent}>
+                <Text style={styles.benefitTitle}>
+                  Restored Relationships
+                </Text>
+                <Text style={styles.benefitDescription}>
+                  Experience deeper connections with loved ones, built on trust and authenticity.
+                </Text>
+              </View>
+            </View>
 
-          {/* Bible Verse */}
-          <View style={styles.verseContainer}>
-            <Text style={styles.verseText}>
-              "The Lord is close to the brokenhearted and saves those who are
-              crushed in spirit."
-            </Text>
-            <Text style={styles.verseReference}>
-              Psalm 34:18
-            </Text>
+            {/* Intimacy with God */}
+            <View style={styles.benefitItem}>
+              <View style={styles.benefitIcon}>
+                <Text style={styles.iconText}>🙏</Text>
+              </View>
+              <View style={styles.benefitContent}>
+                <Text style={styles.benefitTitle}>
+                  Intimacy with God
+                </Text>
+                <Text style={styles.benefitDescription}>
+                  Find solace and guidance in your faith, strengthening your spiritual foundation.
+                </Text>
+              </View>
+            </View>
           </View>
 
-          {/* Confidentiality Message */}
-          <Text style={styles.confidentialityText}>
-            This is a safe, judgment-free space. Your journey is confidential, and
-            we're here to support you.
+          {/* Bible Verse Card */}
+          <View style={styles.verseCard}>
+            <Text style={styles.verseText}>
+              "Therefore, if anyone is in Christ, the new creation has come: The old has gone, the new is here!"
+            </Text>
+            <Text style={styles.verseReference}>
+              2 Corinthians 5:17
+            </Text>
+          </View>
+        </View>
+
+        {/* Bottom Section */}
+        <View style={styles.bottomSection}>
+          <Text style={styles.commitmentQuestion}>
+            Are you ready to commit to this transformation?
           </Text>
+          
+          <OnboardingButton
+            title="Yes, Transform My Life"
+            onPress={handleContinue}
+            variant="primary"
+            style={styles.actionButton}
+          />
         </View>
       </ScrollView>
-
-      {/* Bottom Action */}
-      <View style={styles.bottomContainer}>
-        <OnboardingButton
-          title="Yes, I'm Ready for Freedom"
-          onPress={handleContinue}
-          variant="primary"
-        />
-        <Text style={styles.bottomNote}>
-          Your information is kept strictly confidential.
-        </Text>
-      </View>
     </SafeAreaView>
   );
 };
@@ -156,13 +170,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background.primary,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: Colors.background.primary,
-    zIndex: 20,
   },
   backButton: {
     width: 40,
@@ -182,29 +198,32 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 120, // Space for bottom button
+  imageContainer: {
+    height: 192,
+    marginBottom: 32,
   },
-  backgroundImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: screenHeight,
-    width: '100%',
-  },
-  gradientOverlay: {
-    flex: 1,
-    width: '100%',
+  imageRow: {
+    flexDirection: 'row',
     height: '100%',
   },
-  contentContainer: {
+  backgroundImage: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 80,
     justifyContent: 'center',
-    zIndex: 10,
+    alignItems: 'center',
+  },
+  leftImage: {
+    marginRight: 1,
+  },
+  rightImage: {
+    marginLeft: 1,
+  },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  contentContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
   },
   mainTitle: {
     fontSize: 28,
@@ -212,80 +231,76 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     textAlign: 'center',
     lineHeight: 36,
-    marginBottom: 16,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 24,
     marginBottom: 32,
   },
-  statisticsCard: {
+  benefitsList: {
+    gap: 20,
+    marginBottom: 32,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  benefitIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.background.tertiary,
     alignItems: 'center',
-    marginBottom: 32,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
-  didYouKnowLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: Colors.text.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: 8,
+  iconText: {
+    fontSize: 24,
   },
-  statisticNumber: {
-    fontSize: 48,
-    fontWeight: '700',
+  benefitContent: {
+    flex: 1,
+  },
+  benefitTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     color: Colors.text.primary,
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  statisticDescription: {
-    fontSize: 16,
+  benefitDescription: {
+    fontSize: 14,
     color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
   },
-  verseContainer: {
+  verseCard: {
+    backgroundColor: 'rgba(39, 39, 42, 0.5)',
+    borderRadius: 12,
+    padding: 24,
     alignItems: 'center',
-    marginBottom: 32,
   },
   verseText: {
     fontSize: 16,
-    color: Colors.text.secondary,
+    color: Colors.text.primary,
     textAlign: 'center',
     fontStyle: 'italic',
     lineHeight: 24,
-    marginBottom: 4,
+    marginBottom: 8,
   },
   verseReference: {
     fontSize: 14,
     color: Colors.text.secondary,
-    fontStyle: 'italic',
-  },
-  confidentialityText: {
-    fontSize: 14,
-    color: Colors.text.secondary,
     textAlign: 'center',
-    lineHeight: 20,
   },
-  bottomContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Colors.background.primary,
+  bottomSection: {
     paddingHorizontal: 24,
     paddingBottom: 32,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(74, 74, 74, 0.3)',
+    alignItems: 'center',
   },
-  bottomNote: {
-    fontSize: 12,
-    color: Colors.text.secondary,
+  commitmentQuestion: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text.primary,
     textAlign: 'center',
-    marginTop: 16,
+    marginBottom: 24,
+  },
+  actionButton: {
+    height: 56,
   },
 });
 
