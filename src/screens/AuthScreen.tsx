@@ -20,6 +20,7 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
+import { GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID } from '@env';
 import {
   Text,
   ActivityIndicator,
@@ -27,10 +28,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import appleAuth from '@invertase/react-native-apple-authentication';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Redux imports
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { loginUser } from '../store/slices/userSlice';
+import { loginUser, loginUserWithApple } from '../store/slices/userSlice';
+
+import { processDeepLinkInvitation } from '../store/slices/invitationSlice';
 
 // Import centralized colors and icons
 import { Colors, Icons } from '../constants';
@@ -55,7 +59,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   useEffect(() => {
     // Configure Google Sign-In
     GoogleSignin.configure({
-      webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', // Replace with your Web Client ID
+      webClientId: GOOGLE_WEB_CLIENT_ID, // Loaded from .env file
+      iosClientId: GOOGLE_IOS_CLIENT_ID,
       offlineAccess: true, // if you want to access Google API on behalf of the user FROM YOUR SERVER
     });
   }, []);
@@ -79,34 +84,36 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
    */
   const handleGoogleLogin = async () => {
     try {
-      await GoogleSignin.hasPlayServices();
-      const { idToken }:any = await GoogleSignin.signIn();
-      console.log('Google User Info:', idToken);
-      
-      // The idToken is what you'll use to authenticate with your backend
-      if (idToken) {
-        console.log('Google ID Token:', idToken);
-        Alert.alert('Google Login Success', `Token: ${idToken.substring(0, 30)}...`);
-        // Here you would typically send the token to your backend
-        // dispatch(loginUser({ token: idToken, provider: 'google' }));
+      const data: any = await GoogleSignin.signIn();
+      if (data && data.data?.idToken) {
+        const { idToken } = data.data; 
+        // this one is the id that is initially sent as invitation
+        const init_sent_accountability_id = await AsyncStorage.getItem('init_sent_accountability_id');
+        // this is the one the user uses when he opens the app from a link
+        const init_reciever_sent_accountablity_id = await AsyncStorage.getItem('init_reciever_sent_accountablity_id');
+        
+        await dispatch(loginUser({ 
+          idToken, 
+          onboardingData, 
+          init_sent_accountability_id, 
+          init_reciever_sent_accountablity_id 
+        })).unwrap();
+
+        if (init_sent_accountability_id) {
+          await AsyncStorage.removeItem('init_sent_accountability_id');
+        }
+        if (init_reciever_sent_accountablity_id) {
+          await AsyncStorage.removeItem('init_reciever_sent_accountablity_id');
+        }
       } else {
         throw new Error('Google Sign-In failed to return an ID token.');
       }
     } catch (error: any) {
       console.error('Google login error:', error);
-      if (error.code) {
-        Alert.alert('Google Login Error', `Code: ${error.code} - ${error.message}`);
-      } else {
-        Alert.alert('Error', 'Failed to login with Google. Please try again.');
-      }
+      Alert.alert('Google Login Error', `An error occurred during Google sign-in. Please try again.`);
     }
   };
 
-  /**
-   * Handle Apple Login
-   * 
-   * Handles Apple authentication integration.
-   */
   const handleAppleLogin = async () => {
     try {
       const appleAuthRequestResponse = await appleAuth.performRequest({
@@ -114,24 +121,31 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
         requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
       });
 
-      console.log('Apple Auth Response:', appleAuthRequestResponse);
-
-      const { identityToken, nonce } = appleAuthRequestResponse;
+      const { identityToken } = appleAuthRequestResponse;
 
       if (identityToken) {
-        console.log('Apple ID Token:', identityToken);
-        Alert.alert('Apple Login Success', `Token: ${identityToken.substring(0, 30)}...`);
-        // Here you would typically send the token to your backend
-        // dispatch(loginUser({ token: identityToken, provider: 'apple' }));
+        const init_sent_accountability_id = await AsyncStorage.getItem('init_sent_accountability_id');
+        const init_reciever_sent_accountablity_id = await AsyncStorage.getItem('init_reciever_sent_accountablity_id');
+
+        await dispatch(loginUserWithApple({ 
+          identityToken, 
+          onboardingData, 
+          init_sent_accountability_id, 
+          init_reciever_sent_accountablity_id 
+        })).unwrap();
+        
+        if (init_sent_accountability_id) {
+          await AsyncStorage.removeItem('init_sent_accountability_id');
+        }
+        if (init_reciever_sent_accountablity_id) {
+          await AsyncStorage.removeItem('init_reciever_sent_accountablity_id');
+        }
       } else {
         throw new Error('Apple Sign-In failed to return an identity token.');
       }
-
     } catch (error: any) {
       console.error('Apple login error:', error);
-      if (error.code === appleAuth.Error.CANCELED) {
-        console.log('User canceled Apple Sign-In.');
-      } else {
+      if (error.code !== appleAuth.Error.CANCELED) {
         Alert.alert('Error', 'Failed to login with Apple. Please try again.');
       }
     }

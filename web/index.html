@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join PureHeart</title>
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <meta name="google-signin-client_id" content="YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com">
+    
+    <!-- iOS Smart App Banner - automatically shows "Open in App" if installed -->
+    <meta name="apple-itunes-app" content="app-id=YOUR_APP_ID, app-argument=pureheart://invite/INVITE_ID">
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+        p {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+            color: #cccccc;
+        }
+        .g-signin2 {
+            display: inline-block;
+            margin: 20px auto;
+        }
+        .app-store-button {
+            display: inline-block;
+            margin-top: 20px;
+        }
+        .app-store-button img {
+            height: 50px;
+        }
+        #loading {
+            display: none;
+            color: #cccccc;
+            margin-top: 20px;
+        }
+        #error {
+            display: none;
+            color: #ff6b6b;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>You've been invited to PureHeart! 🙏</h1>
+        <p id="invite-message">Someone special wants to connect with you on PureHeart.</p>
+        
+        <div id="auth-section">
+            <p>To accept this invitation, please sign in:</p>
+            <div class="g-signin2" data-onsuccess="onSignIn" data-theme="dark" data-width="300" data-height="50"></div>
+        </div>
+        
+        <div id="loading">Processing your invitation...</div>
+        <div id="error"></div>
+        
+        <div class="app-store-button">
+            <a href="https://apps.apple.com/app/pureheart/idYOUR_APP_ID" id="app-store-link">
+                <img src="https://developer.apple.com/app-store/marketing/guidelines/images/badge-download-on-the-app-store.svg" alt="Download on the App Store">
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'https://your-api.com'; // Replace with your actual API URL
+        const APP_STORE_URL = 'https://apps.apple.com/app/pureheart/idYOUR_APP_ID';
+        const APP_SCHEME_URL = 'pureheart://';
+        
+        // Get invite ID from URL
+        function getInviteId() {
+            const path = window.location.pathname;
+            const match = path.match(/\/invite\/([^\/]+)/);
+            return match ? match[1] : null;
+        }
+        
+        // Track invitation click
+        async function trackInviteClick(inviteId) {
+            try {
+                // Collect device fingerprint information
+                const deviceInfo = {
+                    inviteId: inviteId,
+                    userAgent: navigator.userAgent,
+                    timestamp: new Date().toISOString(),
+                    referrer: document.referrer,
+                    screenResolution: `${window.screen.width}x${window.screen.height}`,
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    language: navigator.language,
+                    platform: navigator.platform,
+                    // Add more fingerprinting data as needed
+                };
+                
+                // Send to your backend
+                await fetch(`${API_BASE_URL}/api/invites/track-click`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(deviceInfo)
+                });
+                
+                console.log('Invitation click tracked:', inviteId);
+            } catch (error) {
+                console.error('Failed to track invitation click:', error);
+            }
+        }
+        
+        // Check if app is installed and redirect
+        async function handleAppRedirect() {
+            const inviteId = getInviteId();
+            if (!inviteId) {
+                document.getElementById('error').textContent = 'Invalid invitation link';
+                document.getElementById('error').style.display = 'block';
+                return;
+            }
+            
+            // Track the click immediately
+            await trackInviteClick(inviteId);
+            
+            // Update the meta tag for iOS Smart App Banner
+            const metaTag = document.querySelector('meta[name="apple-itunes-app"]');
+            if (metaTag) {
+                metaTag.content = metaTag.content.replace('INVITE_ID', inviteId);
+            }
+            
+            // Try to open the app with Universal Link
+            // iOS will automatically handle this if the app is installed
+            const universalLink = `${window.location.origin}/invite/${inviteId}`;
+            
+            // For iOS, the Universal Link should work automatically
+            // The browser will redirect to the app if it's installed
+            // If not, it will stay on this page
+            
+            // Fallback for other scenarios
+            setTimeout(() => {
+                // If we're still here after 2 seconds, app probably isn't installed
+                // The user can use the App Store button or sign in
+                console.log('App not detected, showing web options');
+            }, 2000);
+        }
+        
+        async function onSignIn(googleUser) {
+            const profile = googleUser.getBasicProfile();
+            const inviteId = getInviteId();
+            
+            if (!inviteId) {
+                document.getElementById('error').textContent = 'Invalid invitation link';
+                document.getElementById('error').style.display = 'block';
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('auth-section').style.display = 'none';
+            
+            try {
+                // Associate the Google account with the invitation
+                const response = await fetch(`${API_BASE_URL}/api/invites/associate-web-login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        googleId: profile.getId(),
+                        email: profile.getEmail(),
+                        name: profile.getName(),
+                        inviteId: inviteId,
+                        deviceFingerprint: {
+                            userAgent: navigator.userAgent,
+                            screenResolution: `${window.screen.width}x${window.screen.height}`,
+                            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                            language: navigator.language,
+                            platform: navigator.platform,
+                        }
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Show success message
+                    document.getElementById('loading').textContent = 
+                        'Success! Invitation tracked. Please download the app to continue.';
+                    
+                    // Redirect to App Store after a short delay
+                    setTimeout(() => {
+                        window.location.href = APP_STORE_URL;
+                    }, 2000);
+                } else {
+                    throw new Error('Failed to process invitation');
+                }
+            } catch (error) {
+                console.error('Error processing invitation:', error);
+                document.getElementById('error').textContent = 
+                    'Failed to process invitation. Please try again or download the app directly.';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            handleAppRedirect();
+        });
+        
+        // Handle Google Sign-In errors
+        window.addEventListener('load', () => {
+            if (typeof gapi !== 'undefined') {
+                gapi.load('auth2', () => {
+                    gapi.auth2.init().then(
+                        () => console.log('Google Sign-In initialized'),
+                        (error) => {
+                            console.error('Google Sign-In initialization failed:', error);
+                            document.getElementById('error').textContent = 
+                                'Google Sign-In is not available. Please download the app directly.';
+                            document.getElementById('error').style.display = 'block';
+                        }
+                    );
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -32,7 +32,7 @@ interface EmergencyScreenProps {
 
 const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
   const [feelingText, setFeelingText] = useState('');
-
+ 
   // Handle main emergency button
   const handleEmergencyHelp = () => {
     Alert.alert(
@@ -70,11 +70,11 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
 
   // Handle emergency contacts
   const handleCallMgBrother = () => {
-    Alert.alert('Call My Brother', 'Calling your brother in Christ...');
+    if (navigation) navigation.navigate('PartnersList');
   };
 
   const handleTextPartner = () => {
-    Alert.alert('Text My Accountability Partner', 'Opening text conversation...');
+    if (navigation) navigation.navigate('PartnersList');
   };
 
   return (

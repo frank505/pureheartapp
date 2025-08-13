@@ -14,6 +14,8 @@
 
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 /**
  * User Interface
  * 
@@ -24,6 +26,9 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
   avatar?: string;
   joinDate: string;
   preferences: {
@@ -79,35 +84,85 @@ const initialState: UserState = {
  * Handles user login process with email and password.
  * In a real app, this would make an API call to authenticate.
  */
+import api from '../../services/api';
+import { 
+  OnboardingState,
+} from './onboardingSlice';
+
+/**
+ * Login User Thunk
+ * 
+ * Handles user login process with Google.
+ * In a real app, this would make an API call to authenticate.
+ */
 export const loginUser = createAsyncThunk(
   'user/login',
-  async (credentials: { email: string; password: string }, { rejectWithValue }) => {
+  async (loginData: { idToken: string; onboardingData: Omit<OnboardingState, 'isDataSaved'>; init_sent_accountability_id: string | null, init_reciever_sent_accountablity_id: string | null }, { rejectWithValue }) => {
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { idToken, onboardingData, init_sent_accountability_id, init_reciever_sent_accountablity_id } = loginData;
       
-      // Mock user data - in real app, this comes from API
-      const mockUser: User = {
-        id: '1',
-        email: credentials.email,
-        name: 'John Doe',
-        avatar: undefined,
-        joinDate: new Date().toISOString(),
-        preferences: {
-          notifications: true,
-          darkMode: false,
-          language: 'en',
-        },
-        stats: {
-          daysActive: 127,
-          goalsAchieved: 23,
-          successRate: 89,
-        },
-      };
+      const response = await api.post('/auth/google-login', {
+        idToken,
+        onboardingData,
+        init_sent_accountability_id,
+        init_reciever_sent_accountablity_id,
+      });
+
+      // Assuming the API returns the user object and a tokens object
+      const { user, tokens } = response.data;
+
+      // Save the access token to AsyncStorage
+      await AsyncStorage.setItem('userToken', tokens.accessToken);
+
+      return user;
+    } catch (error: any) {
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        return rejectWithValue(error.response.data.message || 'Login failed');
+      } else if (error.request) {
+        // The request was made but no response was received
+        return rejectWithValue('No response from server. Please check your network connection.');
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        return rejectWithValue(error.message);
+      }
+    }
+  }
+);
+
+export const loginUserWithApple = createAsyncThunk(
+  'user/loginWithApple',
+  async (loginData: { identityToken: string; onboardingData: Omit<OnboardingState, 'isDataSaved'>; init_sent_accountability_id: string | null; init_reciever_sent_accountablity_id: string | null }, { rejectWithValue }) => {
+    try {
+      const { identityToken, onboardingData, init_sent_accountability_id, init_reciever_sent_accountablity_id } = loginData;
       
-      return mockUser;
-    } catch (error) {
-      return rejectWithValue('Login failed. Please check your credentials.');
+      const response = await api.post('/auth/apple-login', {
+        identityToken,
+        onboardingData,
+        init_sent_accountability_id,
+        init_reciever_sent_accountablity_id,
+      });
+
+      // Assuming the API returns the user object and a tokens object
+      const { user, tokens } = response.data;
+
+      // Save the access token to AsyncStorage
+      await AsyncStorage.setItem('userToken', tokens.accessToken);
+
+      return user;
+    } catch (error: any) {
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        return rejectWithValue(error.response.data.message || 'Login failed');
+      } else if (error.request) {
+        // The request was made but no response was received
+        return rejectWithValue('No response from server. Please check your network connection.');
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        return rejectWithValue(error.message);
+      }
     }
   }
 );
@@ -120,15 +175,31 @@ export const loginUser = createAsyncThunk(
  */
 export const updateProfile = createAsyncThunk(
   'user/updateProfile',
-  async (profileData: Partial<User>, { getState, rejectWithValue }) => {
+  async (profileData: { firstName?: string; lastName?: string; username?: string }, { rejectWithValue }) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // In real app, make API call here
-      return profileData;
-    } catch (error) {
-      return rejectWithValue('Failed to update profile. Please try again.');
+      const { data } = await api.patch('/user-profile', profileData);
+      return data.data.user;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update profile.');
+    }
+  }
+);
+
+/**
+ * Get User Details Thunk
+ * 
+ * Fetches detailed user information from the server.
+ * This is useful for getting fresh user data after initial login.
+ */
+export const getUserDetails = createAsyncThunk(
+  'user/getUserDetails',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get('/user-details');
+      // Assuming the API returns user details under a 'data' property
+      return data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch user details.');
     }
   }
 );
@@ -221,6 +292,24 @@ const userSlice = createSlice({
         state.isAuthenticated = false;
       });
 
+    // Apple Login User Cases
+    builder
+      .addCase(loginUserWithApple.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loginUserWithApple.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentUser = action.payload;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(loginUserWithApple.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+        state.isAuthenticated = false;
+      });
+
     // Update Profile Cases
     builder
       .addCase(updateProfile.pending, (state) => {
@@ -234,6 +323,25 @@ const userSlice = createSlice({
         }
       })
       .addCase(updateProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Get User Details Cases
+    builder
+      .addCase(getUserDetails.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getUserDetails.fulfilled, (state, action) => {
+        state.loading = false;
+        if (state.currentUser) {
+          state.currentUser = { ...state.currentUser, ...action.payload };
+        } else {
+          state.currentUser = action.payload;
+        }
+      })
+      .addCase(getUserDetails.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

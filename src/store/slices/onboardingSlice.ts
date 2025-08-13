@@ -99,6 +99,10 @@ export interface AdditionalAssessmentData {
 export interface AccountabilityPreferences {
   preferredType: 'partner' | 'group' | 'trusted-person' | 'solo' | 'ai-accountability' | null;
   hasSelectedOption: boolean;
+  // When inviting a trusted partner during onboarding, we generate a unique URL hash
+  // for the invitation link. Persist it here so it can be sent to the backend
+  // alongside other onboarding data during social login (Google/Apple).
+  invitationHash?: string;
   completedAt?: string;
 }
 
@@ -131,7 +135,7 @@ export interface OnboardingProgress {
  * 
  * Defines the complete state shape for onboarding data.
  */
-interface OnboardingState {
+export interface OnboardingState {
   personalInfo: Partial<PersonalInfo>;
   assessmentData: Partial<AssessmentData>;
   additionalAssessmentData: Partial<AdditionalAssessmentData>;

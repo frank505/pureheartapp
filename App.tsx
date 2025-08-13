@@ -11,7 +11,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StatusBar, useColorScheme, Linking, Alert } from 'react-native';
+import { StatusBar, useColorScheme, Linking, Alert, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as StoreProvider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -31,19 +31,28 @@ import SubscriptionScreen from './src/screens/SubscriptionScreen';
 import NewGroupScreen from './src/screens/NewGroupScreen';
 import AICompanionScreen from './src/screens/AICompanionScreen';
 import GroupChatScreen from './src/screens/GroupChatScreen';
-import InviteFriendScreen from './src/screens/InviteFriendScreen';
+import PartnersListScreen from './src/screens/PartnersListScreen';
+import CheckInHistoryScreen from './src/screens/CheckInHistoryScreen';
+import PrayerRequestsScreen from './src/screens/PrayerRequestsScreen';
+import NotificationsCenterScreen from './src/screens/NotificationsCenterScreen';
+import ScriptureBrowserScreen from './src/screens/ScriptureBrowserScreen';
+import AIChatScreen from './src/screens/AIChatScreen';
 import InvitationAcceptModal from './src/components/InvitationAcceptModal';
+import ShareInvitationModal from './src/components/ShareInvitationModal';
 
 // Import Redux hooks and actions
 import { useAppSelector, useAppDispatch } from './src/store/hooks';
-import { processDeepLinkInvitation } from './src/store/slices/invitationSlice';
+import { processDeepLinkInvitation, matchInstall } from './src/store/slices/invitationSlice';
 
 // Import invitation service
 import InvitationService from './src/services/invitationService';
+import DeviceInfo from 'react-native-device-info';
 
 // Import centralized theme
 import { Theme } from './src/constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import messaging, { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
+import { navigationRef, navigate } from './src/navigation/RootNavigation';
 
 // Create the stack navigator for authentication flow
 const Stack = createNativeStackNavigator();
@@ -92,119 +101,151 @@ const appTheme = {
  */
 const AppContent: React.FC = () => {
   const dispatch = useAppDispatch();
-  AsyncStorage.clear();
+ 
+
+  useEffect(() => {
+    AsyncStorage.clear();
+  }, []);
+
   // Get authentication and onboarding state from Redux
   const { isAuthenticated } = useAppSelector(state => state.user);
   const { isFirstLaunch, hasCompletedOnboarding } = useAppSelector(state => state.app);
   const { processingInvitation, isProcessingDeepLink } = useAppSelector(state => state.invitation);
   const [shouldClearAsyncStorage, setShouldClearAsyncStorage] = useState(false);
 
-  
-  
+  useEffect(() => {
+    const checkFirstLaunch = async () => {
+      try {
+        const hasLaunched = await AsyncStorage.getItem('hasLaunched');
+        if (hasLaunched === null) {
+          console.log('First app launch detected. Checking for install match...');
+          const deviceInfo = {
+            os: DeviceInfo.getSystemName(),
+            osVersion: DeviceInfo.getSystemVersion(),
+            deviceModel: DeviceInfo.getModel(),
+          };
 
+          const resultAction = await dispatch(matchInstall(deviceInfo));
+          if (matchInstall.fulfilled.match(resultAction) && resultAction.payload.inviteId) {
+            console.log('Found matching invite ID:', resultAction.payload.inviteId);
+            await AsyncStorage.setItem('init_sent_accountability_id', resultAction.payload.inviteId);
+          }
+          await AsyncStorage.setItem('hasLaunched', 'true');
+        }
+      } catch (error) {
+        console.error('Failed to check first launch:', error);
+      }
+    };
 
-//   useEffect(()=> {
-//    // clear all asyncstorage 
-//  if(shouldClearAsyncStorage || !shouldClearAsyncStorage){
-//   AsyncStorage.clear();
-//   setShouldClearAsyncStorage(false);
-//  }
+    checkFirstLaunch();
+  }, [dispatch]);
   
-//    }, [shouldClearAsyncStorage])
-
   /**
    * Deep Link Handler
    * 
    * Handles incoming deep links when app is opened via URL.
    * Processes invitation links and navigates appropriately.
+   * Tracks different scenarios for proper attribution.
    */
   useEffect(() => {
-    // Handle initial URL when app is opened from a deep link
-    const handleInitialUrl = async () => {
-      try {
-        const initialUrl = await Linking.getInitialURL();
-        if (initialUrl) {
-          console.log('App opened with URL:', initialUrl);
-          await handleDeepLink(initialUrl);
+    const handleDeepLink = async (url: string | null, isInitial: boolean = false) => {
+      if (!url || !url.includes('invite')) {
+        return;
+      }
+
+      console.log(`Handling deep link URL (${isInitial ? 'initial' : 'runtime'}):`, url);
+      
+      // Extract invite ID from URL
+      const inviteMatch = url.match(/\/invite\/([^/?&#]+)/);
+      const inviteId = inviteMatch ? inviteMatch[1] : null;
+
+      if (inviteId) {
+        // Store for later processing after authentication
+        await AsyncStorage.setItem('init_sent_accountability_id', inviteId);  
+        // Track the deep link click event
+        try {
+          if(!isAuthenticated){  
+            // Track that an unauthenticated user clicked the link
+            const deviceInfo = {
+              os: DeviceInfo.getSystemName(),
+              osVersion: DeviceInfo.getSystemVersion(),
+              deviceModel: DeviceInfo.getModel(),
+              isInitialLaunch: isInitial,
+              timestamp: new Date().toISOString(),
+            };
+            
+            // Store device info for backend matching
+            await AsyncStorage.setItem('inviteLinkClickInfo', JSON.stringify({
+              inviteId,
+              deviceInfo,
+              clickedAt: new Date().toISOString(),
+            }));
+          }
+
+        } catch (error) {
+          console.error('Error processing deep link invitation:', error);
         }
-      } catch (error) {
-        console.error('Error handling initial URL:', error);
       }
     };
 
-    // Handle URLs when app is already running
-    const handleUrlChange = (url: string) => {
-      console.log('URL changed:', url);
-      handleDeepLink(url);
-    };
+    // Handle the link that opened the app
+    Linking.getInitialURL().then(url => {
+      handleDeepLink(url, true);
+    });
 
-    // Set up listeners
-    handleInitialUrl();
-    const subscription = Linking.addEventListener('url', ({ url }) => handleUrlChange(url));
+    // Handle links clicked when the app is already open
+    const subscription = Linking.addEventListener('url', event => {
+      handleDeepLink(event.url, false);
+    });
 
-    // Cleanup
     return () => {
-      subscription?.remove();
+      subscription.remove();
+    };
+  }, [isAuthenticated, dispatch]);
+
+  // iOS push notification handling: navigate to group chat when tapped
+  useEffect(() => {
+    // Request permission on iOS
+    if (Platform.OS === 'ios') {
+      messaging().requestPermission().catch(() => undefined);
+      messaging().getToken().then((token: string) => {
+        if (token) {
+          // Store or send to backend later
+          AsyncStorage.setItem('fcm_token', token).catch(() => undefined);
+        }
+      });
+    }
+
+    // Foreground message handler (optional preview)
+    const unsubscribeOnMessage = messaging().onMessage(async () => {
+      // no-op; could show in-app banner/toast
+    });
+
+    // When app is opened from a quit state via notification
+    messaging()
+      .getInitialNotification()
+      .then((remoteMessage: FirebaseMessagingTypes.RemoteMessage | null) => {
+        if (remoteMessage?.data?.type === 'group_message') {
+          const groupId = String(remoteMessage.data.groupId);
+          const groupName = remoteMessage.data.groupName ? String(remoteMessage.data.groupName) : undefined;
+          setTimeout(() => navigate('GroupChat', { groupId, groupName }), 300);
+        }
+      });
+
+    // When app is in background and user taps notification
+    const unsubscribeOpened = messaging().onNotificationOpenedApp((remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
+      if (remoteMessage?.data?.type === 'group_message') {
+        const groupId = String(remoteMessage.data.groupId);
+        const groupName = remoteMessage.data.groupName ? String(remoteMessage.data.groupName) : undefined;
+        navigate('GroupChat', { groupId, groupName });
+      }
+    });
+
+    return () => {
+      unsubscribeOnMessage();
+      unsubscribeOpened();
     };
   }, []);
-
-  /**
-   * Process Deep Link URL
-   * 
-   * Extracts invitation hash from URL and processes the invitation.
-   * Shows appropriate UI based on user authentication state.
-   */
-  const handleDeepLink = async (url: string) => {
-    try {
-      // Extract invitation hash from URL
-      const hash = InvitationService.extractHashFromUrl(url);
-      
-      if (!hash) {
-        console.log('No valid invitation hash found in URL:', url);
-        return;
-      }
-
-      // Validate hash format
-      if (!InvitationService.validateInvitationHash(hash)) {
-        console.log('Invalid invitation hash format:', hash);
-        Alert.alert(
-          'Invalid Invitation',
-          'The invitation link appears to be invalid or corrupted.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
-      console.log('Processing invitation with hash:', hash);
-
-      // Process the invitation via Redux
-      try {
-        await dispatch(processDeepLinkInvitation(hash)).unwrap();
-        
-        // If user is not authenticated, they'll need to sign in first
-        if (!isAuthenticated) {
-          Alert.alert(
-            'Invitation Received!',
-            'Please sign in to accept this invitation and connect with your friend.',
-            [{ text: 'OK' }]
-          );
-        } else {
-          // User is authenticated, show invitation directly
-          console.log('Invitation processed successfully for authenticated user');
-        }
-      } catch (error) {
-        console.error('Error processing invitation:', error);
-        Alert.alert(
-          'Invitation Error',
-          typeof error === 'string' ? error : 'Unable to process the invitation. Please try again.',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error) {
-      console.error('Error handling deep link:', error);
-    }
-  };
- 
   
   // Get onboarding data state for restoration logic
   const onboardingState = useAppSelector(state => state.onboarding);
@@ -279,7 +320,12 @@ const AppContent: React.FC = () => {
         <Stack.Screen name="NewGroup" component={NewGroupScreen} />
         <Stack.Screen name="AICompanion" component={AICompanionScreen} />
         <Stack.Screen name="GroupChat" component={GroupChatScreen} />
-        <Stack.Screen name="InviteFriend" component={InviteFriendScreen} />
+        <Stack.Screen name="PartnersList" component={PartnersListScreen} />
+        <Stack.Screen name="CheckInHistory" component={CheckInHistoryScreen} />
+        <Stack.Screen name="PrayerRequests" component={PrayerRequestsScreen} />
+        <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} />
+        <Stack.Screen name="ScriptureBrowser" component={ScriptureBrowserScreen} />
+        <Stack.Screen name="AIChat" component={AIChatScreen} />
       </Stack.Navigator>
     );
   };
@@ -287,7 +333,7 @@ const AppContent: React.FC = () => {
   return (
     <PaperProvider theme={appTheme}>
       <SafeAreaProvider>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
           <StatusBar 
             barStyle="light-content" // Always light for dark theme
             backgroundColor={Theme.screen} // Dark background from theme
@@ -296,6 +342,7 @@ const AppContent: React.FC = () => {
           
           {/* Global Invitation Accept Modal */}
           <InvitationAcceptModal />
+          <ShareInvitationModal />
         </NavigationContainer>
       </SafeAreaProvider>
     </PaperProvider>

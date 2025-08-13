@@ -43,6 +43,7 @@ import {
 // Invitation service
 import InvitationService from '../../services/invitationService';
 import { ProgressIndicator } from '../../components';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Onboarding8ScreenProps {
   navigation: any;
@@ -110,9 +111,13 @@ interface Onboarding8ScreenProps {
         invitationType: 'trusted_contact' as const,
         customMessage: `${userName || 'A friend'} would like you to be their trusted accountability partner on PureHeart!`,
       };
-
+      
       const invitation = await dispatch(createInvitation(invitationData)).unwrap();
       setCreatedInvitation(invitation);
+    
+      // Persist the generated invitation hash into onboarding state so it
+      // is included in accountabilityPreferences sent during social login
+      dispatch(saveAccountabilityPreferences({ invitationHash: invitation.hash }));
       
       // Show share modal
       dispatch(showShareModal(invitation));

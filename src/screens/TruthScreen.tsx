@@ -43,6 +43,10 @@ const TruthScreen: React.FC<TruthScreenProps> = ({ navigation }) => {
     // Here you would add logic to track this lie
   };
 
+  const openScriptureBrowser = () => {
+    if (navigation) navigation.navigate('ScriptureBrowser');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Custom Header */}
@@ -102,7 +106,12 @@ const TruthScreen: React.FC<TruthScreenProps> = ({ navigation }) => {
 
         {/* Biblical Truth Response */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Biblical Truth Response</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.sectionTitle}>Biblical Truth Response</Text>
+            <TouchableOpacity onPress={openScriptureBrowser}>
+              <Text style={{ color: Colors.primary.main, fontWeight: '600' }}>Browse Scripture</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.sectionDescription}>
             Combat lies with the power of God's Word. Select or write a biblical truth to replace the lie.
           </Text>

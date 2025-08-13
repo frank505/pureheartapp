@@ -5,7 +5,7 @@
  * Features group name, description, privacy settings, and member invitations.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -20,10 +20,12 @@ import {
   Surface,
   TextInput,
   Button,
+  Chip,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import { Colors, Icons } from '../constants';
+import groupService from '../services/groupService';
 
 interface NewGroupScreenProps {
   navigation?: any;
@@ -34,7 +36,31 @@ const NewGroupScreen: React.FC<NewGroupScreenProps> = ({ navigation }) => {
   const [groupName, setGroupName] = useState('');
   const [description, setDescription] = useState('');
   const [privacy, setPrivacy] = useState<'public' | 'private'>('public');
-  const [inviteEmails, setInviteEmails] = useState('');
+  const [emailInput, setEmailInput] = useState('');
+  const [emails, setEmails] = useState<string[]>([]);
+  const [accessCode, setAccessCode] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const addEmailTokens = (text: string) => {
+    const tokens = text
+      .split(/[\s,;]+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (tokens.length === 0) return;
+    setEmails((prev) => {
+      const set = new Set(prev.map((e) => e.toLowerCase()));
+      const next = [...prev];
+      for (const t of tokens) {
+        const lower = t.toLowerCase();
+        if (!set.has(lower)) {
+          set.add(lower);
+          next.push(t);
+        }
+      }
+      return next;
+    });
+    setEmailInput('');
+  };
   
   const handleGoBack = () => {
     if (navigation) {
@@ -42,25 +68,39 @@ const NewGroupScreen: React.FC<NewGroupScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     if (!groupName.trim()) {
       Alert.alert('Error', 'Please enter a group name');
       return;
     }
-    
-    Alert.alert(
-      'Group Created!',
-      `Your group "${groupName}" has been created successfully.`,
-      [
-        { 
-          text: 'OK', 
-          onPress: () => {
-            // Navigate to the new group chat or back to accountability screen
-            navigation?.goBack();
-          }
-        }
-      ]
-    );
+    try {
+      setCreating(true);
+      const created = await groupService.createGroup({ name: groupName.trim(), description: description.trim() || undefined, privacy });
+      // Ensure an invite/access code exists before sending invites
+      try {
+        const { code } = await groupService.rotateInviteCode(created.id);
+        setAccessCode(code);
+      } catch {}
+      if (emails.length) {
+        try { await groupService.inviteMembers(created.id, emails); } catch {}
+      }
+      Alert.alert(
+        'Group Created!',
+        `Your group "${created.name}" has been created successfully.${accessCode ? `\nAccess Code: ${accessCode}` : ''}`,
+        [
+          {
+            text: 'Open Chat',
+            onPress: () => navigation?.navigate('GroupChat', { groupId: created.id, groupName: created.name, memberCount: created.membersCount })
+          },
+          { text: 'OK', onPress: () => navigation?.goBack() },
+        ]
+      );
+    } catch (e: any) {
+      const message = e?.response?.data?.message || 'Failed to create group';
+      Alert.alert('Error', message);
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -189,20 +229,27 @@ const NewGroupScreen: React.FC<NewGroupScreenProps> = ({ navigation }) => {
           {/* Invite Members */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Invite Members</Text>
+            <View style={styles.chipsContainer}>
+              {emails.map((e) => (
+                <Chip key={e} onClose={() => setEmails((prev) => prev.filter((x) => x !== e))} style={styles.chip}>
+                  {e}
+                </Chip>
+              ))}
+            </View>
             <View style={styles.emailInputContainer}>
-              <Icon 
-                name="mail-outline" 
-                color={Colors.text.secondary} 
-                size="sm" 
-                style={styles.emailIcon}
-              />
+              <Icon name="mail-outline" color={Colors.text.secondary} size="sm" style={styles.emailIcon} />
               <TextInput
                 style={styles.emailInput}
                 mode="outlined"
-                placeholder="Enter email addresses..."
-                value={inviteEmails}
-                onChangeText={setInviteEmails}
-                multiline
+                placeholder="Type email and press space/comma/enter to add"
+                value={emailInput}
+                onChangeText={(t) => {
+                  setEmailInput(t);
+                  if (/[\s,;]$/.test(t)) {
+                    addEmailTokens(t);
+                  }
+                }}
+                onBlur={() => emailInput && addEmailTokens(emailInput)}
                 outlineColor={Colors.border.primary}
                 activeOutlineColor={Colors.primary.main}
                 textColor={Colors.text.primary}
@@ -212,13 +259,17 @@ const NewGroupScreen: React.FC<NewGroupScreenProps> = ({ navigation }) => {
                     surface: Colors.background.secondary,
                     onSurface: Colors.text.primary,
                     outline: Colors.border.primary,
-                  }
+                  },
                 }}
               />
             </View>
-            <Text style={styles.helperText}>
-              Separate multiple emails with commas.
-            </Text>
+            <Text style={styles.helperText}>Emails will receive an invite. If the group is private, they will need the access code.</Text>
+
+            {/* Access Code (generated after creation) */}
+            <View style={{ marginTop: 12 }}>
+              <Text style={styles.label}>Access Code</Text>
+              <TextInput mode="outlined" value={accessCode ?? 'Will be generated on creation'} editable={false} />
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -361,6 +412,15 @@ const styles = StyleSheet.create({
   },
 
   // Email Input
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  chip: {
+    backgroundColor: Colors.background.tertiary,
+  },
   emailInputContainer: {
     position: 'relative',
   },

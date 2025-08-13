@@ -169,6 +169,9 @@ export const Icons = {
     bookmarked: { name: IconNames.actions.bookmarked, library: 'Ionicons' },
     share: { name: IconNames.actions.share, library: 'Ionicons' },
     comment: { name: IconNames.actions.comment, library: 'Ionicons' },
+    send: { name: IconNames.actions.send, library: 'Ionicons' },
+    copy: { name: IconNames.actions.copy, library: 'Ionicons' },
+    download: { name: IconNames.actions.download, library: 'Ionicons' },
   },
 
   // Social Icons
@@ -184,6 +187,8 @@ export const Icons = {
     menu: { name: IconNames.navigation.menu, library: 'Ionicons' },
     back: { name: IconNames.navigation.back, library: 'Ionicons' },
     close: { name: IconNames.navigation.close, library: 'Ionicons' },
+    more: { name: IconNames.navigation.more, library: 'Ionicons' },
+    delete: { name: IconNames.navigation.delete, library: 'Ionicons' },
   },
 
   // User Icons
@@ -213,6 +218,7 @@ export const Icons = {
     eye: { name: IconNames.security.eye, library: 'Ionicons' },
     eyeOff: { name: IconNames.security.eyeOff, library: 'Ionicons' },
     lock: { name: IconNames.security.lock, library: 'Ionicons' },
+    key: { name: IconNames.security.key, library: 'Ionicons' },
   },
 
   // Communication Icons
