@@ -5,6 +5,7 @@
  * This makes importing onboarding screens easier and more organized.
  */
 
+export { default as GetStartedScreen } from './GetStartedScreen';
 export { default as Onboarding1Screen } from './Onboarding1Screen';
 export { default as Onboarding2Screen } from './Onboarding2Screen';
 export { default as Onboarding3Screen } from './Onboarding3Screen';
@@ -14,4 +15,5 @@ export { default as Onboarding6Screen } from './Onboarding6Screen';
 export { default as Onboarding7Screen } from './Onboarding7Screen';
 export { default as Onboarding8Screen } from './Onboarding8Screen';
 export { default as Onboarding9Screen } from './Onboarding9Screen';
-export { default as Onboarding10Screen } from './Onboarding10Screen';
+
+export { default as PersonalizationScreen } from './PersonalizationScreen';

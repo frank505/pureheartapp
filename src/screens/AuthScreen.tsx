@@ -18,16 +18,23 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
+  Platform,
 } from 'react-native';
+import { GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID } from '@env';
 import {
   Text,
   ActivityIndicator,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import appleAuth from '@invertase/react-native-apple-authentication';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Redux imports
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { loginUser } from '../store/slices/userSlice';
+import { loginUser, loginUserWithApple } from '../store/slices/userSlice';
+
+import { processDeepLinkInvitation } from '../store/slices/invitationSlice';
 
 // Import centralized colors and icons
 import { Colors, Icons } from '../constants';
@@ -50,6 +57,15 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   const onboardingData = useAppSelector(state => state.onboarding);
 
   useEffect(() => {
+    // Configure Google Sign-In
+    GoogleSignin.configure({
+      webClientId: GOOGLE_WEB_CLIENT_ID, // Loaded from .env file
+      iosClientId: GOOGLE_IOS_CLIENT_ID,
+      offlineAccess: true, // if you want to access Google API on behalf of the user FROM YOUR SERVER
+    });
+  }, []);
+
+  useEffect(() => {
     console.log({onboardingData})
     console.log('--- Onboarding Data Collected ---');
     console.log('Personal Info:', JSON.stringify(onboardingData.personalInfo, null, 2));
@@ -59,7 +75,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
     console.log('How They Heard:', JSON.stringify(onboardingData.howTheyHeard, null, 2));
     console.log('Accountability Preferences:', JSON.stringify(onboardingData.accountabilityPreferences, null, 2));
     console.log('--- End of Onboarding Data ---');
-  }, []);
+  }, [onboardingData]);
 
   /**
    * Handle Google Login
@@ -68,52 +84,70 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
    */
   const handleGoogleLogin = async () => {
     try {
-      // TODO: Implement actual Google authentication
-      console.log('Google login initiated');
-      
-      // For now, show a placeholder message
-      Alert.alert(
-        'Google Login',
-        'Google authentication integration coming soon!',
-        [{ text: 'OK' }]
-      );
-      
-      // Future implementation would include:
-      // 1. Google Sign-In SDK integration
-      // 2. Backend authentication with Google token
-      // 3. Redux state update
-      // 4. Navigation to main app
-    } catch (error) {
+      const data: any = await GoogleSignin.signIn();
+      if (data && data.data?.idToken) {
+        const { idToken } = data.data; 
+        // this one is the id that is initially sent as invitation
+        const init_sent_accountability_id = await AsyncStorage.getItem('init_sent_accountability_id');
+        // this is the one the user uses when he opens the app from a link
+        const init_reciever_sent_accountablity_id = await AsyncStorage.getItem('init_reciever_sent_accountablity_id');
+        
+        await dispatch(loginUser({ 
+          idToken, 
+          onboardingData, 
+          init_sent_accountability_id, 
+          init_reciever_sent_accountablity_id 
+        })).unwrap();
+
+        if (init_sent_accountability_id) {
+          await AsyncStorage.removeItem('init_sent_accountability_id');
+        }
+        if (init_reciever_sent_accountablity_id) {
+          await AsyncStorage.removeItem('init_reciever_sent_accountablity_id');
+        }
+      } else {
+        throw new Error('Google Sign-In failed to return an ID token.');
+      }
+    } catch (error: any) {
       console.error('Google login error:', error);
-      Alert.alert('Error', 'Failed to login with Google. Please try again.');
+      Alert.alert('Google Login Error', `An error occurred during Google sign-in. Please try again.`);
     }
   };
 
-  /**
-   * Handle Apple Login
-   * 
-   * Handles Apple authentication integration.
-   */
   const handleAppleLogin = async () => {
     try {
-      // TODO: Implement actual Apple authentication
-      console.log('Apple login initiated');
-      
-      // For now, show a placeholder message
-      Alert.alert(
-        'Apple Login',
-        'Apple authentication integration coming soon!',
-        [{ text: 'OK' }]
-      );
-      
-      // Future implementation would include:
-      // 1. Apple Sign-In SDK integration
-      // 2. Backend authentication with Apple token
-      // 3. Redux state update
-      // 4. Navigation to main app
-    } catch (error) {
+      const appleAuthRequestResponse = await appleAuth.performRequest({
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+      });
+
+      const { identityToken } = appleAuthRequestResponse;
+
+      if (identityToken) {
+        const init_sent_accountability_id = await AsyncStorage.getItem('init_sent_accountability_id');
+        const init_reciever_sent_accountablity_id = await AsyncStorage.getItem('init_reciever_sent_accountablity_id');
+
+        await dispatch(loginUserWithApple({ 
+          identityToken, 
+          onboardingData, 
+          init_sent_accountability_id, 
+          init_reciever_sent_accountablity_id 
+        })).unwrap();
+        
+        if (init_sent_accountability_id) {
+          await AsyncStorage.removeItem('init_sent_accountability_id');
+        }
+        if (init_reciever_sent_accountablity_id) {
+          await AsyncStorage.removeItem('init_reciever_sent_accountablity_id');
+        }
+      } else {
+        throw new Error('Apple Sign-In failed to return an identity token.');
+      }
+    } catch (error: any) {
       console.error('Apple login error:', error);
-      Alert.alert('Error', 'Failed to login with Apple. Please try again.');
+      if (error.code !== appleAuth.Error.CANCELED) {
+        Alert.alert('Error', 'Failed to login with Apple. Please try again.');
+      }
     }
   };
 
@@ -166,19 +200,21 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
           </TouchableOpacity>
 
           {/* Apple Login Button */}
-          <TouchableOpacity 
-            style={[styles.socialButton, styles.appleButton]}
-            onPress={handleAppleLogin}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            <Icon 
-              name={Icons.social.apple.name} 
-              color="#000000" 
-              size="lg" 
-            />
-            <Text style={[styles.socialButtonText, styles.appleButtonText]}>Continue with Apple</Text>
-          </TouchableOpacity>
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity 
+              style={[styles.socialButton, styles.appleButton]}
+              onPress={handleAppleLogin}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <Icon 
+                name={Icons.social.apple.name} 
+                color="#000000" 
+                size="lg" 
+              />
+              <Text style={[styles.socialButtonText, styles.appleButtonText]}>Continue with Apple</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 

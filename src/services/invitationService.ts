@@ -14,6 +14,7 @@
 
 import Share from 'react-native-share';
 import { Alert, Linking } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Invitation } from '../store/slices/invitationSlice';
 
 /**
@@ -96,23 +97,8 @@ export class InvitationService {
     const urls = this.generateInvitationUrls(invitation.hash);
     const inviterName = invitation.inviterName;
     
-    // Default message based on invitation type
-    let defaultMessage = '';
-    switch (invitation.metadata?.invitationType) {
-      case 'accountability_partner':
-        defaultMessage = `${inviterName} would like you to be their accountability partner on PureHeart! 🤝`;
-        break;
-      case 'trusted_contact':
-        defaultMessage = `${inviterName} has added you as a trusted contact on PureHeart! 🙏`;
-        break;
-      case 'prayer_partner':
-        defaultMessage = `${inviterName} would like you to be their prayer partner on PureHeart! 🙏`;
-        break;
-      default:
-        defaultMessage = `${inviterName} has invited you to join them on PureHeart! ✨`;
-    }
+    const defaultMessage = `${inviterName} would like you to be their accountability partner on PureHeart! 🤝`;
     
-    // Combine custom message with default if provided
     const messageText = customMessage 
       ? `${customMessage}\n\n${defaultMessage}`
       : defaultMessage;
@@ -140,6 +126,7 @@ Tap this link to accept: ${urls.universalUrl}
     options: ShareOptions = {}
   ): Promise<void> {
     try {
+      await AsyncStorage.setItem('account_partner_hash_value', invitation.hash);
       const message = this.generateInvitationMessage(invitation, options.customMessage);
       const urls = this.generateInvitationUrls(invitation.hash);
       
@@ -156,15 +143,14 @@ Tap this link to accept: ${urls.universalUrl}
         case 'whatsapp':
           await Share.shareSingle({
             ...shareOptions,
-            social: Share.Social.WHATSAPP,
-            whatsAppNumber: '', // Leave empty to show contact picker
+            social: Share.Social.WHATSAPP as any,
           });
           break;
 
         case 'twitter':
           await Share.shareSingle({
             ...shareOptions,
-            social: Share.Social.TWITTER,
+            social: Share.Social.TWITTER as any,
             message: `${invitation.inviterName} invited me to join PureHeart! 🙏 ${urls.universalUrl} #PureHeart #SpiritualGrowth`,
           });
           break;
@@ -172,7 +158,7 @@ Tap this link to accept: ${urls.universalUrl}
         case 'facebook':
           await Share.shareSingle({
             ...shareOptions,
-            social: Share.Social.FACEBOOK,
+            social: Share.Social.FACEBOOK as any,
           });
           break;
 
@@ -190,7 +176,7 @@ Tap this link to accept: ${urls.universalUrl}
         case 'email':
           await Share.shareSingle({
             ...shareOptions,
-            social: Share.Social.EMAIL,
+            social: Share.Social.EMAIL as any,
             recipient: invitation.inviteeEmail || '',
           });
           break;
@@ -198,7 +184,7 @@ Tap this link to accept: ${urls.universalUrl}
         case 'sms':
           await Share.shareSingle({
             ...shareOptions,
-            social: Share.Social.SMS,
+            social: Share.Social.SMS as any,
             recipient: '', // Leave empty to show contact picker
           });
           break;
@@ -237,6 +223,7 @@ Tap this link to accept: ${urls.universalUrl}
    */
   static async copyInvitationUrl(invitation: Invitation): Promise<void> {
     try {
+      await AsyncStorage.setItem('account_partner_hash_value', invitation.hash);
       const urls = this.generateInvitationUrls(invitation.hash);
       await this.copyToClipboardAndNotify(urls.universalUrl);
     } catch (error) {
@@ -335,34 +322,12 @@ Tap this link to accept: ${urls.universalUrl}
     actionText: string;
     icon: string;
   } {
-    const type = invitation.metadata?.invitationType || 'trusted_contact';
-    
-    switch (type) {
-      case 'accountability_partner':
-        return {
-          title: 'Accountability Partner Invitation',
-          description: `${invitation.inviterName} would like you to be their accountability partner. You'll support each other in your spiritual journey.`,
-          actionText: 'Become Accountability Partner',
-          icon: 'people-outline',
-        };
-        
-      case 'prayer_partner':
-        return {
-          title: 'Prayer Partner Invitation',
-          description: `${invitation.inviterName} would like you to be their prayer partner. You'll pray together and share prayer requests.`,
-          actionText: 'Become Prayer Partner',
-          icon: 'hand-right-outline',
-        };
-        
-      case 'trusted_contact':
-      default:
-        return {
-          title: 'Trusted Contact Invitation',
-          description: `${invitation.inviterName} has added you as a trusted contact. You'll be able to receive emergency alerts if needed.`,
-          actionText: 'Accept Invitation',
-          icon: 'shield-outline',
-        };
-    }
+    return {
+      title: 'Accountability Partner Invitation',
+      description: `${invitation.inviterName} would like you to be their accountability partner. You'll support each other in your spiritual journey.`,
+      actionText: 'Become Accountability Partner',
+      icon: 'people-outline',
+    };
   }
 
   /**

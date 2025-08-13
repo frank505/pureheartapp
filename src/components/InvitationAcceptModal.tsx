@@ -63,15 +63,7 @@ const InvitationAcceptModal: React.FC = () => {
     }
 
     try {
-      await dispatch(acceptInvitation({
-        invitationId: processingInvitation.id,
-        userInfo: {
-          id: currentUser.id,
-          name: currentUser.name,
-          email: currentUser.email,
-          avatar: currentUser.avatar,
-        },
-      })).unwrap();
+      await dispatch(acceptInvitation(processingInvitation.hash)).unwrap();
 
       // Show success message
       const invitationSummary = InvitationService.createInvitationSummary(processingInvitation);

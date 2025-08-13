@@ -20,7 +20,7 @@ import {
 } from 'react-native-paper';
 import Icon from './Icon';
 import { Colors } from '../constants';
-import { useAppDispatch } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { logout } from '../store/slices/userSlice';
 
 interface ProfileDropdownProps {
@@ -31,6 +31,11 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
   const [isVisible, setIsVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const dispatch = useAppDispatch();
+  const unreadCount = useAppSelector((s) => s.notifications.unreadCount);
+  const handleNotifications = () => {
+    hideDropdown();
+    navigation?.navigate('NotificationsCenter');
+  };
 
   const showDropdown = () => {
     setIsVisible(true);
@@ -126,7 +131,26 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
               },
             ]}
           >
-            <Surface style={styles.dropdown} elevation={8}>
+            <Surface style={styles.dropdown} elevation={4}>
+              <TouchableOpacity 
+                style={styles.dropdownItem}
+                onPress={handleNotifications}
+              >
+                <Icon 
+                  name="notifications-outline" 
+                  color={Colors.text.primary} 
+                  size="sm" 
+                />
+                <Text style={styles.dropdownText}>Notifications</Text>
+                {unreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{unreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.divider} />
+
               <TouchableOpacity 
                 style={styles.dropdownItem}
                 onPress={handleProfileSettings}
@@ -232,6 +256,21 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: Colors.border.primary,
     marginHorizontal: 8,
+  },
+  badge: {
+    marginLeft: 'auto',
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    backgroundColor: Colors.primary.main,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
 

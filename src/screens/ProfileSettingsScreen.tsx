@@ -5,21 +5,28 @@
  * Subscription content moved to separate screen.
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   Alert,
+  Switch,
 } from 'react-native';
 import {
   Text,
   Surface,
+  TextInput,
+  Button,
+  ActivityIndicator,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import { Colors, Icons } from '../constants';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { updateProfile, getUserDetails } from '../store/slices/userSlice';
+import { fetchSettings, updateSettings } from '../services/settingsService';
 
 interface ProfileSettingsScreenProps {
   navigation?: any;
@@ -27,59 +34,85 @@ interface ProfileSettingsScreenProps {
 }
 
 const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigation }) => {
-  
+  const dispatch = useAppDispatch();
+  const { currentUser, loading, error } = useAppSelector((state) => state.user);
+  const [settingsLoading, setSettingsLoading] = useState<boolean>(false);
+  const [enablePushNotifications, setEnablePushNotifications] = useState<boolean>(false);
+  const [weeklyEmailNotifications, setWeeklyEmailNotifications] = useState<boolean>(false);
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
+
+  useEffect(() => {
+    dispatch(getUserDetails());
+  }, [dispatch]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadSettings = async () => {
+      try {
+        setSettingsLoading(true);
+        const s = await fetchSettings();
+        if (!mounted) return;
+        setEnablePushNotifications(Boolean(s.enable_push_notifications));
+        setWeeklyEmailNotifications(Boolean(s.weekly_email_notifications));
+      } catch (e) {
+        // best-effort; show alert but keep UI usable
+        Alert.alert('Error', 'Failed to load settings.');
+      } finally {
+        if (mounted) setSettingsLoading(false);
+      }
+    };
+    loadSettings();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      setFirstName(currentUser.firstName || '');
+      setLastName(currentUser.lastName || '');
+      setUsername(currentUser.username || '');
+    }
+  }, [currentUser]);
+
   const handleGoBack = () => {
     if (navigation) {
       navigation.goBack();
     }
   };
 
-  const handleChangeInfo = (type: string) => {
-    Alert.alert(
-      `Change ${type}`,
-      `Update your ${type.toLowerCase()}`,
-      [{ text: 'Cancel' }, { text: 'Update', onPress: () => {} }]
-    );
-  };
+  const handleSaveChanges = async () => {
+    if (!firstName || !lastName) {
+      Alert.alert('Validation Error', 'First and last names cannot be empty.');
+      return;
+    }
 
-  const handleAccountabilitySettings = () => {
-    Alert.alert(
-      'Accountability Settings',
-      'Manage your accountability partners and reports',
-      [{ text: 'OK' }]
-    );
+    try {
+      await dispatch(updateProfile({ firstName, lastName, username })).unwrap();
+      Alert.alert('Success', 'Your profile has been updated.');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    }
   };
+  
+  // Accountability settings moved to Accountability screen
 
-  const handleAIAccountabilitySettings = () => {
-    Alert.alert(
-      'AI Accountability Partner',
-      'Configure your AI accountability companion for 24/7 support and guidance',
-      [
-        { text: 'Cancel' },
-        { text: 'Configure', onPress: () => {
-          // Navigate to AI Companion screen
-          if (navigation) {
-            navigation.navigate('AICompanion');
-          }
-        }}
-      ]
-    );
-  };
+  // No-op: notifications are managed inline below via API-backed toggles
 
-  const handleNotificationSettings = () => {
-    Alert.alert(
-      'Notification Settings',
-      'Manage your notification preferences',
-      [{ text: 'OK' }]
-    );
-  };
-
-  const handlePrivacySettings = () => {
-    Alert.alert(
-      'Privacy Settings',
-      'Manage your privacy preferences',
-      [{ text: 'OK' }]
-    );
+  const handleToggleSetting = async (key: 'enable_push_notifications' | 'weekly_email_notifications', value: boolean) => {
+    try {
+      setSettingsLoading(true);
+      const updated = await updateSettings({ [key]: value });
+      setEnablePushNotifications(Boolean(updated.enable_push_notifications));
+      setWeeklyEmailNotifications(Boolean(updated.weekly_email_notifications));
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update setting.');
+    } finally {
+      setSettingsLoading(false);
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -117,121 +150,80 @@ const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigatio
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Info</Text>
           <Surface style={styles.card} elevation={2}>
-            <View style={styles.infoItem}>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Name</Text>
-                <Text style={styles.infoValue}>Ethan</Text>
-              </View>
-              <TouchableOpacity onPress={() => handleChangeInfo('Name')}>
-                <Text style={styles.changeButton}>Change</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.divider} />
-            
-            <View style={styles.infoItem}>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Email</Text>
-                <Text style={styles.infoValue}>ethan.miller@example.com</Text>
-              </View>
-              <TouchableOpacity onPress={() => handleChangeInfo('Email')}>
-                <Text style={styles.changeButton}>Change</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.divider} />
-            
-            <View style={styles.infoItem}>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Password</Text>
-                <Text style={styles.infoValue}>********</Text>
-              </View>
-              <TouchableOpacity onPress={() => handleChangeInfo('Password')}>
-                <Text style={styles.changeButton}>Change</Text>
-              </TouchableOpacity>
-            </View>
+            <TextInput
+              label="First Name"
+              value={firstName}
+              onChangeText={setFirstName}
+              mode="outlined"
+              style={styles.input}
+            />
+            <TextInput
+              label="Last Name"
+              value={lastName}
+              onChangeText={setLastName}
+              mode="outlined"
+              style={styles.input}
+            />
+            <TextInput
+              label="Username"
+              value={username}
+              onChangeText={setUsername}
+              mode="outlined"
+              style={styles.input}
+            />
+            <Button
+              mode="contained"
+              onPress={handleSaveChanges}
+              loading={loading}
+              disabled={loading}
+              style={styles.saveButton}
+            >
+              Save Changes
+            </Button>
+            {error && <Text style={styles.errorText}>{error}</Text>}
           </Surface>
         </View>
 
-        {/* App Settings Sections */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Accountability Settings</Text>
-          <Surface style={styles.settingsCard} elevation={2}>
-            <TouchableOpacity style={styles.settingItem} onPress={handleAccountabilitySettings}>
-              <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Accountability Partners</Text>
-                <Text style={styles.settingDescription}>Manage your accountability partners</Text>
-              </View>
-              <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="md" />
-            </TouchableOpacity>
-            
-            <View style={styles.divider} />
-            
-            <TouchableOpacity style={styles.settingItem} onPress={handleAccountabilitySettings}>
-              <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Accountability Reports</Text>
-                <Text style={styles.settingDescription}>Set up your accountability reports</Text>
-              </View>
-              <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="md" />
-            </TouchableOpacity>
-            
-            <View style={styles.divider} />
-            
-            <TouchableOpacity style={styles.settingItem} onPress={handleAIAccountabilitySettings}>
-              <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>AI Accountability Partner 🤖</Text>
-                <Text style={styles.settingDescription}>24/7 intelligent support & guidance</Text>
-              </View>
-              <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="md" />
-            </TouchableOpacity>
-          </Surface>
-        </View>
+        {/* Accountability Settings removed; now managed in Accountability screen */}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notification Settings</Text>
+          <Text style={styles.sectionTitle}>Notifications</Text>
           <Surface style={styles.settingsCard} elevation={2}>
-            <TouchableOpacity style={styles.settingItem} onPress={handleNotificationSettings}>
+            <View style={styles.settingItem}>
               <View style={styles.settingContent}>
                 <Text style={styles.settingTitle}>Push Notifications</Text>
-                <Text style={styles.settingDescription}>Daily reminders and encouragement</Text>
+                <Text style={styles.settingDescription}>Receive updates and reminders</Text>
               </View>
-              <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="md" />
-            </TouchableOpacity>
-            
+              <ActivityIndicator animating={settingsLoading} color={Colors.primary.main} style={{ marginRight: 8 }} />
+              <Switch
+                value={enablePushNotifications}
+                onValueChange={(val) => handleToggleSetting('enable_push_notifications', val)}
+                trackColor={{ false: '#767577', true: Colors.primary.main }}
+                thumbColor={enablePushNotifications ? '#ffffff' : '#f4f3f4'}
+                disabled={settingsLoading}
+              />
+            </View>
+
             <View style={styles.divider} />
-            
-            <TouchableOpacity style={styles.settingItem} onPress={handleNotificationSettings}>
+
+            <View style={styles.settingItem}>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Email Notifications</Text>
-                <Text style={styles.settingDescription}>Weekly progress reports</Text>
+                <Text style={styles.settingTitle}>Weekly Email</Text>
+                <Text style={styles.settingDescription}>Weekly progress reports via email</Text>
               </View>
-              <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="md" />
-            </TouchableOpacity>
+              <ActivityIndicator animating={settingsLoading} color={Colors.primary.main} style={{ marginRight: 8 }} />
+              <Switch
+                value={weeklyEmailNotifications}
+                onValueChange={(val) => handleToggleSetting('weekly_email_notifications', val)}
+                trackColor={{ false: '#767577', true: Colors.primary.main }}
+                thumbColor={weeklyEmailNotifications ? '#ffffff' : '#f4f3f4'}
+                disabled={settingsLoading}
+              />
+            </View>
           </Surface>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Privacy Settings</Text>
-          <Surface style={styles.settingsCard} elevation={2}>
-            <TouchableOpacity style={styles.settingItem} onPress={handlePrivacySettings}>
-              <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Data Privacy</Text>
-                <Text style={styles.settingDescription}>Control how your data is used</Text>
-              </View>
-              <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="md" />
-            </TouchableOpacity>
-            
-            <View style={styles.divider} />
-            
-            <TouchableOpacity style={styles.settingItem} onPress={handlePrivacySettings}>
-              <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>Profile Visibility</Text>
-                <Text style={styles.settingDescription}>Manage who can see your profile</Text>
-              </View>
-              <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="md" />
-            </TouchableOpacity>
-          </Surface>
-        </View>
+        {/* Privacy Settings removed for now */}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support</Text>
@@ -343,6 +335,17 @@ const styles = StyleSheet.create({
   },
   
   // Personal Info
+  input: {
+    marginBottom: 16,
+  },
+  saveButton: {
+    marginTop: 8,
+  },
+  errorText: {
+    marginTop: 8,
+    color: Colors.error.main,
+    textAlign: 'center',
+  },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',

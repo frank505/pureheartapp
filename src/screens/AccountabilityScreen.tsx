@@ -6,13 +6,12 @@
  * - Partner profile display
  * - Daily check-in with mood slider
  * - Quick action buttons (Check-in, SOS, Prayer Request, Share Victory)
- * - Recent updates feed
  * - Emergency contact access
  * 
  * The design focuses on spiritual accountability and support between partners.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -21,17 +20,22 @@ import {
   ImageBackground,
   Alert,
   Image,
+  useWindowDimensions,
 } from 'react-native';
-import {
-  Text,
-  Surface,
-  Button,
-  ProgressBar,
-} from 'react-native-paper';
+import { Text, Surface, Button, ProgressBar, Portal, Modal, TextInput, RadioButton, Checkbox } from 'react-native-paper';
+import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import ProfileDropdown from '../components/ProfileDropdown';
 import { Colors, Icons } from '../constants';
+import groupService, { GroupSummary } from '../services/groupService';
+import { useFocusEffect } from '@react-navigation/native';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchCheckIns, createCheckIn } from '../store/slices/checkinsSlice';
+import { fetchPartners, createInvitation, acceptByCode, sendInvitesByEmail } from '../store/slices/invitationSlice';
+import { getStreaks } from '../store/slices/streaksSlice';
+import VictoryStories from '../components/VictoryStories';
+// import InvitationService from '../services/invitationService';
 
 /**
  * AccountabilityScreen Component
@@ -44,18 +48,40 @@ interface AccountabilityScreenProps {
 }
 
 const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const isSmall = width < 360;
   // State for daily check-in mood slider
   const [moodValue, setMoodValue] = useState(0.75); // 75% = "doing well"
+  const [checkinVisible, setCheckinVisible] = useState(false);
+  const [visibilityOption, setVisibilityOption] = useState<'private' | 'allPartners' | 'selectPartners'>('private');
+  const [selectedPartnerIds, setSelectedPartnerIds] = useState<Array<string | number>>([]);
+  const [note, setNote] = useState('');
+
+  const dispatch = useAppDispatch();
+  const { items: checkins, isLoading, isCreating } = useAppSelector((s) => s.checkins);
+  const connectedPartners = useAppSelector((s) => s.invitation.connectedPartners);
+  const { streaks } = useAppSelector((s) => s.streaks);
+  const currentUser = useAppSelector((s) => s.user.currentUser);
+  const invitationLoading = useAppSelector((s) => s.invitation.loading);
+
+  const partnerChoices = (connectedPartners || []).map((p) => ({
+    id: p.partner?.id ?? p.id,
+    name: p.partner ? `${p.partner.firstName} ${p.partner.lastName}` : 'Partner',
+  }));
+
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const hasCheckedInToday = checkins.some((c) => new Date(c.createdAt).toISOString().slice(0, 10) === todayISO);
 
   /**
    * Handle daily check-in submission
    */
   const handleDailyCheckin = () => {
-    Alert.alert(
-      'Daily Check-In',
-      'Your daily check-in has been shared with your accountability partner.',
-      [{ text: 'OK' }]
-    );
+    // If not checked in today, open modal to create
+    if (!hasCheckedInToday) {
+      setCheckinVisible(true);
+    } else if (navigation) {
+      navigation.navigate('CheckInHistory');
+    }
   };
 
   /**
@@ -86,30 +112,101 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
    * Handle prayer request
    */
   const handlePrayerRequest = () => {
-    Alert.alert(
-      'Prayer Request',
-      'Share a prayer request with your accountability partner.',
-      [{ text: 'OK' }]
-    );
+    navigation?.navigate('PrayerRequests');
   };
 
   /**
    * Handle share victory
    */
   const handleShareVictory = () => {
-    Alert.alert(
-      'Share Victory',
-      'Celebrate a victory with your accountability partner!',
-      [{ text: 'OK' }]
-    );
+    navigation?.navigate('CreateVictory');
   };
 
   /**
    * Handle invite partner
    */
+  const [inviteVisible, setInviteVisible] = useState(false);
+  const [inviteEmailsText, setInviteEmailsText] = useState('');
+  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
+  const [customCode, setCustomCode] = useState('');
+  // We no longer display generated invite; we store any generated code into the custom code field
+
+  const [acceptVisible, setAcceptVisible] = useState(false);
+  const [partnerCode, setPartnerCode] = useState('');
+  const [accepting, setAccepting] = useState(false);
+
   const handleInvitePartner = () => {
-    if (navigation) {
-      navigation.navigate('InviteFriend');
+    setInviteVisible(true);
+  };
+
+  const parseEmails = (raw: string): string[] => {
+    return raw
+      .split(/[,\n\s]+/)
+      .map(e => e.trim())
+      .filter(e => !!e && /.+@.+\..+/.test(e));
+  };
+
+  const addChippedEmailsFromInput = () => {
+    const emails = parseEmails(inviteEmailsText);
+    if (emails.length === 0) return;
+    setInviteEmails(prev => Array.from(new Set([...prev, ...emails])));
+    setInviteEmailsText('');
+  };
+
+  const removeEmailChip = (email: string) => {
+    setInviteEmails(prev => prev.filter(e => e !== email));
+  };
+
+  const handleGenerateInvite = async () => {
+    if (!currentUser) {
+      Alert.alert('Not signed in', 'Please sign in to invite a partner.');
+      return;
+    }
+    try {
+      const inviterName = currentUser.firstName || currentUser.name || currentUser.email;
+      const result = await dispatch(
+        createInvitation({
+          inviterName,
+          inviterEmail: currentUser.email,
+          inviterUserId: currentUser.id,
+          customHash: customCode?.trim() || undefined,
+        })
+      ).unwrap();
+      setCustomCode(result.hash);
+    } catch (e: any) {
+      Alert.alert('Failed to create invitation', e?.message || 'Please try again.');
+    }
+  };
+
+  const handleEmailSend = async () => {
+    const emails = inviteEmails;
+    if (emails.length === 0) {
+      Alert.alert('No emails', 'Add at least one email to send invitations.');
+      return;
+    }
+    try {
+      const payload = { emails, hash: customCode?.trim() || undefined } as any;
+      await dispatch(sendInvitesByEmail(payload)).unwrap();
+      Alert.alert('Invitations sent', 'Your invitations have been sent successfully.');
+    } catch (e: any) {
+      Alert.alert('Send failed', e?.message || 'Failed to send invitations.');
+    }
+  };
+
+  const handleAcceptPartner = async () => {
+    const code = partnerCode.trim();
+    if (!code) return;
+    try {
+      setAccepting(true);
+      await dispatch(acceptByCode(code)).unwrap();
+      setAcceptVisible(false);
+      setPartnerCode('');
+      await dispatch(fetchPartners());
+      Alert.alert('Connected', 'You are now connected as accountability partners.');
+    } catch (e: any) {
+      Alert.alert('Join failed', e?.message || 'Invalid or expired code');
+    } finally {
+      setAccepting(false);
     }
   };
 
@@ -135,6 +232,83 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
     );
   };
 
+  // Community Groups integration
+  const [myGroups, setMyGroups] = useState<GroupSummary[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
+  const [joinVisible, setJoinVisible] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+
+  const loadGroups = useCallback(async () => {
+    try {
+      setLoadingGroups(true);
+      const [groups, unread] = await Promise.all([
+        groupService.listMyGroups({ page: 1, pageSize: 10 }),
+        groupService.unreadCounts(),
+      ]);
+      setMyGroups(groups.items);
+      const map: Record<string, number> = {};
+      (unread.items || []).forEach((u: any) => { map[u.groupId] = u.unread; });
+      setUnreadMap(map);
+    } catch (e) {
+      console.error('Failed to load groups', e);
+    } finally {
+      setLoadingGroups(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadGroups();
+    // Load check-ins to compute today's status and partners for selection
+    dispatch(fetchCheckIns({ page: 1, limit: 50 }));
+    dispatch(fetchPartners());
+    dispatch(getStreaks());
+  }, [loadGroups, dispatch]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadGroups();
+      dispatch(fetchCheckIns({ page: 1, limit: 50 }));
+      dispatch(fetchPartners());
+      dispatch(getStreaks());
+    }, [loadGroups])
+  );
+
+  const togglePartnerSelected = (id: string | number) => {
+    setSelectedPartnerIds((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    );
+  };
+
+  const submitCheckIn = async () => {
+    try {
+      const payload: any = {
+        mood: Math.max(0, Math.min(1, moodValue)),
+        note: note?.trim() || undefined,
+      };
+      if (visibilityOption === 'private') {
+        payload.visibility = 'private';
+      } else {
+        payload.visibility = 'partner';
+        if (visibilityOption === 'allPartners') {
+          payload.partnerIds = partnerChoices.map((p) => p.id);
+        } else if (visibilityOption === 'selectPartners') {
+          payload.partnerIds = selectedPartnerIds;
+        }
+      }
+
+      await dispatch(createCheckIn(payload)).unwrap();
+      setCheckinVisible(false);
+      setNote('');
+      setSelectedPartnerIds([]);
+      setVisibilityOption('private');
+      await dispatch(fetchCheckIns({ page: 1, limit: 50 }));
+      Alert.alert('Check-in created', 'Your daily check-in has been saved.');
+    } catch (e: any) {
+      Alert.alert('Check-in failed', e?.message || 'Unable to create check-in.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Custom Header */}
@@ -149,30 +323,20 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Partner Profile Section */}
-        <View style={styles.partnerSection}>
-          <View style={styles.partnerInfo}>
-            <View style={styles.avatarContainer}>
-              <ImageBackground
-                source={{ 
-                  uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAVkaqcwqNDHY1F4g6jjkeGF0cJ4fGQ5RFAry5WI8BRhOJ42aLSeNGm_L3AT8K-p7yJKk416PJSJ9zthbc0dufXmMyC5IUy8LVVQuxWMY2DucxLG_1N4kBXsnMdPptIbiahVUkDVEobcsT_5pDroVfLhybMzbJ2SrRJRS7IdazSSDyij0ynWVUEJdxTKZEhUIxpC3KHpzbmZEbsttZ4cDMBw2hfBx_Gl2HQ8NAkumwl6Fpi_pSXLXiTVAe7DSaaihZBD3AnwEB_jfNw' 
-                }}
-                style={styles.avatar}
-                imageStyle={styles.avatarImage}
-              />
-            </View>
-            <View style={styles.partnerDetails}>
-              <Text style={styles.partnerName}>Ethan</Text>
-              <Text style={styles.partnerConnection}>Connected for 3 months</Text>
-            </View>
-          </View>
-        </View>
+        {/* Partner Profile Section removed */}
 
         {/* Daily Check-In Section */}
         <Surface style={styles.checkInCard} elevation={2}>
           <Text style={styles.sectionTitle}>Daily Check-In</Text>
           <Text style={styles.checkInQuestion}>How's your heart today?</Text>
           
+          {streaks && (
+            <View style={styles.streaksContainer}>
+              <Text>Current Streak: {streaks.currentStreak}</Text>
+              <Text>Longest Streak: {streaks.longestStreak}</Text>
+            </View>
+          )}
+
           {/* Mood Slider */}
           <View style={styles.moodSlider}>
             <View style={styles.moodIndicators}>
@@ -203,13 +367,15 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
 
           <Button
             mode="contained"
-            onPress={handleShareScripture}
+            onPress={handleDailyCheckin}
             style={styles.shareScriptureButton}
             contentStyle={styles.shareScriptureContent}
             labelStyle={styles.shareScriptureLabel}
             buttonColor={Colors.primary.main}
+            loading={isCreating}
+            disabled={isCreating}
           >
-            Share Scripture
+            {hasCheckedInToday ? 'View Check-ins' : 'Check in today'}
           </Button>
         </Surface>
 
@@ -243,10 +409,23 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
               <Text style={[styles.quickActionLabel, styles.sosLabel]}>Send SOS</Text>
             </TouchableOpacity>
 
-            {/* Prayer Request */}
+            {/* Prayers */}
             <TouchableOpacity 
               style={styles.quickActionButton}
-              onPress={handlePrayerRequest}
+              onPress={() => navigation?.navigate('PrayerRequests')}
+            >
+              <Icon 
+                name="list-outline" 
+                color={Colors.text.primary} 
+                size="lg" 
+              />
+              <Text style={styles.quickActionLabel}>Prayers</Text>
+            </TouchableOpacity>
+
+            {/* Share Prayer */}
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => navigation?.navigate('CreatePrayerRequest')}
             >
               <Icon 
                 name="hand-right-outline" 
@@ -269,6 +448,19 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
               <Text style={styles.quickActionLabel}>Share Victory</Text>
             </TouchableOpacity>
 
+            {/* My Victories */}
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => navigation?.navigate('MyVictories')}
+            >
+              <Icon
+                name="medal-outline"
+                color={Colors.text.primary}
+                size="lg"
+              />
+              <Text style={styles.quickActionLabel}>My Victories</Text>
+            </TouchableOpacity>
+
             {/* Invite Partner */}
             <TouchableOpacity 
               style={[styles.quickActionButton, styles.inviteButton]}
@@ -281,139 +473,292 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
               />
               <Text style={[styles.quickActionLabel, styles.inviteLabel]}>Invite Partner</Text>
             </TouchableOpacity>
+
+            {/* Accept Invitation */}
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => setAcceptVisible(true)}
+            >
+              <Icon 
+                name={Icons.security.key.name}
+                color={Colors.text.primary}
+                size="lg" 
+              />
+              <Text style={styles.quickActionLabel}>Accept Invitation</Text>
+            </TouchableOpacity>
+
+            {/* Manage Partners */}
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => navigation?.navigate('PartnersList')}
+            >
+              <Icon 
+                name="people-outline" 
+                color={Colors.text.primary} 
+                size="lg" 
+              />
+              <Text style={styles.quickActionLabel}>Manage Partners</Text>
+            </TouchableOpacity>
+
+            {/* AI Accountability (coming soon) */}
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => Alert.alert('Coming soon', 'AI Accountability is coming soon.')} 
+            >
+              <Icon 
+                name="bulb-outline" 
+                color={Colors.text.primary} 
+                size="lg" 
+              />
+              <Text style={styles.quickActionLabel}>AI Accountability</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Recent Updates Section */}
-        <View style={styles.recentUpdatesSection}>
-          <Text style={styles.sectionTitle}>Recent Updates</Text>
-          
-          {/* Update Item 1 */}
-          <Surface style={styles.updateCard} elevation={1}>
-            <View style={styles.updateContent}>
-              <View style={styles.updateIcon}>
-                <Icon 
-                  name={Icons.actions.like.name} 
-                  color={Colors.primary.main} 
-                  size="lg" 
-                />
-              </View>
-              <View style={styles.updateDetails}>
-                <Text style={styles.updateTitle}>Daily Check-In</Text>
-                <Text style={styles.updateDescription}>Ethan completed his daily check-in</Text>
-              </View>
-            </View>
-            <Text style={styles.updateTime}>Today</Text>
-          </Surface>
-
-          {/* Update Item 2 */}
-          <Surface style={styles.updateCard} elevation={1}>
-            <View style={styles.updateContent}>
-              <View style={styles.updateIcon}>
-                <Icon 
-                  name={Icons.tabs.truth.name} 
-                  color={Colors.primary.main} 
-                  size="lg" 
-                />
-              </View>
-              <View style={styles.updateDetails}>
-                <Text style={styles.updateTitle}>Scripture</Text>
-                <Text style={styles.updateDescription}>Ethan shared a scripture</Text>
-              </View>
-            </View>
-            <Text style={styles.updateTime}>Yesterday</Text>
-          </Surface>
         </View>
 
         {/* Community Groups Section */}
         <View style={styles.communitySection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Community Groups</Text>
-            <TouchableOpacity 
-              style={styles.createButton}
-              onPress={() => navigation?.navigate('NewGroup')}
-            >
-              <Icon name="add-outline" color={Colors.white} size="sm" />
-              <Text style={styles.createButtonText}>Join</Text>
-            </TouchableOpacity>
+          <View style={[styles.sectionHeader, isSmall && styles.sectionHeaderSmall]}>
+            <Text style={[styles.sectionTitle, isSmall && styles.sectionTitleSmall]}>Community Groups</Text>
+            <View style={[styles.headerActionsRow, isSmall && styles.headerActionsRowSmall]}>
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={() => navigation?.navigate('NewGroup')}
+              >
+                <Icon name="add-outline" color={Colors.white} size="sm" />
+                <Text style={[styles.createButtonText, isSmall && styles.createButtonTextSmall]}>Create</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={() => setJoinVisible(true)}
+              >
+                <Icon name={Icons.security.key.name} color={Colors.white} size="sm" />
+                <Text style={[styles.createButtonText, isSmall && styles.createButtonTextSmall]}>Join by Code</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           
-          <TouchableOpacity
-            onPress={() => navigation?.navigate('GroupChat', { groupName: 'Men\'s Accountability' })}
-          >
-            <Surface style={styles.groupCard} elevation={1}>
-              <View style={styles.groupInfo}>
-                <View style={styles.groupAvatarContainer}>
-                  <Image 
-                    source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDB8yP7kR_YFpE-D9f_J9R8bWJ1hY-7gJ6J7L3WzKqX5G6cZ-F-V9hX9gC8rJ0L3gS4hN_I9a-PqS9jKzH-eX1lD2oO4gYtH5iB6sX-Z_kM8n7oJ1c-E7sP-dF-YwQ9gA-L8mR-XgC0' }} 
-                    style={styles.groupAvatar}
-                  />
-                  <View style={styles.onlineIndicator} />
-                </View>
-                <View style={styles.groupDetails}>
-                  <Text style={styles.groupName}>Men's Accountability</Text>
-                  <Text style={styles.groupMessage}>John: Let's keep pushing forward!</Text>
-                </View>
-                <Text style={styles.groupTime}>2:15 PM</Text>
-              </View>
-            </Surface>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => navigation?.navigate('GroupChat', { groupName: 'Prayer Warriors' })}
-          >
-            <Surface style={styles.groupCard} elevation={1}>
-              <View style={styles.groupInfo}>
-                <View style={styles.groupAvatarContainer}>
-                  <Image 
-                    source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD3G4Q1X8F5e8Z6J3s9L8d7F5g4H3R2k1p0J2o9W1c8B7d6A5f4G3h2E1b9G8v7F6d5C4B3A2z1Y0X9wS-T8u7i6h5g4F3D2s1Rq0p-O-N-M-L-K-J-I-H-G-F-E-D-C-B-A' }} 
-                    style={styles.groupAvatar}
-                  />
-                  <View style={styles.onlineIndicator} />
-                </View>
-                <View style={styles.groupDetails}>
-                  <Text style={styles.groupName}>Prayer Warriors</Text>
-                  <Text style={styles.groupMessage}>Emily: Lifting you up in prayer.</Text>
-                </View>
-                <Text style={styles.groupTime}>Yesterday</Text>
-              </View>
-            </Surface>
-          </TouchableOpacity>
+          {loadingGroups ? (
+            <Text style={{ color: Colors.text.secondary }}>Loading groups…</Text>
+          ) : myGroups.length === 0 ? (
+            <Text style={{ color: Colors.text.secondary }}>No groups yet. Join or create one.</Text>
+          ) : (
+            myGroups.map(g => (
+              <TouchableOpacity key={g.id} onPress={() => navigation?.navigate('GroupChat', { groupId: g.id, groupName: g.name, memberCount: g.membersCount })}>
+                <Surface style={styles.groupCard} elevation={1}>
+                  <View style={styles.groupInfo}>
+                    <View style={styles.groupAvatarContainer}>
+                      <Image source={{ uri: g.iconUrl || 'https://placehold.co/96x96' }} style={styles.groupAvatar} />
+                      <View style={styles.onlineIndicator} />
+                    </View>
+                    <View style={styles.groupDetails}>
+                      <Text style={styles.groupName}>{g.name}</Text>
+                      <Text style={styles.groupMessage} numberOfLines={1}>{g.description || 'Tap to open chat'}</Text>
+                    </View>
+                    <Text style={styles.groupTime}>{unreadMap[g.id] ? `${unreadMap[g.id]} new` : ''}</Text>
+                  </View>
+                </Surface>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
+
+        <Portal>
+          {/* Modal: Daily Check-in */}
+          <Modal visible={checkinVisible} onDismiss={() => setCheckinVisible(false)} contentContainerStyle={{ backgroundColor: Colors.background.secondary, margin: 16, padding: 16, borderRadius: 12 }}>
+            <Text style={styles.sectionTitle}>Daily Check-In</Text>
+            <Text style={{ color: Colors.text.secondary, marginBottom: 12 }}>Set your mood and choose who can see this.</Text>
+
+            {/* Mood input slider 0..1 */}
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ color: Colors.text.secondary, marginBottom: 8 }}>Mood: {Math.round(moodValue * 100)}%</Text>
+              <Slider
+                minimumValue={0}
+                maximumValue={1}
+                step={0.01}
+                value={moodValue}
+                onValueChange={setMoodValue}
+                minimumTrackTintColor={Colors.primary.main}
+                maximumTrackTintColor={Colors.background.tertiary}
+                thumbTintColor={Colors.primary.main}
+              />
+            </View>
+
+            <TextInput
+              mode="outlined"
+              value={note}
+              onChangeText={setNote}
+              placeholder="Add an optional note"
+              multiline
+              style={{ marginBottom: 12 }}
+            />
+
+            {/* Visibility options */}
+            <View>
+              <TouchableOpacity onPress={() => setVisibilityOption('private')} style={styles.radioOptionContainer}>
+                <RadioButton value="private" status={visibilityOption === 'private' ? 'checked' : 'unchecked'} onPress={() => setVisibilityOption('private')} />
+                <Text style={{ color: Colors.text.primary }}>Private (only you)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setVisibilityOption('allPartners')} style={styles.radioOptionContainer}>
+                <RadioButton value="allPartners" status={visibilityOption === 'allPartners' ? 'checked' : 'unchecked'} onPress={() => setVisibilityOption('allPartners')} />
+                <Text style={{ color: Colors.text.primary }}>All partners</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setVisibilityOption('selectPartners')} style={styles.radioOptionContainer}>
+                <RadioButton value="selectPartners" status={visibilityOption === 'selectPartners' ? 'checked' : 'unchecked'} onPress={() => setVisibilityOption('selectPartners')} />
+                <Text style={{ color: Colors.text.primary }}>Select partners…</Text>
+              </TouchableOpacity>
+            </View>
+
+            {visibilityOption === 'selectPartners' && (
+              <View style={{ marginVertical: 8 }}>
+                {partnerChoices.length === 0 ? (
+                  <Text style={{ color: Colors.text.secondary }}>No partners yet.</Text>
+                ) : (
+                  partnerChoices.map((p) => (
+                    <View key={String(p.id)} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                      <Checkbox
+                        status={selectedPartnerIds.includes(p.id) ? 'checked' : 'unchecked'}
+                        onPress={() => togglePartnerSelected(p.id)}
+                      />
+                      <Text style={{ color: Colors.text.primary }}>{p.name}</Text>
+                    </View>
+                  ))
+                )}
+              </View>
+            )}
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <Button mode="text" onPress={() => setCheckinVisible(false)}>Cancel</Button>
+              <Button mode="contained" onPress={submitCheckIn} disabled={isCreating} loading={isCreating}>Save Check-in</Button>
+            </View>
+          </Modal>
+          {/* Modal: Invite Partner */}
+          <Modal
+            visible={inviteVisible}
+            onDismiss={() => {
+              setInviteVisible(false);
+              setInviteEmailsText('');
+              setInviteEmails([]);
+              setCustomCode('');
+            }}
+            contentContainerStyle={{ backgroundColor: Colors.background.secondary, margin: 16, padding: 16, borderRadius: 12 }}
+          >
+            <Text style={styles.sectionTitle}>Invite Accountability Partner</Text>
+            <Text style={{ color: Colors.text.secondary, marginBottom: 12 }}>
+              Add email addresses. A code will be generated and sent unless you specify a custom code below.
+            </Text>
+
+            {/* Chips */}
+            {inviteEmails.length > 0 && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                {inviteEmails.map(email => (
+                  <Surface key={email} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, backgroundColor: Colors.background.primary, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ color: Colors.text.primary }}>{email}</Text>
+                    <TouchableOpacity onPress={() => removeEmailChip(email)}>
+                      <Icon name="close-outline" color={Colors.text.secondary} size="sm" />
+                    </TouchableOpacity>
+                  </Surface>
+                ))}
+              </View>
+            )}
+
+            <TextInput
+              mode="outlined"
+              value={inviteEmailsText}
+              onChangeText={setInviteEmailsText}
+              onSubmitEditing={addChippedEmailsFromInput}
+              placeholder="Type an email and press Enter"
+              multiline={false}
+              style={{ marginBottom: 12 }}
+              returnKeyType="done"
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: -4, marginBottom: 12 }}>
+              <Button mode="text" onPress={addChippedEmailsFromInput}>Add</Button>
+            </View>
+
+            <TextInput
+              mode="outlined"
+              value={customCode}
+              onChangeText={setCustomCode}
+              placeholder="Optional custom code (starts with ph_)"
+              style={{ marginBottom: 12 }}
+            />
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              <Button
+                mode="outlined"
+                onPress={handleGenerateInvite}
+                loading={invitationLoading}
+                disabled={invitationLoading}
+              >
+                Generate Code
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleEmailSend}
+                disabled={invitationLoading || inviteEmails.length === 0}
+              >
+                Invite Partners
+              </Button>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
+              <Button mode="text" onPress={() => { setInviteVisible(false); }}>Close</Button>
+            </View>
+          </Modal>
+
+          {/* Modal: Accept Partner by Code */}
+          {/* Keep accept-by-code modal accessible via a clear button elsewhere */}
+          <Modal
+            visible={acceptVisible}
+            onDismiss={() => { setAcceptVisible(false); setPartnerCode(''); }}
+            contentContainerStyle={{ backgroundColor: Colors.background.secondary, margin: 16, padding: 16, borderRadius: 12 }}
+          >
+            <Text style={styles.sectionTitle}>Join as Partner by Code</Text>
+            <Text style={{ color: Colors.text.secondary, marginBottom: 12 }}>Enter the code you received to become partners.</Text>
+            <TextInput
+              mode="outlined"
+              value={partnerCode}
+              onChangeText={setPartnerCode}
+              placeholder="Enter invite code (e.g., ph_...)"
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <Button mode="text" onPress={() => { setAcceptVisible(false); setPartnerCode(''); }}>Cancel</Button>
+              <Button mode="contained" onPress={handleAcceptPartner} loading={accepting} disabled={accepting || !partnerCode.trim()}>
+                Accept
+              </Button>
+            </View>
+          </Modal>
+          <Modal visible={joinVisible} onDismiss={() => setJoinVisible(false)} contentContainerStyle={{ backgroundColor: Colors.background.secondary, margin: 16, padding: 16, borderRadius: 12 }}>
+            <Text style={styles.sectionTitle}>Join by Access Code</Text>
+            <Text style={{ color: Colors.text.secondary, marginBottom: 12 }}>Enter the invite/access code you received via email</Text>
+            <TextInput
+              mode="outlined"
+              value={joinCode}
+              onChangeText={setJoinCode}
+              placeholder="Enter code"
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <Button mode="text" onPress={() => { setJoinVisible(false); setJoinCode(''); }}>Cancel</Button>
+              <Button
+                mode="contained"
+                onPress={async () => {
+                  try {
+                    await groupService.joinByCode(joinCode.trim());
+                    setJoinVisible(false);
+                    setJoinCode('');
+                    await loadGroups();
+                  } catch (e: any) {
+                    Alert.alert('Join failed', e?.response?.data?.message || 'Invalid or expired code');
+                  }
+                }}
+              >
+                Join
+              </Button>
+            </View>
+          </Modal>
+        </Portal>
 
         {/* Victory Stories Section */}
-        <View style={styles.victorySection}>
-          <Text style={styles.sectionTitle}>Victory Stories</Text>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.storiesContainer}
-          >
-            <View style={styles.storyCard}>
-              <Image 
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDWIHSbnErNOKBWaemHGeo8k1OWa-kE5Bs3MuYb1lL2iCFM4Tnnmlp82U1p_muRRhXg2RcvUXBPshCL7fwJSF-O0pSK1QRc5x-4c3G0iTKZ_uw9eRLrPl9Aj8yJ4K9Sf-tVEvLg8CZlClGPvncA8E55gAUOsZI8EseZsjxGU5YGSoWBXSknWJj27a8PjVcV7P5xC9o6gkRmc6hOYTnZcIe12Wa42NzLvO2qAUdiD64Z_F-TLrOHKTdVdiWvLQh7nYEwolIZY1KEby2R' }}
-                style={styles.storyImage}
-              />
-              <Text style={styles.storyText}>Overcame 100 days of temptation</Text>
-            </View>
-
-            <View style={styles.storyCard}>
-              <Image 
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB8w6D2QHJ_ABurtFZWPQlYKnXwrOot2YxnFMns8BIGdNk9WOC_tT93ib9H_b-W8waGRrkBbRO7bMeK_T9zt5yq6WK9zEk2Ibw4tQNTX_7F6YpRyFYmjTgp4utT5hcSbe7yHCjccZPDuoYB0BWdIklh2BDtuY3NLOM7OkF2Tfaf60Eu2VgrOpaqIYJFupnD9FYDBmcwBubqsQp-JQpaSnpbP7ehD_fJC8TCaZUr4QaeW8chntuAB7yfmqArIXh5rg7X7woJdQv2uGjy' }}
-                style={styles.storyImage}
-              />
-              <Text style={styles.storyText}>Found strength in faith</Text>
-            </View>
-
-            <View style={styles.storyCard}>
-              <Image 
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQC7wt9p4fZtJDrnyfceojU_U5EOqy9hu4RxTRfDfjJaxizfSuhKEWV2N_1AQcIfCQ_BcfdTJzelOveWUWKHrwzz-CqXRucHNjwY-nyuKwVPwJKsXe59W_9CmMC49gYb2JG8ih4unRQsJ7fP6D00kQLmd--b6hfnJqvcYT6BUdn0gmbXGPlu6HUyAFSXuUfH7-DW03z46HMYU2ojdbCgRBa2RXGldl5bkoXjNI-a110ItuWEUVBO8Rzlb95hZ-nsXD-tKP6vZnHhUy' }}
-                style={styles.storyImage}
-              />
-              <Text style={styles.storyText}>Victory over addiction</Text>
-            </View>
-          </ScrollView>
-        </View>
+        <VictoryStories navigation={navigation} />
 
         {/* Emergency Contact Section */}
         <View style={styles.emergencySection}>
@@ -483,41 +828,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   
-  // Partner Section
-  partnerSection: {
-    marginBottom: 24,
-  },
-  partnerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  avatarContainer: {
-    width: 96,
-    height: 96,
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarImage: {
-    borderRadius: 48,
-  },
-  partnerDetails: {
-    flex: 1,
-  },
-  partnerName: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: Colors.text.primary,
-    marginBottom: 4,
-  },
-  partnerConnection: {
-    fontSize: 16,
-    color: Colors.text.secondary,
-  },
+  // Partner Section removed
 
   // Daily Check-in Section
   checkInCard: {
@@ -525,6 +836,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     marginBottom: 24,
+  },
+  streaksContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
@@ -625,51 +941,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Recent Updates Section
-  recentUpdatesSection: {
-    marginBottom: 24,
-  },
-  updateCard: {
-    backgroundColor: Colors.background.secondary,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  updateContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    flex: 1,
-  },
-  updateIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: Colors.background.tertiary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  updateDetails: {
-    flex: 1,
-  },
-  updateTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.text.primary,
-    marginBottom: 2,
-  },
-  updateDescription: {
-    fontSize: 14,
-    color: Colors.text.secondary,
-  },
-  updateTime: {
-    fontSize: 14,
-    color: Colors.text.secondary,
-  },
-
   // Emergency Section
   emergencySection: {
     marginBottom: 24,
@@ -718,6 +989,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  sectionHeaderSmall: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  headerActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexShrink: 1,
+    marginLeft: 12,
+  },
+  headerActionsRowSmall: {
+    flexWrap: 'wrap',
+    rowGap: 8,
+    maxWidth: '60%',
+    marginTop: 8,
+  },
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -731,6 +1018,12 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 12,
     fontWeight: '600',
+  },
+  createButtonTextSmall: {
+    fontSize: 11,
+   },
+  sectionTitleSmall: {
+    fontSize: 16,
   },
   groupCard: {
     backgroundColor: Colors.background.secondary,
@@ -779,30 +1072,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.text.secondary,
   },
-
-  // Victory Stories Section
-  victorySection: {
-    marginBottom: 24,
-  },
-  storiesContainer: {
-    paddingRight: 16,
-    gap: 16,
-  },
-  storyCard: {
-    width: 160,
-    flexShrink: 0,
-  },
-  storyImage: {
-    width: '100%',
-    height: 160,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  storyText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: Colors.text.primary,
-    lineHeight: 18,
+  radioOptionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
   },
 });
 

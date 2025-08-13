@@ -99,6 +99,23 @@ export interface AdditionalAssessmentData {
 export interface AccountabilityPreferences {
   preferredType: 'partner' | 'group' | 'trusted-person' | 'solo' | 'ai-accountability' | null;
   hasSelectedOption: boolean;
+  // When inviting a trusted partner during onboarding, we generate a unique URL hash
+  // for the invitation link. Persist it here so it can be sent to the backend
+  // alongside other onboarding data during social login (Google/Apple).
+  invitationHash?: string;
+  completedAt?: string;
+}
+
+/**
+ * Recovery Journey Data Interface
+ * 
+ * Data collected in Onboarding8Screen
+ */
+export interface RecoveryJourneyData {
+  recoveryGoal: string;
+  recoveryMotivation: string;
+  hasSoughtHelpBefore: string;
+  previousHelpDescription: string;
   completedAt?: string;
 }
 
@@ -118,13 +135,14 @@ export interface OnboardingProgress {
  * 
  * Defines the complete state shape for onboarding data.
  */
-interface OnboardingState {
+export interface OnboardingState {
   personalInfo: Partial<PersonalInfo>;
   assessmentData: Partial<AssessmentData>;
   additionalAssessmentData: Partial<AdditionalAssessmentData>;
   faithData: Partial<FaithData>;
   howTheyHeard: Partial<HowTheyHeard>;
   accountabilityPreferences: Partial<AccountabilityPreferences>;
+  recoveryJourneyData: Partial<RecoveryJourneyData>; // Add this line
   progress: OnboardingProgress;
   isDataSaved: boolean;
   lastSaveTime: string | null;
@@ -142,6 +160,7 @@ const initialState: OnboardingState = {
   faithData: {},
   howTheyHeard: {},
   accountabilityPreferences: {},
+  recoveryJourneyData: {},
   progress: {
     currentStep: 1,
     completedSteps: [],
@@ -226,7 +245,7 @@ const onboardingSlice = createSlice({
       if (!state.progress.completedSteps.includes(6)) {
         state.progress.completedSteps.push(6);
       }
-      state.progress.currentStep = Math.max(state.progress.currentStep, 7);
+      state.progress.currentStep = Math.max(state.progress.currentStep, 9);
       state.progress.lastUpdated = new Date().toISOString();
       
       // Mark data as saved
@@ -248,10 +267,10 @@ const onboardingSlice = createSlice({
       };
       
       // Update progress tracking
-      if (!state.progress.completedSteps.includes(7)) {
-        state.progress.completedSteps.push(7);
+      if (!state.progress.completedSteps.includes(9)) {
+        state.progress.completedSteps.push(9);
       }
-      state.progress.currentStep = Math.max(state.progress.currentStep, 8);
+      state.progress.currentStep = Math.max(state.progress.currentStep, 10);
       state.progress.lastUpdated = new Date().toISOString();
       
       // Mark data as saved
@@ -289,6 +308,30 @@ const onboardingSlice = createSlice({
         ...action.payload,
         completedAt: new Date().toISOString(),
       };
+      
+      // Mark data as saved
+      state.isDataSaved = true;
+      state.lastSaveTime = new Date().toISOString();
+    },
+
+    /**
+     * Save Recovery Journey Data
+     * 
+     * Saves recovery journey information collected in Onboarding8Screen.
+     */
+    saveRecoveryJourneyData: (state, action: PayloadAction<Partial<RecoveryJourneyData>>) => {
+      state.recoveryJourneyData = {
+        ...state.recoveryJourneyData,
+        ...action.payload,
+        completedAt: new Date().toISOString(),
+      };
+      
+      // Update progress tracking
+      if (!state.progress.completedSteps.includes(8)) {
+        state.progress.completedSteps.push(8);
+      }
+      state.progress.currentStep = Math.max(state.progress.currentStep, 9);
+      state.progress.lastUpdated = new Date().toISOString();
       
       // Mark data as saved
       state.isDataSaved = true;
@@ -382,6 +425,7 @@ export const {
   saveAccountabilityPreferences,
   saveHowTheyHeardData,
   saveAdditionalAssessmentData,
+  saveRecoveryJourneyData,
   updateProgress,
   clearOnboardingData,
   resetProgress,
@@ -425,7 +469,7 @@ export const hasOnboardingData = (state: { onboarding: OnboardingState }) => {
 
 // Get onboarding completion percentage
 export const getOnboardingCompletionPercentage = (state: { onboarding: OnboardingState }) => {
-  const totalSteps = 7; // Onboarding steps 1-7
+  const totalSteps = 9; // Onboarding steps 1-9
   const completedSteps = state.onboarding.progress.completedSteps.length;
   return Math.round((completedSteps / totalSteps) * 100);
 };

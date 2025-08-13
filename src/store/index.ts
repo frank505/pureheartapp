@@ -22,6 +22,11 @@ import postsSlice from './slices/postsSlice';
 import appSlice from './slices/appSlice';
 import onboardingSlice from './slices/onboardingSlice';
 import invitationSlice from './slices/invitationSlice';
+import notificationsSlice from './slices/notificationsSlice';
+import checkinsSlice from './slices/checkinsSlice';
+import prayerRequestSlice from './slices/prayerRequestSlice';
+import victorySlice from './slices/victorySlice';
+import streaksSlice from './slices/streaksSlice';
 
 /**
  * Redux Persist Configuration
@@ -35,7 +40,7 @@ const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
   // Whitelist: only persist these reducers
-  whitelist: ['user', 'app', 'onboarding', 'invitation'],
+  whitelist: ['user', 'app', 'onboarding', 'invitation', 'notifications', 'checkins', 'prayerRequests', 'victories', 'streaks'],
   // Blacklist: don't persist these reducers (posts will be fetched fresh)
   blacklist: ['posts'],
   version: 1,
@@ -53,6 +58,11 @@ const rootReducer = combineReducers({
   app: appSlice,
   onboarding: onboardingSlice,
   invitation: invitationSlice,
+  notifications: notificationsSlice,
+  checkins: checkinsSlice,
+  prayerRequests: prayerRequestSlice,
+  victories: victorySlice,
+  streaks: streaksSlice,
 });
 
 /**

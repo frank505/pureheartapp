@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 
 // Import onboarding screens
 import {
+  GetStartedScreen,
   Onboarding1Screen,
   Onboarding2Screen,
   Onboarding3Screen,
@@ -26,7 +27,7 @@ import {
   Onboarding7Screen,
   Onboarding8Screen,
   Onboarding9Screen,
-  Onboarding10Screen,
+  PersonalizationScreen,
 } from '../screens/onboarding';
 
 import { Colors } from '../constants';
@@ -40,6 +41,7 @@ import { useAppSelector } from '../store/hooks';
  * Defines the parameter types for each onboarding screen.
  */
 export type OnboardingStackParamList = {
+  GetStartedScreen: undefined;
   Onboarding1: undefined;
   Onboarding2: undefined;
   Onboarding3: undefined;
@@ -69,7 +71,7 @@ export type OnboardingStackParamList = {
     faithData?: any;
   };
   Onboarding9: undefined;
-  Onboarding10: undefined;
+  Personalization: undefined;
 };
 
 // Create the stack navigator
@@ -91,26 +93,26 @@ const OnboardingNavigator: React.FC<{ route?: any }> = ({ route }) => {
   // Determine initial route based on saved progress
   const getInitialRouteName = () => {
     if (!isRestored) {
-      return 'Onboarding1';
+      return 'GetStartedScreen';
     }
     
     // If restoring, navigate to the appropriate screen based on progress
     const { currentStep, completedSteps } = onboardingState.progress;
     
     // Go to the next incomplete step or the current step
-    if (completedSteps.includes(7)) {
+    if (completedSteps.includes(9)) {
       return 'Onboarding8'; // Final screen
-    } else if (completedSteps.includes(6)) {
+    } else if (completedSteps.includes(8)) {
       return 'Onboarding7';
-    } else if (completedSteps.includes(5)) {
+    } else if (completedSteps.includes(7)) {
       return 'Onboarding6';
-    } else if (completedSteps.includes(4)) {
+    } else if (completedSteps.includes(6)) {
       return 'Onboarding5';
     } else if (Object.keys(onboardingState.personalInfo).length > 0) {
       return 'Onboarding4'; // Has some personal info, let them continue/edit
     }
     
-    return 'Onboarding1'; // Default fallback
+    return 'GetStartedScreen'; // Default fallback
   };
   
   const initialRouteName = getInitialRouteName();
@@ -142,10 +144,18 @@ const OnboardingNavigator: React.FC<{ route?: any }> = ({ route }) => {
       }}
     >
       <Stack.Screen
+        name="GetStartedScreen"
+        component={GetStartedScreen}
+        options={{
+          title: 'Welcome',
+        }}
+      />
+
+      <Stack.Screen
         name="Onboarding1"
         component={Onboarding1Screen}
         options={{
-          title: 'Welcome',
+          title: 'You Are Not Alone',
         }}
       />
 
@@ -153,7 +163,7 @@ const OnboardingNavigator: React.FC<{ route?: any }> = ({ route }) => {
         name="Onboarding2"
         component={Onboarding2Screen}
         options={{
-          title: 'You Are Not Alone',
+          title: 'Vision of Freedom',
         }}
       />
 
@@ -161,7 +171,7 @@ const OnboardingNavigator: React.FC<{ route?: any }> = ({ route }) => {
         name="Onboarding3"
         component={Onboarding3Screen}
         options={{
-          title: 'Vision of Freedom',
+          title: 'Personal Information',
         }}
       />
 
@@ -169,7 +179,7 @@ const OnboardingNavigator: React.FC<{ route?: any }> = ({ route }) => {
         name="Onboarding4"
         component={Onboarding4Screen}
         options={{
-          title: 'Personal Information',
+          title: 'Assessment',
         }}
       />
 
@@ -177,7 +187,7 @@ const OnboardingNavigator: React.FC<{ route?: any }> = ({ route }) => {
         name="Onboarding5"
         component={Onboarding5Screen}
         options={{
-          title: 'Assessment',
+          title: 'Faith Background',
         }}
       />
 
@@ -185,7 +195,7 @@ const OnboardingNavigator: React.FC<{ route?: any }> = ({ route }) => {
         name="Onboarding6"
         component={Onboarding6Screen}
         options={{
-          title: 'Faith Background',
+          title: 'Welcome Complete',
         }}
       />
 
@@ -193,7 +203,7 @@ const OnboardingNavigator: React.FC<{ route?: any }> = ({ route }) => {
         name="Onboarding7"
         component={Onboarding7Screen}
         options={{
-          title: 'Accountability Setup',
+          title: 'How You Heard About Us',
         }}
       />
 
@@ -201,7 +211,7 @@ const OnboardingNavigator: React.FC<{ route?: any }> = ({ route }) => {
         name="Onboarding8"
         component={Onboarding8Screen}
         options={{
-          title: 'Welcome Complete',
+          title: 'Accountability Setup',
         }}
       />
 
@@ -209,15 +219,14 @@ const OnboardingNavigator: React.FC<{ route?: any }> = ({ route }) => {
         name="Onboarding9"
         component={Onboarding9Screen}
         options={{
-          title: 'How You Heard About Us',
+          title: 'Additional Questions',
         }}
       />
-
       <Stack.Screen
-        name="Onboarding10"
-        component={Onboarding10Screen}
+        name="Personalization"
+        component={PersonalizationScreen}
         options={{
-          title: 'Additional Questions',
+          title: 'Personalization',
         }}
       />
     </Stack.Navigator>

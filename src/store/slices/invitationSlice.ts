@@ -15,6 +15,58 @@
 
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Dimensions } from 'react-native';
+import DeviceInfo from 'react-native-device-info';
+import api from '../../services/api';
+
+/**
+ * User Type
+ *
+ * Represents a user involved in an invitation (sender, receiver, or partner).
+ */
+export interface PartnerUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+/**
+ * Sent Invite Type
+ *
+ * Represents an invitation sent by the authenticated user.
+ */
+export interface SentInvite {
+  id: string;
+  hash: string;
+  receiver: PartnerUser | null;
+  usedAt: string | null;
+  createdAt: string;
+}
+
+/**
+ * Received Invite Type
+ *
+ * Represents an invitation received by the authenticated user.
+ */
+export interface ReceivedInvite {
+  id: string;
+  hash: string;
+  sender: PartnerUser | null;
+  usedAt: string | null;
+  createdAt: string;
+}
+
+/**
+ * Partner Type
+ *
+ * Represents an established partnership.
+ */
+export interface Partner {
+  id: string; // Invitation ID
+  since: string;
+  partner: PartnerUser | null;
+}
 
 /**
  * Invitation Interface
@@ -34,8 +86,8 @@ export interface Invitation {
   status: 'pending' | 'accepted' | 'expired' | 'revoked';
   deepLinkUrl: string; // Full URL with hash that opens the app
   metadata?: {
-    invitationType: 'accountability_partner' | 'trusted_contact' | 'prayer_partner';
-    message?: string; // Optional custom message from inviter
+    invitationType: 'accountability_partner';
+    message?: string; // Optional custom message from inviter - REMOVED FOR NOW
   };
 }
 
@@ -47,24 +99,16 @@ export interface Invitation {
  */
 interface InvitationState {
   // Current user's sent invitations
-  sentInvitations: Invitation[];
+  sentInvitations: SentInvite[];
   
   // Invitations received by current user
-  receivedInvitations: Invitation[];
+  receivedInvitations: ReceivedInvite[];
   
   // Currently processing invitation (from deep link)
   processingInvitation: Invitation | null;
   
   // Connected partners from accepted invitations
-  connectedPartners: {
-    id: string;
-    name: string;
-    email: string;
-    avatar?: string;
-    connectionType: 'accountability_partner' | 'trusted_contact' | 'prayer_partner';
-    connectedAt: string;
-    isActive: boolean;
-  }[];
+  connectedPartners: Partner[];
   
   // Loading and error states
   loading: boolean;
@@ -104,6 +148,93 @@ const initialState: InvitationState = {
  */
 
 /**
+ * Fetch Sent Invites Thunk
+ *
+ * Fetches all invitations sent by the authenticated user.
+ */
+export const fetchSentInvites = createAsyncThunk(
+  'invitation/fetchSentInvites',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get('/invites/sent');
+      return data.items;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch sent invites.');
+    }
+  }
+);
+
+/**
+ * Fetch Received Invites Thunk
+ *
+ * Fetches all invitations received by the authenticated user.
+ */
+export const fetchReceivedInvites = createAsyncThunk(
+  'invitation/fetchReceivedInvites',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get('/invites/received');
+      return data.items;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch received invites.');
+    }
+  }
+);
+
+/**
+ * Fetch Partners Thunk
+ *
+ * Fetches all established partners for the authenticated user.
+ */
+export const fetchPartners = createAsyncThunk(
+  'invitation/fetchPartners',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get('/partners');
+      return data.items;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch partners.');
+    }
+  }
+);
+
+/**
+ * Revoke Invitation Thunk
+ *
+ * Revokes an invitation by its ID.
+ */
+export const revokeInvite = createAsyncThunk(
+  'invitation/revokeInvite',
+  async (invitationId: string, { rejectWithValue }) => {
+    try {
+      await api.post(`/invites/invitations/${invitationId}/revoke`);
+      return invitationId;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to revoke invitation.');
+    }
+  }
+);
+
+/**
+ * Create Invitation After Authentication
+ *
+ * Saves the generated invitation hash to the backend.
+ */
+export const createInviteAfterAuth = createAsyncThunk(
+  'invitation/createAfterAuth',
+  async (hash: string, { dispatch, rejectWithValue }) => {
+    try {
+      const { data } = await api.post('/invites/invitations', { hash });
+      // Refresh invitation data after successfully creating an invite
+      dispatch(loadInvitationData());
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to save invitation hash.');
+    }
+  }
+);
+
+/**
  * Generate Invitation Hash
  * 
  * Creates a secure hash for invitation links.
@@ -138,53 +269,68 @@ const generateInvitationHash = (): string => {
 export const createInvitation = createAsyncThunk(
   'invitation/create',
   async (
-    invitationData: {
-      inviterName: string;
-      inviterEmail: string;
-      inviterUserId: string;
-      invitationType: 'accountability_partner' | 'trusted_contact' | 'prayer_partner';
-      customMessage?: string;
-      inviteeEmail?: string;
-    },
+    invitationData: { inviterName: string; inviterEmail: string; inviterUserId: string; customHash?: string },
     { rejectWithValue }
   ) => {
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Generate unique hash for this invitation
-      const hash = generateInvitationHash();
-      
-      // Create deep link URL (replace with your actual app scheme)
-      const deepLinkUrl = `pureheart://invite/${hash}`;
-      
-      // Create invitation object
+      // Generate or use provided custom hash
+      const custom = invitationData.customHash?.trim();
+      const isValidCustom = !!custom && /^ph_[a-z0-9]+$/i.test(custom) && custom.length >= 10;
+      const hash = isValidCustom ? (custom as string) : generateInvitationHash();
       const invitation: Invitation = {
         id: `inv_${Date.now()}`,
         hash,
         inviterUserId: invitationData.inviterUserId,
         inviterName: invitationData.inviterName,
         inviterEmail: invitationData.inviterEmail,
-        inviteeEmail: invitationData.inviteeEmail,
         createdAt: new Date().toISOString(),
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
         status: 'pending',
-        deepLinkUrl,
+        deepLinkUrl: `pureheart://invite/${hash}`,
         metadata: {
-          invitationType: invitationData.invitationType,
-          message: invitationData.customMessage,
+          invitationType: 'accountability_partner',
         },
       };
-      
-      // Store invitation locally (in real app, send to backend)
-      const storedInvitations = await AsyncStorage.getItem('sent_invitations');
-      const currentInvitations = storedInvitations ? JSON.parse(storedInvitations) : [];
-      currentInvitations.push(invitation);
-      await AsyncStorage.setItem('sent_invitations', JSON.stringify(currentInvitations));
-      
+      await AsyncStorage.setItem('init_sent_accountability_id', hash);
       return invitation;
     } catch (error) {
       return rejectWithValue('Failed to create invitation. Please try again.');
+    }
+  }
+);
+
+export const matchInstall = createAsyncThunk(
+  'invitation/matchInstall',
+  async (deviceInfo: { os: string; osVersion: string; deviceModel: string }, { rejectWithValue }) => {
+    try {
+      // Create a more comprehensive device fingerprint
+      const userAgent = `${deviceInfo.deviceModel}; ${deviceInfo.os} ${deviceInfo.osVersion}`;
+      
+      // Get additional device info for better matching
+      const screenDimensions = {
+        width: Dimensions.get('window').width,
+        height: Dimensions.get('window').height,
+        scale: Dimensions.get('window').scale,
+      };
+      
+      const { data } = await api.post('/invites/invitations/match-install', {
+        deviceFingerprint: {
+          userAgent: userAgent,
+          os: deviceInfo.os,
+          osVersion: deviceInfo.osVersion,
+          deviceModel: deviceInfo.deviceModel,
+          screenDimensions: screenDimensions,
+          timezone: new Date().getTimezoneOffset(),
+          locale: 'en-US', // You can use DeviceInfo.getDeviceLocale() if available in your version
+          // Add app install time if available
+          firstInstallTime: await DeviceInfo.getFirstInstallTime(),
+        },
+      });
+      
+      return data; // Expected: { inviteId: string | null, matchConfidence: number }
+    } catch (error: any) {
+      console.error('Error matching install:', error);
+      return rejectWithValue('Failed to match installation.');
     }
   }
 );
@@ -248,77 +394,78 @@ export const processDeepLinkInvitation = createAsyncThunk(
  */
 export const acceptInvitation = createAsyncThunk(
   'invitation/accept',
-  async (
-    { invitationId, userInfo }: { 
-      invitationId: string; 
-      userInfo: { id: string; name: string; email: string; avatar?: string } 
-    },
-    { getState, rejectWithValue }
-  ) => {
+  async (hash: string, { rejectWithValue }) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // In real app, make API call to accept invitation and create partnership
-      
-      // Get the invitation to determine connection type
-      const state = getState() as any;
-      const invitation = state.invitation.processingInvitation;
-      
-      // Map invitation type to connection type
-      let connectionType: 'accountability_partner' | 'trusted_contact' | 'prayer_partner' = 'accountability_partner';
-      if (invitation?.metadata?.invitationType) {
-        connectionType = invitation.metadata.invitationType;
-      }
-      
-      return {
-        invitationId,
-        partner: {
-          id: 'partner123',
-          name: invitation?.inviterName || 'John Doe',
-          email: invitation?.inviterEmail || 'john@example.com',
-          avatar: undefined,
-          connectionType,
-          connectedAt: new Date().toISOString(),
-          isActive: true,
-        },
-      };
-    } catch (error) {
-      return rejectWithValue('Failed to accept invitation. Please try again.');
+      const { data } = await api.post(`/invites/invitations/${hash}/accept`);
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to accept invitation.');
     }
   }
 );
 
 /**
- * Load User Invitations Thunk
- * 
- * Loads both sent and received invitations for the current user.
+ * Accept Invitation By Code Thunk
+ *
+ * Uses the new endpoint to accept a partner invitation by code.
  */
-export const loadUserInvitations = createAsyncThunk(
-  'invitation/loadUserInvitations',
-  async (userId: string, { rejectWithValue }) => {
+export const acceptByCode = createAsyncThunk(
+  'invitation/acceptByCode',
+  async (code: string, { rejectWithValue }) => {
     try {
-      // Load sent invitations from local storage
-      const storedSentInvitations = await AsyncStorage.getItem('sent_invitations');
-      const sentInvitations = storedSentInvitations ? JSON.parse(storedSentInvitations) : [];
-      
-      // In real app, also fetch received invitations from API
-      const receivedInvitations: Invitation[] = [];
-      
-      // Load connected partners from local storage
-      const storedPartners = await AsyncStorage.getItem('connected_partners');
-      const connectedPartners = storedPartners ? JSON.parse(storedPartners) : [];
-      
-      return {
-        sentInvitations,
-        receivedInvitations,
-        connectedPartners,
-      };
-    } catch (error) {
-      return rejectWithValue('Failed to load invitations.');
+      const { data } = await api.post(`/invites/accept-by-code`, { code });
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to accept invitation.');
     }
   }
 );
+
+/**
+ * Send Invites By Email Thunk
+ *
+ * Sends invitation emails for one or more addresses with an optional custom code.
+ */
+export const sendInvitesByEmail = createAsyncThunk(
+  'invitation/sendByEmail',
+  async (
+    payload: { emails: string[]; hash?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const { data } = await api.post(`/invites/send-by-email`, payload);
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to send invitations.');
+    }
+  }
+);
+
+/**
+ * Load All Invitation Data
+ *
+ * Loads all invitation-related data for the current user from the API.
+ */
+export const loadInvitationData = createAsyncThunk(
+  'invitation/loadInvitationData',
+  async (_, { rejectWithValue }) => {
+    try {
+      const [sent, received, partners] = await Promise.all([
+        api.get('/invites/sent'),
+        api.get('/invites/received'),
+        api.get('/partners'),
+      ]);
+      return {
+        sentInvites: sent.data.items,
+        receivedInvites: received.data.items,
+        partners: partners.data.items,
+      };
+    } catch (error: any) {
+      return rejectWithValue('Failed to load invitation data.');
+    }
+  }
+);
+
 
 /**
  * Invitation Slice
@@ -370,19 +517,6 @@ const invitationSlice = createSlice({
     },
 
     /**
-     * Revoke Invitation
-     * 
-     * Marks an invitation as revoked (cancels it).
-     */
-    revokeInvitation: (state, action: PayloadAction<string>) => {
-      const invitationId = action.payload;
-      const invitation = state.sentInvitations.find(inv => inv.id === invitationId);
-      if (invitation) {
-        invitation.status = 'revoked';
-      }
-    },
-
-    /**
      * Remove Partner
      * 
      * Removes a connected partner.
@@ -390,7 +524,7 @@ const invitationSlice = createSlice({
     removePartner: (state, action: PayloadAction<string>) => {
       const partnerId = action.payload;
       state.connectedPartners = state.connectedPartners.filter(
-        partner => partner.id !== partnerId
+        (p) => p.partner?.id !== partnerId
       );
     },
   },
@@ -399,11 +533,6 @@ const invitationSlice = createSlice({
     builder
       .addCase(createInvitation.pending, (state) => {
         state.loading = true;
-        state.error = null;
-      })
-      .addCase(createInvitation.fulfilled, (state, action) => {
-        state.loading = false;
-        state.sentInvitations.push(action.payload);
         state.error = null;
       })
       .addCase(createInvitation.rejected, (state, action) => {
@@ -435,15 +564,25 @@ const invitationSlice = createSlice({
       })
       .addCase(acceptInvitation.fulfilled, (state, action) => {
         state.loading = false;
-        
+        const acceptedInvite = action.payload;
+
         // Add new partner to connected partners
-        state.connectedPartners.push(action.payload.partner);
-        
-        // Mark invitation as accepted if it's in processing
-        if (state.processingInvitation?.id === action.payload.invitationId) {
-          state.processingInvitation.status = 'accepted';
+        if (acceptedInvite && acceptedInvite.sender) {
+          const newPartner: Partner = {
+            id: acceptedInvite.id,
+            since: acceptedInvite.usedAt,
+            partner: acceptedInvite.sender,
+          };
+          state.connectedPartners.push(newPartner);
         }
-        
+
+        // Remove from received invitations
+        if (acceptedInvite) {
+          state.receivedInvitations = state.receivedInvitations.filter(
+            (inv) => inv.hash !== acceptedInvite.hash
+          );
+        }
+
         // Clear processing invitation
         state.processingInvitation = null;
         state.isProcessingDeepLink = false;
@@ -454,20 +593,126 @@ const invitationSlice = createSlice({
         state.error = action.payload as string;
       });
 
-    // Load User Invitations Cases
+    // Accept By Code Cases
     builder
-      .addCase(loadUserInvitations.pending, (state) => {
+      .addCase(acceptByCode.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(loadUserInvitations.fulfilled, (state, action) => {
+      .addCase(acceptByCode.fulfilled, (state, action) => {
         state.loading = false;
-        state.sentInvitations = action.payload.sentInvitations;
-        state.receivedInvitations = action.payload.receivedInvitations;
-        state.connectedPartners = action.payload.connectedPartners;
+        const acceptedInvite = action.payload;
+
+        if (acceptedInvite && acceptedInvite.sender) {
+          const newPartner: Partner = {
+            id: acceptedInvite.id,
+            since: acceptedInvite.usedAt,
+            partner: acceptedInvite.sender,
+          };
+          state.connectedPartners.push(newPartner);
+        }
         state.error = null;
       })
-      .addCase(loadUserInvitations.rejected, (state, action) => {
+      .addCase(acceptByCode.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Send Invites By Email Cases
+    builder
+      .addCase(sendInvitesByEmail.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(sendInvitesByEmail.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(sendInvitesByEmail.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Match Install Cases
+    builder
+      .addCase(matchInstall.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(matchInstall.fulfilled, (state, action) => {
+        state.loading = false;
+        console.log('Match install check completed.', action.payload);
+      })
+      .addCase(matchInstall.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+        console.error('Match install failed:', action.payload);
+      });
+
+    // Load Invitation Data Cases
+    builder
+      .addCase(loadInvitationData.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadInvitationData.fulfilled, (state, action) => {
+        state.loading = false;
+        state.sentInvitations = action.payload.sentInvites;
+        state.receivedInvitations = action.payload.receivedInvites;
+        state.connectedPartners = action.payload.partners;
+        state.error = null;
+      })
+      .addCase(loadInvitationData.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Revoke Invitation Cases
+    builder
+      .addCase(revokeInvite.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(revokeInvite.fulfilled, (state, action) => {
+        state.loading = false;
+        state.sentInvitations = state.sentInvitations.filter(
+          (inv) => inv.id !== action.payload
+        );
+        state.error = null;
+      })
+      .addCase(revokeInvite.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+      
+    // Create Invitation After Auth Cases
+    builder
+      .addCase(createInviteAfterAuth.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createInviteAfterAuth.fulfilled, (state, action) => {
+        state.loading = false;
+        // Optionally, you can add the newly saved invitation to the state
+        // For now, we'll rely on the next fetch to get the updated list
+      })
+      .addCase(createInviteAfterAuth.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Fetch Partners Cases
+    builder
+      .addCase(fetchPartners.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchPartners.fulfilled, (state, action: PayloadAction<Partner[]>) => {
+        state.loading = false;
+        state.connectedPartners = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchPartners.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });
@@ -480,7 +725,6 @@ export const {
   showShareModal,
   hideShareModal,
   clearProcessingInvitation,
-  revokeInvitation,
   removePartner,
 } = invitationSlice.actions;
 

@@ -1,422 +1,401 @@
-/**
- * GroupChatScreen Component
- * 
- * Chat interface for accountability groups.
- * Features real-time messaging, member avatars, and group info.
- */
-
-import React, { useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  Image,
-  Alert,
-} from 'react-native';
-import {
-  Text,
-  TextInput,
-} from 'react-native-paper';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from '../components/Icon';
+import { Text, Surface, Button, Modal, Portal, TextInput, ActivityIndicator } from 'react-native-paper';
 import { Colors, Icons } from '../constants';
+import Icon from '../components/Icon';
+import groupService, { GroupMemberDTO, MessageDTO } from '../services/groupService';
+import { useAppSelector } from '../store/hooks';
 
 interface GroupChatScreenProps {
   navigation?: any;
-  route?: any;
+  route?: { params?: { groupId: string; groupName?: string } };
 }
 
-interface Message {
-  id: string;
-  text: string;
-  sender: string;
-  avatar: string;
-  timestamp: string;
-  isCurrentUser: boolean;
-}
+const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) => {
+  const groupId = route?.params?.groupId as string;
+  const groupName = route?.params?.groupName as string | undefined;
 
-const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation }) => {
-  const [messageText, setMessageText] = useState('');
-  const groupName = 'Men of Valor';
-  const memberCount = 3;
+  const currentUser = useAppSelector((s) => s.user.currentUser);
 
-  // Sample messages
-  const [messages] = useState<Message[]>([
-    {
-      id: '1',
-      text: "Hey everyone, I'm Ethan. I'm here to support each other in our journey to overcome porn addiction. Let's share our struggles and victories, and keep each other accountable.",
-      sender: 'Ethan',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBpyvXsQbssMzX0CiD-50NXsCR9CM3gF6lUxjNSmmeyI-Jyj0bFy70DB0xm5VYPCAUq_it6mqtm8nLWnOaGLnAEHcmrcR6geO5v8BKZqEM2Qgt0Zo4XeFki2kbVZ-2KFUEgvSRDIkrhhzWckbsk_UmLUunmS9mbjUZk2APoiOExTPRvfQiba-1SMGJ9Kt18pWbCpqXpbb0mzXqefE0e2R284eh-xBLR69Z1KgZji8pJZ0TJRJdvAr6neWsOuHaDfCEICwyCYeg8ttgS',
-      timestamp: '10:30 AM',
-      isCurrentUser: false,
+  const [messages, setMessages] = useState<MessageDTO[]>([]);
+  const [loadingMsgs, setLoadingMsgs] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+  const [sending, setSending] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [membersVisible, setMembersVisible] = useState(false);
+  const [members, setMembers] = useState<GroupMemberDTO[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersPage, setMembersPage] = useState(1);
+  const [membersHasMore, setMembersHasMore] = useState(true);
+  const [ownerId, setOwnerId] = useState<number | null>(null);
+
+  const isOwner = useMemo(() => {
+    if (!currentUser || ownerId == null) return false;
+    // currentUser.id is string per slice, backend uses number. Coerce.
+    const me = Number(currentUser.id);
+    return me === ownerId;
+  }, [currentUser, ownerId]);
+
+  useEffect(() => {
+    navigation?.setOptions?.({ headerShown: false });
+  }, [navigation]);
+
+  const loadMessages = useCallback(
+    async (reset = false) => {
+      if (!groupId) return;
+      try {
+        if (reset) setLoadingMsgs(true);
+        else setLoadingMore(true);
+        const params = reset ? {} : { cursor: nextCursor };
+        const resp = await groupService.listMessages(groupId, params as any);
+        if (reset) {
+          // API returns newest first; keep as is for inverted list
+          setMessages(resp.items);
+        } else {
+          setMessages((prev) => [...prev, ...resp.items]);
+        }
+        setNextCursor(resp.nextCursor);
+      } catch (e) {
+        // no-op minimal
+      } finally {
+        setLoadingMsgs(false);
+        setLoadingMore(false);
+      }
     },
-    {
-      id: '2',
-      text: "Hi Ethan, I'm Olivia. I'm glad to be part of this group. I've been struggling with this for a while, and I hope we can find strength together.",
-      sender: 'Olivia',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDnaJtlx9qXJGv4DJ3ShF5TyjvAsXiiKO14AHRPNgxqYrKaHc66-VgsOPNQk0kgLz5SCrmmEEfENtfoeQwGWZW8tHCtuC8OUz_LemzxcWoOt-DYIPQ752AS_nkIO3rrJDQ-lJRrQCEpkwo1HCnxQSvEpOnj4RC5_cjAEtkLoyKTJX4i4J1Jv_ibbyJkMIl7YgdBJL2hDuE0cyKe1XBOZjfVJUJDD22u5gcJfC_SOohMaNtG6MCknstdx5sAA2we1USk_tAFBb43RZNt',
-      timestamp: '10:32 AM',
-      isCurrentUser: false,
-    },
-    {
-      id: '3',
-      text: "Welcome, Ethan and Olivia! I'm Noah. It's not easy, but we can do this. Let's set some goals for the week and check in regularly.",
-      sender: 'You',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCDv2VoIhmwQjSM8MW8Ee4UIhDmycNqDmv2Jt38ywmD2gSNWvVFiSG8vNClaN8IUeVSHejgklIHQt--sQR1YPl8TQkG5-tQRE0SEmHWrl52W4QjO1MW9YCEtIfkzqGI31CWomnv0Vh84FrSt9XE-gBxuiFWpe3K_VBp9KVORfPgwbbnlt7Z6eF6O27e7fGcSA_vacW3c-Vdp8wNHvSS7-WgENt7Wa6HnLH_v6Mdff5MgDRzJUX7AtCxhUBNF7UwlZPwrF5UMhJiLtIK',
-      timestamp: '10:35 AM',
-      isCurrentUser: true,
-    },
-    {
-      id: '4',
-      text: "Sounds good, Noah. My goal is to avoid triggers and spend more time in prayer and Bible study.",
-      sender: 'Ethan',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAwbppk1rxtZzX1TmFJ9Pd3qPGT4GfHtFXsH_h94eFeJ6EeuFx7nMHoIMmjGxw5iqrsLDCDUOhNN1G_rgyWv8ij-RaNNu4c2LRjHBDoXbJM9q2A_g9NXt66xCitpJmHLj3d7i4jFMVLC4Qz4TWftdSIP29sFSJ7yIqq8hgCHjO5OXsDJjrAHxvECGoL6Xob7Oznqr8X_rV_eV5OgvR9pmOnvFjMlaBM6ljxEIxoyZRkew-uiHlJNdIWk6tmRaF84qMg6h1pSH_can4f',
-      timestamp: '10:37 AM',
-      isCurrentUser: false,
-    },
-    {
-      id: '5',
-      text: "I'll join you in that, Ethan. I'll also try to find healthier ways to cope with stress instead of turning to porn.",
-      sender: 'Olivia',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDHeCuZTLzF3kXxbd2xeNmy8njDgCR9rigT1i5fsOuXgOPXNXm5z4n3bk6P26bIHmcKi8OrD4RW3llzHH5D15HmjK4vh-nAewK51phu3xW4a2IMAC1aC7WmPLfv4rnWHFAdm9ZK3wF0P4xoTmn9NFpvsbc8ttTMDvk2gQGb4GXQdmnSZ-RdUgw1Sb8Ek-KXLiK1auzCV8Y-iJDEqMPLJ-O-dK2Z7xYqGwUM8jUQ7wptryHMsHN-xs3gEDydrLOwOzG62tK5JGt_9ia0',
-      timestamp: '10:39 AM',
-      isCurrentUser: false,
-    },
-    {
-      id: '6',
-      text: "Great! Let's keep each other updated on our progress. Remember, we're in this together.",
-      sender: 'You',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCern0GLQ4xDIuj7G1OMzDXBVtU9FAxGS4ElPvwUOyLKSEMsltU5ksxZXoeAcppPg0_I33Kxx5ehY-qjSEGSbejIOe07s2l3opuCkbrJS8FWlRvL--lvLJLK-bMMYUXox2fgDxHlKEIsK7-9YwUqaq_5MjhKgETc7NpRicyOtrVDvpcKOps43x0bw6a7GL0-tOYS2XMW6DXVg-eh7lNWCpilUAth7xWjxKe6CRajWA7j-GuWCy5jfzCUMNkpXIL6kZNe4QgYR4p7yNe',
-      timestamp: '10:41 AM',
-      isCurrentUser: true,
-    },
-  ]);
-  
-  const handleGoBack = () => {
-    if (navigation) {
-      navigation.goBack();
+    [groupId, nextCursor]
+  );
+
+  useEffect(() => {
+    loadMessages(true);
+  }, [loadMessages]);
+
+  const loadMembers = useCallback(async (reset = false) => {
+    if (!groupId) return;
+    try {
+      setMembersLoading(true);
+      const page = reset ? 1 : membersPage;
+      const resp = await groupService.listMembers(groupId, { page, pageSize: 20 });
+      // First item may include owner via role === 'owner'; capture owner id
+      const owner = resp.items.find((m) => m.role === 'owner');
+      if (owner) setOwnerId(owner.user.id);
+      setMembers((prev) => (reset ? resp.items : [...prev, ...resp.items]));
+      setMembersPage(page + 1);
+      setMembersHasMore(page < (resp.totalPages || 1));
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.message || 'Failed to load members');
+    } finally {
+      setMembersLoading(false);
     }
-  };
+  }, [groupId, membersPage]);
 
-  const handleGroupInfo = () => {
-    Alert.alert(
-      'Group Info',
-      `${groupName}\n${memberCount} members\n\nManage group settings and members`,
-      [{ text: 'OK' }]
-    );
-  };
+  const openMembers = useCallback(() => {
+    setMembersVisible(true);
+    setMembers([]);
+    setMembersPage(1);
+    setMembersHasMore(true);
+    // Delay to ensure modal open animation doesn't compete
+    setTimeout(() => loadMembers(true), 50);
+  }, [loadMembers]);
 
-  const handleSendMessage = () => {
-    if (messageText.trim()) {
-      // Here you would send the message to your backend
-      setMessageText('');
-    }
-  };
+  const closeMembers = useCallback(() => setMembersVisible(false), []);
 
-  const handleAttachment = () => {
-    Alert.alert(
-      'Add Attachment',
-      'Choose what to share',
-      [
+  const handleKick = useCallback(
+    async (targetUserId: number) => {
+      if (!groupId) return;
+      Alert.alert('Remove Member', 'Are you sure you want to remove this member?', [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Photo', onPress: () => {} },
-        { text: 'Scripture', onPress: () => {} },
-        { text: 'Prayer Request', onPress: () => {} }
-      ]
-    );
-  };
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await groupService.kickMember(groupId, targetUserId);
+              // Refresh members list optimistically
+              setMembers((prev) => prev.filter((m) => m.user.id !== targetUserId));
+            } catch (e: any) {
+              Alert.alert('Error', e?.response?.data?.message || 'Failed to remove member');
+            }
+          },
+        },
+      ]);
+    },
+    [groupId]
+  );
 
-  const renderMessage = (message: Message, index: number) => {
-    const isCurrentUser = message.isCurrentUser;
-    
+  const renderMember = ({ item }: { item: GroupMemberDTO }) => {
+    const name = item.user.firstName || item.user.lastName
+      ? `${item.user.firstName ?? ''} ${item.user.lastName ?? ''}`.trim()
+      : item.user.email;
+    const isOwnerBadge = item.role === 'owner';
+    const canKick = isOwner && item.role !== 'owner' && Number(currentUser?.id) !== item.user.id;
     return (
-      <View 
-        key={message.id}
-        style={[
-          styles.messageContainer,
-          isCurrentUser ? styles.currentUserMessage : styles.otherUserMessage
-        ]}
-      >
-        {!isCurrentUser && (
-          <Image source={{ uri: message.avatar }} style={styles.messageAvatar} />
-        )}
-        
-        <View style={styles.messageContent}>
-          {!isCurrentUser && (
-            <Text style={styles.messageSender}>{message.sender}</Text>
-          )}
-          {isCurrentUser && (
-            <Text style={[styles.messageSender, styles.currentUserSender]}>You</Text>
-          )}
-          
-          <View style={[
-            styles.messageBubble,
-            isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
-          ]}>
-            <Text style={[
-              styles.messageText,
-              isCurrentUser ? styles.currentUserText : styles.otherUserText
-            ]}>
-              {message.text}
-            </Text>
+      <Surface style={styles.memberRow} elevation={0}>
+        <View style={styles.memberLeft}>
+          <Icon name={Icons.user.avatar.name} size="lg" />
+          <View style={styles.memberText}>
+            <Text style={styles.memberName}>{name || item.user.email}</Text>
+            <Text style={styles.memberSub}>{item.user.email}</Text>
           </View>
         </View>
-        
-        {isCurrentUser && (
-          <Image source={{ uri: message.avatar }} style={styles.messageAvatar} />
-        )}
-      </View>
+        <View style={styles.memberRight}>
+          {isOwnerBadge && (
+            <View style={styles.ownerBadge}>
+              <Icon name="crown" library="MaterialCommunityIcons" color={Colors.warning.main} size={18} />
+              <Text style={styles.ownerLabel}>Owner</Text>
+            </View>
+          )}
+          {canKick && (
+            <TouchableOpacity onPress={() => handleKick(item.user.id)}>
+              <Icon name={Icons.navigation.delete.name} color={Colors.error.main} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </Surface>
     );
   };
+
+  const [addEmail, setAddEmail] = useState('');
+  const handleInvite = useCallback(async () => {
+    if (!groupId || !addEmail.trim()) return;
+    try {
+      const list = addEmail
+        .split(',')
+        .map((e) => e.trim())
+        .filter(Boolean);
+      await groupService.inviteMembers(groupId, list);
+      Alert.alert('Invites sent', 'Invitation emails have been sent.');
+      setAddEmail('');
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.message || 'Failed to send invites');
+    }
+  }, [groupId, addEmail]);
+
+  const handleLeaveGroup = useCallback(() => {
+    if (!groupId) return;
+    Alert.alert('Leave Group', 'Are you sure you want to leave this group?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Leave',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await groupService.leaveGroup(groupId);
+            setMembersVisible(false);
+            navigation?.goBack?.();
+          } catch (e: any) {
+            Alert.alert('Error', e?.response?.data?.message || 'Failed to leave group');
+          }
+        },
+      },
+    ]);
+  }, [groupId, navigation]);
+
+  const handleSend = useCallback(async () => {
+    const text = inputText.trim();
+    if (!groupId || !text || sending) return;
+    try {
+      setSending(true);
+      const msg = await groupService.sendMessage(groupId, { text });
+      // Prepend to newest-first list
+      setMessages((prev) => [msg, ...prev]);
+      setInputText('');
+    } catch (e) {
+      Alert.alert('Error', 'Failed to send message');
+    } finally {
+      setSending(false);
+    }
+  }, [groupId, inputText, sending]);
+
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
+    try {
+      setRefreshing(true);
+      await loadMessages(true);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshing, loadMessages]);
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-          <Icon 
-            name={Icons.navigation.back.name} 
-            color={Colors.text.primary} 
-            size="md" 
-          />
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
+          <Icon name={Icons.navigation.back.name} />
         </TouchableOpacity>
-        
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>{groupName}</Text>
-          <Text style={styles.headerSubtitle}>{memberCount} members</Text>
+        <Text style={styles.headerTitle}>{groupName || 'Group Chat'}</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.headerIconButton} onPress={openMembers}>
+            <Icon name={Icons.tabs.accountability.name} />
+          </TouchableOpacity>
         </View>
-        
-        <TouchableOpacity style={styles.infoButton} onPress={handleGroupInfo}>
-          <Icon 
-            name="information-circle-outline" 
-            color={Colors.text.primary} 
-            size="md" 
-          />
-        </TouchableOpacity>
       </View>
 
-      {/* Messages */}
-      <KeyboardAvoidingView 
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView 
-          style={styles.messagesContainer}
-          contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {messages.map((message, index) => renderMessage(message, index))}
-        </ScrollView>
+      {/* Messages List */}
+      <FlatList
+        data={messages}
+        keyExtractor={(m) => m.id}
+        inverted
+        contentContainerStyle={{ padding: 12 }}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        renderItem={({ item }) => {
+          const mine = currentUser && String(item.author.id) === String(currentUser.id);
+          return (
+            <View style={[styles.msgRow, mine ? styles.msgRowMine : styles.msgRowOther]}>
+              <View style={[styles.msgBubble, mine ? styles.msgBubbleMine : styles.msgBubbleOther]}>
+                {item.text ? <Text style={mine ? styles.msgTextMine : styles.msgTextOther}>{item.text}</Text> : null}
+                <Text style={styles.msgTime}>{new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+              </View>
+            </View>
+          );
+        }}
+        onEndReachedThreshold={0.4}
+        onEndReached={() => {
+          if (!loadingMore && nextCursor) {
+            loadMessages(false);
+          }
+        }}
+        ListFooterComponent={loadingMore ? <ActivityIndicator style={{ paddingVertical: 12 }} /> : null}
+        ListEmptyComponent={
+          loadingMsgs ? (
+            <ActivityIndicator style={{ marginTop: 24 }} />
+          ) : (
+            <Text style={{ color: Colors.text.secondary, textAlign: 'center', marginTop: 24 }}>No messages yet</Text>
+          )
+        }
+        style={{ flex: 1 }}
+      />
 
-        {/* Message Input */}
-        <View style={styles.inputContainer}>
-          <View style={styles.inputRow}>
-            <TextInput
-              style={styles.messageInput}
-              mode="outlined"
-              placeholder={`Message ${groupName}`}
-              value={messageText}
-              onChangeText={setMessageText}
-              multiline
-              maxLength={500}
-              outlineColor="transparent"
-              activeOutlineColor="transparent"
-              textColor={Colors.text.primary}
-              placeholderTextColor={Colors.text.secondary}
-              theme={{
-                colors: {
-                  surface: Colors.background.secondary,
-                  onSurface: Colors.text.primary,
-                  outline: 'transparent',
-                }
-              }}
-            />
-            
-            <TouchableOpacity 
-              style={styles.attachmentButton}
-              onPress={handleAttachment}
-            >
-              <Icon 
-                name="add-outline" 
-                color={Colors.text.primary} 
-                size="md" 
-              />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[
-                styles.sendButton,
-                messageText.trim() ? styles.sendButtonActive : styles.sendButtonInactive
-              ]}
-              onPress={handleSendMessage}
-              disabled={!messageText.trim()}
-            >
-              <Icon 
-                name="send-outline" 
-                color={messageText.trim() ? Colors.white : Colors.text.secondary} 
-                size="md" 
-              />
+      {/* Composer */}
+      <Surface style={styles.composer} elevation={2}>
+        <TextInput
+          mode="outlined"
+          placeholder="Type a message"
+          value={inputText}
+          onChangeText={setInputText}
+          style={{ flex: 1 }}
+        />
+        <TouchableOpacity style={styles.sendBtn} onPress={handleSend} disabled={sending || !inputText.trim()}>
+          <Icon name={Icons.actions.send.name} color={sending || !inputText.trim() ? Colors.text.tertiary : Colors.primary.main} />
+        </TouchableOpacity>
+      </Surface>
+
+      {/* Members Modal */}
+      <Portal>
+        <Modal visible={membersVisible} onDismiss={closeMembers} contentContainerStyle={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Members</Text>
+            <TouchableOpacity onPress={closeMembers}>
+              <Icon name={Icons.navigation.close.name} />
             </TouchableOpacity>
           </View>
-        </View>
-      </KeyboardAvoidingView>
+
+          {isOwner && (
+            <Surface style={styles.inviteRow} elevation={0}>
+              <TextInput
+                mode="outlined"
+                style={{ flex: 1 }}
+                placeholder="Enter emails, comma separated"
+                value={addEmail}
+                onChangeText={setAddEmail}
+              />
+              <Button mode="contained" onPress={handleInvite} style={{ marginLeft: 8 }}>
+                Invite
+              </Button>
+            </Surface>
+          )}
+
+          <FlatList
+            data={members}
+            keyExtractor={(m) => String(m.user.id)}
+            renderItem={renderMember}
+            onEndReachedThreshold={0.4}
+            onEndReached={() => membersHasMore && !membersLoading && loadMembers()}
+            ListFooterComponent={
+              membersLoading ? (
+                <Text style={{ color: Colors.text.secondary, textAlign: 'center', padding: 12 }}>Loading…</Text>
+              ) : null
+            }
+            style={{ maxHeight: 420 }}
+          />
+
+          {!isOwner && (
+            <View style={{ marginTop: 12 }}>
+              <Button mode="contained" buttonColor={Colors.error.main} onPress={handleLeaveGroup}>
+                Leave Group
+              </Button>
+            </View>
+          )}
+        </Modal>
+      </Portal>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-
-  // Header
+  container: { flex: 1, backgroundColor: Colors.background.primary },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: Colors.background.primary,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border.primary,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
-  backButton: {
-    padding: 8,
-  },
-  headerInfo: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text.primary,
-    marginBottom: 2,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: Colors.text.secondary,
-  },
-  infoButton: {
-    padding: 8,
-  },
+  backButton: { padding: 8 },
+  headerTitle: { flex: 1, textAlign: 'center', color: Colors.text.primary, fontWeight: '700', fontSize: 16 },
+  headerActions: { width: 40, alignItems: 'flex-end' },
+  headerIconButton: { padding: 6 },
+  msgRow: { flexDirection: 'row', marginBottom: 8 },
+  msgRowMine: { justifyContent: 'flex-end' },
+  msgRowOther: { justifyContent: 'flex-start' },
+  msgBubble: { maxWidth: '80%', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
+  msgBubbleMine: { backgroundColor: Colors.primary.main, borderTopRightRadius: 2 },
+  msgBubbleOther: { backgroundColor: Colors.background.secondary, borderTopLeftRadius: 2, borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border.primary },
+  msgTextMine: { color: Colors.white },
+  msgTextOther: { color: Colors.text.primary },
+  msgTime: { color: Colors.text.secondary, fontSize: 10, marginTop: 4 },
 
-  // Messages
-  messagesContainer: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  messagesContent: {
-    padding: 16,
-    paddingBottom: 24,
-    gap: 24,
-  },
-  messageContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'flex-start',
-  },
-  currentUserMessage: {
-    justifyContent: 'flex-end',
-  },
-  otherUserMessage: {
-    justifyContent: 'flex-start',
-  },
-  messageAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  messageContent: {
-    flex: 1,
-    maxWidth: '75%',
-  },
-  messageSender: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: Colors.text.secondary,
-    marginBottom: 4,
-  },
-  currentUserSender: {
-    textAlign: 'right',
-  },
-  messageBubble: {
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    maxWidth: '100%',
-  },
-  currentUserBubble: {
-    backgroundColor: Colors.primary.main,
-    borderBottomRightRadius: 4,
-  },
-  otherUserBubble: {
+  composer: { flexDirection: 'row', alignItems: 'center', padding: 8, gap: 8, borderTopWidth: 1, borderTopColor: Colors.border.primary },
+  sendBtn: { padding: 8 },
+
+  modalContainer: {
     backgroundColor: Colors.background.secondary,
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  currentUserText: {
-    color: Colors.white,
-  },
-  otherUserText: {
-    color: Colors.text.primary,
-  },
-
-  // Input
-  inputContainer: {
-    backgroundColor: Colors.background.primary,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border.primary,
+    margin: 16,
+    borderRadius: 12,
     padding: 12,
   },
-  inputRow: {
+  modalHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  messageInput: {
-    flex: 1,
-    backgroundColor: Colors.background.secondary,
-    borderRadius: 24,
-    maxHeight: 100,
-    fontSize: 16,
-  },
-  attachmentButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primary.main,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
+  modalTitle: { color: Colors.text.primary, fontSize: 18, fontWeight: '700' },
+  memberRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border.primary,
   },
-  sendButtonActive: {
-    backgroundColor: Colors.primary.main,
-  },
-  sendButtonInactive: {
-    backgroundColor: Colors.background.secondary,
-  },
+  memberLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  memberText: { },
+  memberName: { color: Colors.text.primary, fontWeight: '600' },
+  memberSub: { color: Colors.text.secondary, fontSize: 12 },
+  memberRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  ownerBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 6 },
+  ownerLabel: { color: Colors.warning.main, fontSize: 12, fontWeight: '600' },
+  inviteRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
+  ownerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
 });
 
 export default GroupChatScreen;
+
+

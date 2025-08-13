@@ -1,389 +1,309 @@
 /**
- * Onboarding Screen 6 - Faith Background & Customization
+ * Onboarding Screen 7 
  * 
- * Sixth onboarding screen for collecting faith background information
- * to customize the spiritual experience.
+ * Final onboarding screen that shows a circular progress indicator
+ * while personalizing user data, then provides a continue button
+ * to proceed to authentication.
  * 
  * Features:
- * - Progress indicator (Step 5 of 7)
- * - Faith-focused form fields
- * - Church imagery and cross icon
- * - Spiritual customization options
- * - Bible verse encouragement
+ * - Full screen circular progress indicator
+ * - "Personalizing user data" message
+ * - Continue button that navigates to AuthScreen
+ * - Clean, minimal design
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
-  ImageBackground,
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { Text, TextInput, Chip } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Picker } from '@react-native-picker/picker';
 
 import OnboardingButton from '../../components/OnboardingButton';
+import OnboardingCard from '../../components/OnboardingCard';
 import ProgressIndicator from '../../components/ProgressIndicator';
-import { Colors, ColorUtils } from '../../constants';
+import { Colors } from '../../constants';
 
 // Redux imports
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { saveFaithData } from '../../store/slices/onboardingSlice';
+import { saveRecoveryJourneyData } from '../../store/slices/onboardingSlice';
 
 interface Onboarding6ScreenProps {
   navigation: any;
-  route: {
-    params?: {
-      userData?: any;
-      assessmentData?: any;
-    };
-  };
 }
 
-interface FaithData {
-  relationshipWithJesus: string;
-  churchInvolvement: string;
-  prayerFrequency: string;
-  christianInfluences: string;
-  bibleTranslation: string;
-  spiritualStruggle: string;
+interface FormData {
+  recoveryGoal: string;
+  recoveryMotivation: string;
+  hasSoughtHelpBefore: string;
+  previousHelpDescription: string;
 }
 
 /**
- * Sixth Onboarding Screen Component
- * 
- * Faith background and customization form.
+ * Recovery Journey Personalization Screen Component
  */
-const Onboarding6Screen: React.FC<Onboarding6ScreenProps> = ({ navigation, route }) => {
+const Onboarding6Screen: React.FC<Onboarding6ScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   
-  // Get data from Redux store (persisted) or route params (fallback)
-  const storedPersonalInfo = useAppSelector(state => state.onboarding.personalInfo);
-  const storedAssessmentData = useAppSelector(state => state.onboarding.assessmentData);
-  const existingFaithData = useAppSelector(state => state.onboarding.faithData);
+  // Get existing data from Redux store
+  const existingData = useAppSelector(state => state.onboarding.recoveryJourneyData);
   
-  const userData = route.params?.userData || storedPersonalInfo;
-  const assessmentData = route.params?.assessmentData || storedAssessmentData;
-  const userName = userData?.firstName || storedPersonalInfo.firstName || 'Friend';
-
-  // Initialize faith data with existing data if available
-  const [faithData, setFaithData] = useState<FaithData>({
-    relationshipWithJesus: existingFaithData.relationshipWithJesus || '',
-    churchInvolvement: existingFaithData.churchInvolvement || '',
-    prayerFrequency: existingFaithData.prayerFrequency || '',
-    christianInfluences: existingFaithData.christianInfluences || '',
-    bibleTranslation: existingFaithData.bibleTranslation || '',
-    spiritualStruggle: existingFaithData.spiritualStruggle || '',
+  // Initialize form data with existing data if available
+  const [formData, setFormData] = useState<FormData>({
+    recoveryGoal: existingData?.recoveryGoal || '',
+    recoveryMotivation: existingData?.recoveryMotivation || '',
+    hasSoughtHelpBefore: existingData?.hasSoughtHelpBefore || '',
+    previousHelpDescription: existingData?.previousHelpDescription || '',
   });
 
-  // State for managing individual Christian influences as tags
-  const [christianInfluencesList, setChristianInfluencesList] = useState<string[]>(() => {
-    // Parse existing christianInfluences string into array
-    const existing = existingFaithData.christianInfluences || '';
-    return existing ? existing.split(',').map(influence => influence.trim()).filter(Boolean) : [];
-  });
+  const [currentQuestion, setCurrentQuestion] = useState(0);
   
-  // Temporary state for the input field
-  const [currentInfluenceInput, setCurrentInfluenceInput] = useState('');
+  // Question configuration
+  const questions = [
+    {
+      id: 'recovery-goal',
+      title: 'Primary Recovery Goal',
+      subtitle: 'What is the main thing you hope to achieve?',
+      field: 'recoveryGoal' as keyof FormData,
+      type: 'picker',
+      options: [
+        { label: 'Select your goal', value: '' },
+        { label: 'Break free from pornography', value: 'break-free' },
+        { label: 'Heal my relationships', value: 'heal-relationships' },
+        { label: 'Understand my triggers', value: 'understand-triggers' },
+        { label: 'Build a healthier lifestyle', value: 'healthier-lifestyle' },
+        { label: 'Other', value: 'other' },
+      ],
+      required: true,
+    },
+    {
+      id: 'recovery-motivation',
+      title: 'Your Motivation',
+      subtitle: 'What is your biggest motivation for this journey?',
+      field: 'recoveryMotivation' as keyof FormData,
+      type: 'picker',
+      options: [
+        { label: 'Select motivation', value: '' },
+        { label: 'My faith', value: 'faith' },
+        { label: 'My family/partner', value: 'family-partner' },
+        { label: 'My personal integrity', value: 'personal-integrity' },
+        { label: 'Future relationships', value: 'future-relationships' },
+        { label: 'Other', value: 'other' },
+      ],
+      required: true,
+    },
+    {
+      id: 'sought-help-before',
+      title: 'Previous Support',
+      subtitle: 'Have you sought help for this before?',
+      field: 'hasSoughtHelpBefore' as keyof FormData,
+      type: 'picker',
+      options: [
+        { label: 'Select an answer', value: '' },
+        { label: 'Yes, I have', value: 'yes' },
+        { label: 'No, this is my first time', value: 'no' },
+        { label: 'Prefer not to say', value: 'prefer-not-to-say' },
+      ],
+      required: true,
+    },
+    {
+      id: 'previous-help-description',
+      title: 'Previous Support Details',
+      subtitle: 'If you have sought help, what did that look like?',
+      field: 'previousHelpDescription' as keyof FormData,
+      type: 'picker',
+      options: [
+        { label: 'Select what applies', value: '' },
+        { label: 'Therapy or counseling', value: 'therapy' },
+        { label: 'Support groups (12-step, etc.)', value: 'support-groups' },
+        { label: 'Church or spiritual guidance', value: 'church-guidance' },
+        { label: 'I tried on my own', value: 'on-my-own' },
+        { label: 'Other', value: 'other' },
+      ],
+      required: false,
+      condition: () => formData.hasSoughtHelpBefore === 'yes',
+    },
+  ];
 
-  // Helper functions for managing Christian influences
-  const addInfluence = (influence: string) => {
-    const trimmedInfluence = influence.trim();
-    if (trimmedInfluence && !christianInfluencesList.includes(trimmedInfluence)) {
-      const newList = [...christianInfluencesList, trimmedInfluence];
-      setChristianInfluencesList(newList);
-      
-      // Update faithData with the new list as a comma-separated string
-      const updatedData = {...faithData, christianInfluences: newList.join(', ')};
-      setFaithData(updatedData);
-      
-      // Clear the input
-      setCurrentInfluenceInput('');
-    }
-  };
+  // Filter questions based on conditions
+  const activeQuestions = questions.filter(q => !q.condition || q.condition());
 
-  const removeInfluence = (influenceToRemove: string) => {
-    const newList = christianInfluencesList.filter(influence => influence !== influenceToRemove);
-    setChristianInfluencesList(newList);
-    
-    // Update faithData with the new list as a comma-separated string
-    const updatedData = {...faithData, christianInfluences: newList.join(', ')};
-    setFaithData(updatedData);
-  };
-
-  const handleInfluenceInputSubmit = () => {
-    if (currentInfluenceInput.includes(',')) {
-      // Handle multiple influences separated by commas
-      const influences = currentInfluenceInput.split(',');
-      influences.forEach(influence => {
-        const trimmed = influence.trim();
-        if (trimmed && !christianInfluencesList.includes(trimmed)) {
-          addInfluence(trimmed);
-        }
-      });
-      setCurrentInfluenceInput('');
-    } else if (currentInfluenceInput.trim()) {
-      // Handle single influence
-      addInfluence(currentInfluenceInput);
-    }
-  };
-
-  const handleContinue = () => {
-    // Save faith data to Redux store (persisted to AsyncStorage)
-    dispatch(saveFaithData(faithData));
-    
-    // Debug log to see what we're saving
-    console.log('Faith data saved to Redux store:', faithData);
-    
-    // Navigate to next screen (data is now persisted)
-    navigation.navigate('Onboarding7', { 
-      userData: userData,
-      assessmentData: assessmentData,
-      faithData: faithData 
-    });
-  };
+  const currentQuestionData = activeQuestions[currentQuestion];
 
   const handleBack = () => {
-    navigation.goBack();
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
+    } else {
+      navigation.goBack();
+    }
   };
+
+  const handleValueChange = (value: string) => {
+    if (currentQuestionData) {
+      const updatedData = { ...formData, [currentQuestionData.field]: value };
+      setFormData(updatedData);
+      
+      // Auto-save to Redux store
+      dispatch(saveRecoveryJourneyData(updatedData));
+    }
+  };
+
+  const handleNext = () => {
+    if (currentQuestionData?.required && !formData[currentQuestionData.field]) {
+      Alert.alert('Response Required', 'Please select an option to continue.');
+      return;
+    }
+
+    if (currentQuestion < activeQuestions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      handleFinish();
+    }
+  };
+
+  const handleSkip = () => {
+    if (currentQuestion < activeQuestions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      handleFinish();
+    }
+  };
+
+  const handleFinish = () => {
+    // Final save with completion timestamp
+    dispatch(saveRecoveryJourneyData({
+      ...formData,
+      completedAt: new Date().toISOString(),
+    }));
+
+    // Navigate to next screen
+    navigation.navigate('Onboarding7');
+  };
+
+  // Auto-advance for conditional question changes
+  useEffect(() => {
+    if (formData.hasSoughtHelpBefore !== 'yes' && formData.previousHelpDescription) {
+      setFormData(prev => ({ ...prev, previousHelpDescription: '' }));
+    }
+  }, [formData.hasSoughtHelpBefore]);
+
+  if (!currentQuestionData) {
+    return null; // Safety check
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
       >
-        {/* Header Background */}
-        <View style={styles.headerBackground}>
-          <ImageBackground
-            source={{
-              uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDbBpyFIzlUyiV1vieF5_3Iu10xWogYT7GfZ2-2UKjTcsanDzxdFa_Jho0BoCVICy6ix3R7Y3Dj6Zj0mvFG_IMYov07fuHJWfvWiPKXccAe7HZQ_qVm206Rp6BnnICXad1Zel9lcy53ywJJpNxC4BA_tawVhZLwtrrH115Tb15ABMgX46zEmMCwdBWIJwndasaLHOdoHTKQDlaLXIFiFgkI2pHg4LzZPhkM8d5JK4uXcN0e2FeZyQ3YXgDcenpHrOEnHz2ku8by5YsI'
-            }}
-            style={styles.backgroundImage}
-            resizeMode="cover"
-          >
-            <View style={styles.overlay} />
-          </ImageBackground>
+        {/* Header with Back Button and Progress */}
+        <View style={styles.headerContainer}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
           
-          {/* Cross Icon */}
-          <View style={styles.iconContainer}>
-            <Text style={styles.crossIcon}>✝️</Text>
+          <View style={styles.progressWrapper}>
+            <ProgressIndicator
+              currentStep={6}
+              totalSteps={9}
+              variant="bars"
+              showStepText={true}
+            />
           </View>
+          
+          <View style={styles.headerSpacer} />
         </View>
 
-        {/* Progress Indicator */}
-        <View style={styles.progressContainer}>
-          <ProgressIndicator
-            currentStep={5}
-            totalSteps={7}
-            variant="bars"
-            showStepText={true}
-          />
+        {/* Question Progress */}
+        <View style={styles.questionProgressContainer}>
+          <Text style={styles.questionProgress}>
+            {currentQuestion + 1} of {activeQuestions.length}
+          </Text>
         </View>
 
-        {/* Main Content */}
-        <View style={styles.contentContainer}>
-          <Text style={styles.mainTitle}>
-            {userName}, Let's Tailor Your Faith Journey
-          </Text>
-          <Text style={styles.subtitle}>
-            Your relationship with Christ is unique. Let's customize your experience to reflect your personal faith journey.
-          </Text>
-
-          {/* Faith Form */}
-          <View style={styles.formContainer}>
-            {/* Relationship with Jesus */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>How would you describe your relationship with Jesus?</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={faithData.relationshipWithJesus}
-                  onValueChange={(value) => {
-                    const updatedData = {...faithData, relationshipWithJesus: value};
-                    setFaithData(updatedData);
-                  }}
-                  style={styles.picker}
-                  dropdownIconColor={Colors.text.secondary}
-                >
-                  <Picker.Item label="Growing closer" value="growing-closer" color={Colors.text.primary} />
-                  <Picker.Item label="Just starting" value="just-starting" color={Colors.text.primary} />
-                  <Picker.Item label="It's complicated" value="complicated" color={Colors.text.primary} />
-                  <Picker.Item label="Strong" value="strong" color={Colors.text.primary} />
-                </Picker>
-              </View>
-            </View>
-
-            {/* Church Involvement */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>How involved are you in a church community?</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={faithData.churchInvolvement}
-                  onValueChange={(value) => {
-                    const updatedData = {...faithData, churchInvolvement: value};
-                    setFaithData(updatedData);
-                  }}
-                  style={styles.picker}
-                  dropdownIconColor={Colors.text.secondary}
-                >
-                  <Picker.Item label="Very involved" value="very-involved" color={Colors.text.primary} />
-                  <Picker.Item label="Somewhat involved" value="somewhat-involved" color={Colors.text.primary} />
-                  <Picker.Item label="Not currently involved" value="not-involved" color={Colors.text.primary} />
-                  <Picker.Item label="Looking for a church" value="looking" color={Colors.text.primary} />
-                </Picker>
-              </View>
-            </View>
-
-            {/* Prayer Frequency */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>How often do you pray?</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={faithData.prayerFrequency}
-                  onValueChange={(value) => {
-                    const updatedData = {...faithData, prayerFrequency: value};
-                    setFaithData(updatedData);
-                  }}
-                  style={styles.picker}
-                  dropdownIconColor={Colors.text.secondary}
-                >
-                  <Picker.Item label="Daily" value="daily" color={Colors.text.primary} />
-                  <Picker.Item label="A few times a week" value="few-times-week" color={Colors.text.primary} />
-                  <Picker.Item label="Occasionally" value="occasionally" color={Colors.text.primary} />
-                  <Picker.Item label="Rarely" value="rarely" color={Colors.text.primary} />
-                </Picker>
-              </View>
-            </View>
-
-            {/* Christian Influences */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Who are your biggest Christian influences?</Text>
-              
-              {/* Display current influences as chips/tags */}
-              {christianInfluencesList.length > 0 && (
-                <View style={styles.influencesContainer}>
-                  {christianInfluencesList.map((influence, index) => (
-                    <Chip
-                      key={index}
-                      mode="outlined"
-                      onClose={() => removeInfluence(influence)}
-                      style={styles.influenceChip}
-                      textStyle={styles.influenceChipText}
-                      closeIconAccessibilityLabel={`Remove ${influence}`}
-                    >
-                      {influence}
-                    </Chip>
-                  ))}
-                </View>
-              )}
-              
-              {/* Input for adding new influences */}
-              <TextInput
-                mode="outlined"
-                label="Add a Christian influence"
-                placeholder="e.g., C.S. Lewis, Pastor John, my mentor"
-                value={currentInfluenceInput}
-                onChangeText={setCurrentInfluenceInput}
-                onSubmitEditing={handleInfluenceInputSubmit}
-                onBlur={handleInfluenceInputSubmit}
-                style={styles.input}
-                contentStyle={styles.inputContent}
-                outlineStyle={styles.inputOutline}
-                right={
-                  currentInfluenceInput.trim() ? (
-                    <TextInput.Icon
-                      icon="plus"
-                      onPress={handleInfluenceInputSubmit}
-                    />
-                  ) : null
-                }
-                theme={{
-                  colors: {
-                    onSurfaceVariant: Colors.text.secondary,
-                    outline: Colors.border.primary,
-                    primary: Colors.primary.main,
-                    surface: Colors.background.tertiary,
-                    onSurface: Colors.text.primary,
-                  }
-                }}
-              />
-              
-              <Text style={styles.helperText}>
-                Add influences one by one or separate multiple with commas. Tap the X to remove.
-              </Text>
-            </View>
-
-            {/* Bible Translation */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>What is your preferred Bible translation?</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={faithData.bibleTranslation}
-                  onValueChange={(value) => {
-                    const updatedData = {...faithData, bibleTranslation: value};
-                    setFaithData(updatedData);
-                  }}
-                  style={styles.picker}
-                  dropdownIconColor={Colors.text.secondary}
-                >
-                  <Picker.Item label="NIV" value="niv" color={Colors.text.primary} />
-                  <Picker.Item label="ESV" value="esv" color={Colors.text.primary} />
-                  <Picker.Item label="KJV" value="kjv" color={Colors.text.primary} />
-                  <Picker.Item label="NLT" value="nlt" color={Colors.text.primary} />
-                  <Picker.Item label="Other" value="other" color={Colors.text.primary} />
-                </Picker>
-              </View>
-            </View>
-
-            {/* Spiritual Struggle */}
-            <View style={styles.inputContainer}>
-              <TextInput
-                mode="outlined"
-                label="What is your biggest spiritual struggle?"
-                placeholder="e.g., Consistency in prayer, doubt"
-                value={faithData.spiritualStruggle}
-                onChangeText={(text) => {
-                  const updatedData = {...faithData, spiritualStruggle: text};
-                  setFaithData(updatedData);
-                }}
-                style={styles.input}
-                contentStyle={styles.inputContent}
-                outlineStyle={styles.inputOutline}
-                theme={{
-                  colors: {
-                    onSurfaceVariant: Colors.text.secondary,
-                    outline: Colors.border.primary,
-                    primary: Colors.primary.main,
-                    surface: Colors.background.tertiary,
-                    onSurface: Colors.text.primary,
-                  }
-                }}
-              />
-            </View>
-          </View>
-
-          {/* Bible Verse */}
-          <View style={styles.verseContainer}>
-            <Text style={styles.verseText}>
-              "Come to me, all you who are weary and burdened, and I will give you rest."
+        {/* Question Card */}
+        <View style={styles.questionContainer}>
+          <OnboardingCard style={styles.questionCard}>
+            <Text style={styles.questionTitle}>
+              {currentQuestionData.title}
             </Text>
-            <Text style={styles.verseReference}>
-              Matthew 11:28
+            <Text style={styles.questionSubtitle}>
+              {currentQuestionData.subtitle}
             </Text>
-          </View>
+
+            {/* Options */}
+            <View style={styles.optionsContainer}>
+              {currentQuestionData.options.map((option) => (
+                // Render picker items as selectable cards
+                option.value ? (
+                  <TouchableOpacity
+                    key={option.value}
+                    onPress={() => handleValueChange(option.value)}
+                    style={
+                      formData[currentQuestionData.field] === option.value
+                        ? [styles.optionCard, styles.selectedOptionCard]
+                        : styles.optionCard
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <OnboardingCard style={[
+                      styles.optionCardInner,
+                      formData[currentQuestionData.field] === option.value && styles.selectedOptionCardInner
+                    ] as any}>
+                      <View style={styles.optionContent}>
+                        <View style={styles.optionTextContainer}>
+                          <Text style={
+                            formData[currentQuestionData.field] === option.value
+                              ? [styles.optionLabel, styles.selectedOptionLabel]
+                              : styles.optionLabel
+                          }>{option.label}</Text>
+                        </View>
+                        {formData[currentQuestionData.field] === option.value ? (
+                          <Text style={styles.checkIcon}>✓</Text>
+                        ) : (
+                          <Text style={styles.chevronIcon}>›</Text>
+                        )}
+                      </View>
+                    </OnboardingCard>
+                  </TouchableOpacity>
+                ) : null
+              ))}
+            </View>
+          </OnboardingCard>
+
+          {/* Privacy Notice */}
+          <OnboardingCard style={styles.privacyCard}>
+            <Text style={styles.privacyIcon}>🔒</Text>
+            <Text style={styles.privacyTitle}>Your Privacy Matters</Text>
+            <Text style={styles.privacyText}>
+              All information is securely encrypted and only used to personalize your recovery journey. 
+              You can skip any question you're not comfortable answering.
+            </Text>
+          </OnboardingCard>
         </View>
       </ScrollView>
 
-      {/* Bottom Action */}
-      <View style={styles.bottomContainer}>
+      {/* Action Buttons */}
+      <View style={styles.buttonContainer}>
+        {!currentQuestionData.required && (
+          <OnboardingButton
+            title="Skip"
+            onPress={handleSkip}
+            variant="secondary"
+            style={styles.skipButton}
+          />
+        )}
+        
         <OnboardingButton
-          title="Customize My Experience"
-          onPress={handleContinue}
+          title={currentQuestion === activeQuestions.length - 1 ? "Continue" : "Next"}
+          onPress={handleNext}
           variant="primary"
+          style={styles.nextButton}
         />
       </View>
     </SafeAreaView>
@@ -397,134 +317,137 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 100, // Space for bottom button
+    paddingBottom: 120, // Space for buttons
   },
-  headerBackground: {
-    height: 160,
-    position: 'relative',
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
+  backIcon: {
+    fontSize: 24,
+    color: Colors.text.primary,
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(18, 18, 18, 0.9)',
-  },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(245, 153, 61, 0.2)',
+  progressWrapper: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
+    marginHorizontal: 16,
   },
-  crossIcon: {
-    fontSize: 32,
-    color: '#f5993d',
+  headerSpacer: {
+    width: 40,
   },
-  progressContainer: {
+  questionProgressContainer: {
     paddingHorizontal: 24,
     paddingVertical: 16,
+    alignItems: 'center',
   },
-  contentContainer: {
+  questionProgress: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    fontWeight: '500',
+  },
+  questionContainer: {
     paddingHorizontal: 24,
+    gap: 24,
   },
-  mainTitle: {
-    fontSize: 28,
+  questionCard: {
+    backgroundColor: Colors.background.secondary,
+    padding: 24,
+  },
+  questionTitle: {
+    fontSize: 24,
     fontWeight: '700',
     color: Colors.text.primary,
+    marginBottom: 12,
     textAlign: 'center',
-    marginBottom: 8,
   },
-  subtitle: {
+  questionSubtitle: {
     fontSize: 16,
     color: Colors.text.secondary,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
     marginBottom: 32,
   },
-  formContainer: {
-    gap: 20,
-    marginBottom: 32,
+  optionsContainer: {
+    gap: 12,
   },
-  inputContainer: {
-    marginBottom: 4,
+  optionCard: {
+    transform: [{ scale: 1 }],
   },
-  inputLabel: {
-    fontSize: 14,
+  selectedOptionCard: {
+    transform: [{ scale: 1.02 }],
+  },
+  optionCardInner: {
+    margin: 0,
+    padding: 16,
+    backgroundColor: Colors.background.tertiary,
+    borderWidth: 1,
+    borderColor: Colors.border.primary,
+  },
+  selectedOptionCardInner: {
+    borderColor: Colors.primary.main,
+    borderWidth: 2,
+    backgroundColor: `${Colors.primary.main}10`,
+  },
+  optionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  optionTextContainer: {
+    flex: 1,
+  },
+  optionLabel: {
+    fontSize: 16,
+    color: Colors.text.primary,
     fontWeight: '500',
+  },
+  selectedOptionLabel: {
+    color: Colors.primary.main,
+    fontWeight: '600',
+  },
+  checkIcon: {
+    fontSize: 24,
+    color: Colors.primary.main,
+    fontWeight: 'bold',
+  },
+  chevronIcon: {
+    fontSize: 24,
+    color: Colors.text.secondary,
+  },
+  privacyCard: {
+    backgroundColor: `${Colors.primary.main}10`, // 10% opacity
+    borderWidth: 1,
+    borderColor: `${Colors.primary.main}30`, // 30% opacity
+    alignItems: 'center',
+    padding: 20,
+  },
+  privacyIcon: {
+    fontSize: 32,
+    marginBottom: 12,
+  },
+  privacyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     color: Colors.text.primary,
     marginBottom: 8,
+    textAlign: 'center',
   },
-  input: {
-    backgroundColor: Colors.background.tertiary,
-  },
-  inputContent: {
-    color: Colors.text.primary,
-  },
-  inputOutline: {
-    borderColor: Colors.border.primary,
-    borderWidth: 1,
-  },
-  pickerContainer: {
-    backgroundColor: Colors.background.tertiary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border.primary,
-    overflow: 'hidden',
-  },
-  picker: {
-    color: Colors.text.primary,
-    backgroundColor: 'transparent',
-  },
-  influencesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-    marginBottom: 12,
-    paddingVertical: 8,
-  },
-  influenceChip: {
-    backgroundColor: ColorUtils.withOpacity(Colors.primary.main, 0.1),
-    borderColor: Colors.primary.main,
-    borderWidth: 1,
-    borderRadius: 20,
-    marginBottom: 4,
-  },
-  influenceChipText: {
-    color: Colors.text.primary,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  helperText: {
-    fontSize: 12,
-    color: Colors.text.secondary,
-    marginTop: 4,
-    lineHeight: 16,
-  },
-  verseContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  verseText: {
+  privacyText: {
     fontSize: 14,
     color: Colors.text.secondary,
     textAlign: 'center',
-    fontStyle: 'italic',
-    marginBottom: 4,
+    lineHeight: 20,
   },
-  verseReference: {
-    fontSize: 12,
-    color: Colors.text.secondary,
-    fontStyle: 'italic',
-  },
-  bottomContainer: {
+  buttonContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -534,7 +457,17 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(74, 74, 74, 0.3)',
+    borderTopColor: Colors.border.primary,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  skipButton: {
+    flex: 1,
+    borderRadius: 12,
+  },
+  nextButton: {
+    flex: 1,
+    borderRadius: 12,
   },
 });
 
