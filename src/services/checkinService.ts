@@ -65,10 +65,10 @@ const checkinService = {
       visibility: input.visibility,
     };
     if (input.partnerIds && input.partnerIds.length > 0) {
-      payload.partnerId = input.partnerIds; // backend accepts array under partnerId
+      payload.partnerIds = input.partnerIds; // backend accepts array under partnerId
     }
     if (input.groupIds && input.groupIds.length > 0) {
-      payload.groupId = input.groupIds; // backend accepts array under groupId
+      payload.groupIds = input.groupIds; // backend accepts array under groupId
     }
     const { data } = await api.post<CheckInDTO>('/accountability/checkins', payload);
     return (data as any).data ?? data; // support wrapped or plain

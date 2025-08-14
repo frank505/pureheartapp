@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, FlatList, Text, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Surface, TextInput, Button, Chip } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
@@ -11,15 +11,19 @@ import Icon from '../components/Icon';
 
 const VictoryDetailScreen = ({ route, navigation }: any) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { victoryId } = route.params;
+  const { victoryId } = route.params || {};
   const { selectedVictory, comments, loading, error } = useSelector((state: RootState) => state.victories);
   const { currentUser } = useSelector((state: RootState) => state.user);
   const [commentBody, setCommentBody] = useState('');
 
   useEffect(() => {
-    dispatch(getVictoryById(victoryId));
-    dispatch(getVictoryComments({ id: victoryId }));
-  }, [dispatch, victoryId]);
+    if (victoryId) {
+      dispatch(getVictoryById(victoryId));
+      dispatch(getVictoryComments({ id: victoryId }));
+    } else {
+      Alert.alert('Error', 'Victory ID is missing.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+    }
+  }, [dispatch, victoryId, navigation]);
 
   const handleAddComment = () => {
     if (commentBody.trim()) {

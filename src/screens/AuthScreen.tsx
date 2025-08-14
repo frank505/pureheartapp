@@ -26,7 +26,7 @@ import {
   ActivityIndicator,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import appleAuth from '@invertase/react-native-apple-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -41,6 +41,15 @@ import { Colors, Icons } from '../constants';
 import Icon from '../components/Icon';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// Define a type guard to check for error with code property
+interface ErrorWithCode {
+  code: any;
+}
+
+function isErrorWithCode(error: any): error is ErrorWithCode {
+  return typeof error === 'object' && error !== null && 'code' in error;
+}
 
 interface AuthScreenProps {
   navigation?: any;
@@ -84,14 +93,16 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
    */
   const handleGoogleLogin = async () => {
     try {
+      await GoogleSignin.signOut();
       const data: any = await GoogleSignin.signIn();
+     
       if (data && data.data?.idToken) {
-        const { idToken } = data.data; 
+        const { idToken } = data.data;
         // this one is the id that is initially sent as invitation
         const init_sent_accountability_id = await AsyncStorage.getItem('init_sent_accountability_id');
         // this is the one the user uses when he opens the app from a link
         const init_reciever_sent_accountablity_id = await AsyncStorage.getItem('init_reciever_sent_accountablity_id');
-        
+  
         await dispatch(loginUser({ 
           idToken, 
           onboardingData, 
@@ -109,8 +120,13 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
         throw new Error('Google Sign-In failed to return an ID token.');
       }
     } catch (error: any) {
-      console.error('Google login error:', error);
-      Alert.alert('Google Login Error', `An error occurred during Google sign-in. Please try again.`);
+      
+      if (isErrorWithCode(error) && error.code === statusCodes.SIGN_IN_CANCELLED) {
+        console.log('Google sign-in was cancelled by the user.');
+      } else {
+        console.error('Google login error:', error);
+        Alert.alert('Google Login Error', 'An error occurred during Google sign-in. Please try again.');
+      }
     }
   };
 

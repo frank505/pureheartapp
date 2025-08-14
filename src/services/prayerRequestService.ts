@@ -30,6 +30,8 @@ export interface UpdatePrayerRequestPayload {
   title?: string;
   body?: string;
   visibility?: 'private' | 'partner' | 'group' | 'public';
+  partnerIds?: number[];
+  groupIds?: number[];
 }
 
 const createPrayerRequest = async (payload: CreatePrayerRequestPayload): Promise<PrayerRequest> => {

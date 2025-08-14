@@ -22,17 +22,22 @@ import {
   Image,
   useWindowDimensions,
 } from 'react-native';
-import { Text, Surface, Button, ProgressBar, Portal, Modal, TextInput, RadioButton, Checkbox } from 'react-native-paper';
+import { Text, Surface, Button, ProgressBar, Portal, Modal, TextInput, RadioButton, Checkbox, Chip } from 'react-native-paper';
 import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import ProfileDropdown from '../components/ProfileDropdown';
+import PartnerGroupSelector from '../components/PartnerGroupSelector';
 import { Colors, Icons } from '../constants';
 import groupService, { GroupSummary } from '../services/groupService';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { fetchCheckIns, createCheckIn } from '../store/slices/checkinsSlice';
-import { fetchPartners, createInvitation, acceptByCode, sendInvitesByEmail } from '../store/slices/invitationSlice';
+import {
+  fetchCheckIns,
+  createCheckIn,
+  resetCheckinStatus,
+} from '../store/slices/checkinsSlice';
+import { fetchPartners, generateInvitationHash, acceptByCode, sendInvitesByEmail, fetchGroups } from '../store/slices/invitationSlice';
 import { getStreaks } from '../store/slices/streaksSlice';
 import VictoryStories from '../components/VictoryStories';
 // import InvitationService from '../services/invitationService';
@@ -53,13 +58,14 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
   // State for daily check-in mood slider
   const [moodValue, setMoodValue] = useState(0.75); // 75% = "doing well"
   const [checkinVisible, setCheckinVisible] = useState(false);
-  const [visibilityOption, setVisibilityOption] = useState<'private' | 'allPartners' | 'selectPartners'>('private');
-  const [selectedPartnerIds, setSelectedPartnerIds] = useState<Array<string | number>>([]);
+  const [visibilityOption, setVisibilityOption] = useState<'private' | 'allPartners' | 'selectPartners' | 'group'>('private');
+  const [selectedPartnerIds, setSelectedPartnerIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [note, setNote] = useState('');
 
   const dispatch = useAppDispatch();
   const { items: checkins, isLoading, isCreating } = useAppSelector((s) => s.checkins);
-  const connectedPartners = useAppSelector((s) => s.invitation.connectedPartners);
+  const { connectedPartners, groups } = useAppSelector((s) => s.invitation);
   const { streaks } = useAppSelector((s) => s.streaks);
   const currentUser = useAppSelector((s) => s.user.currentUser);
   const invitationLoading = useAppSelector((s) => s.invitation.loading);
@@ -126,8 +132,8 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
    * Handle invite partner
    */
   const [inviteVisible, setInviteVisible] = useState(false);
-  const [inviteEmailsText, setInviteEmailsText] = useState('');
-  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
+  const [emails, setEmails] = useState<string[]>([]);
+  const [currentEmail, setCurrentEmail] = useState('');
   const [customCode, setCustomCode] = useState('');
   // We no longer display generated invite; we store any generated code into the custom code field
 
@@ -139,47 +145,45 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
     setInviteVisible(true);
   };
 
-  const parseEmails = (raw: string): string[] => {
-    return raw
-      .split(/[,\n\s]+/)
-      .map(e => e.trim())
-      .filter(e => !!e && /.+@.+\..+/.test(e));
-  };
+  const handleEmailInputSubmit = () => {
+    const newEmails = currentEmail.split(',')
+      .map(email => email.trim())
+      .filter(Boolean);
 
-  const addChippedEmailsFromInput = () => {
-    const emails = parseEmails(inviteEmailsText);
-    if (emails.length === 0) return;
-    setInviteEmails(prev => Array.from(new Set([...prev, ...emails])));
-    setInviteEmailsText('');
-  };
+    if (newEmails.length === 0) return;
 
-  const removeEmailChip = (email: string) => {
-    setInviteEmails(prev => prev.filter(e => e !== email));
-  };
+    const validEmails: string[] = [];
+    const invalidEmails: string[] = [];
 
-  const handleGenerateInvite = async () => {
-    if (!currentUser) {
-      Alert.alert('Not signed in', 'Please sign in to invite a partner.');
-      return;
+    newEmails.forEach(email => {
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && !emails.includes(email)) {
+        validEmails.push(email);
+      } else {
+        invalidEmails.push(email);
+      }
+    });
+
+    if (validEmails.length > 0) {
+      setEmails(prevEmails => [...prevEmails, ...validEmails]);
     }
-    try {
-      const inviterName = currentUser.firstName || currentUser.name || currentUser.email;
-      const result = await dispatch(
-        createInvitation({
-          inviterName,
-          inviterEmail: currentUser.email,
-          inviterUserId: currentUser.id,
-          customHash: customCode?.trim() || undefined,
-        })
-      ).unwrap();
-      setCustomCode(result.hash);
-    } catch (e: any) {
-      Alert.alert('Failed to create invitation', e?.message || 'Please try again.');
+
+    if (invalidEmails.length > 0) {
+      Alert.alert('Invalid or Duplicate Email', `The following emails could not be added: ${invalidEmails.join(', ')}`);
     }
+
+    setCurrentEmail('');
+  };
+
+  const removeEmail = (emailToRemove: string) => {
+    setEmails(emails.filter(email => email !== emailToRemove));
+  };
+
+  const handleGenerateInvite = () => {
+    const newHash = generateInvitationHash();
+    setCustomCode(newHash);
   };
 
   const handleEmailSend = async () => {
-    const emails = inviteEmails;
     if (emails.length === 0) {
       Alert.alert('No emails', 'Add at least one email to send invitations.');
       return;
@@ -262,23 +266,20 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
     // Load check-ins to compute today's status and partners for selection
     dispatch(fetchCheckIns({ page: 1, limit: 50 }));
     dispatch(fetchPartners());
+    dispatch(fetchGroups());
     dispatch(getStreaks());
   }, [loadGroups, dispatch]);
 
   useFocusEffect(
     useCallback(() => {
+      dispatch(resetCheckinStatus());
       loadGroups();
       dispatch(fetchCheckIns({ page: 1, limit: 50 }));
       dispatch(fetchPartners());
+      dispatch(fetchGroups());
       dispatch(getStreaks());
-    }, [loadGroups])
+    }, [loadGroups, dispatch])
   );
-
-  const togglePartnerSelected = (id: string | number) => {
-    setSelectedPartnerIds((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    );
-  };
 
   const submitCheckIn = async () => {
     try {
@@ -296,11 +297,16 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
           payload.partnerIds = selectedPartnerIds;
         }
       }
-
+      if (visibilityOption === 'group') {
+        payload.visibility = 'group';
+        payload.groupIds = selectedGroupIds;
+      }
+     
       await dispatch(createCheckIn(payload)).unwrap();
       setCheckinVisible(false);
       setNote('');
       setSelectedPartnerIds([]);
+      setSelectedGroupIds([]);
       setVisibilityOption('private');
       await dispatch(fetchCheckIns({ page: 1, limit: 50 }));
       Alert.alert('Check-in created', 'Your daily check-in has been saved.');
@@ -464,7 +470,7 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
             {/* Invite Partner */}
             <TouchableOpacity 
               style={[styles.quickActionButton, styles.inviteButton]}
-              onPress={handleInvitePartner}
+              onPress={() => navigation?.navigate('InvitePartner')}
             >
               <Icon 
                 name="person-add-outline" 
@@ -583,6 +589,60 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
               />
             </View>
 
+            {/* Visibility options */}
+            <View style={styles.visibilityContainer}>
+              <Chip
+                selected={visibilityOption === 'private'}
+                onPress={() => setVisibilityOption('private')}
+                style={styles.chip}
+              >
+                Private
+              </Chip>
+              <Chip
+                selected={visibilityOption === 'allPartners'}
+                onPress={() => setVisibilityOption('allPartners')}
+                style={styles.chip}
+              >
+                All Partners
+              </Chip>
+              <Chip
+                selected={visibilityOption === 'selectPartners'}
+                onPress={() => setVisibilityOption('selectPartners')}
+                style={styles.chip}
+              >
+                Select Partners
+              </Chip>
+              <Chip
+                selected={visibilityOption === 'group'}
+                onPress={() => setVisibilityOption('group')}
+                style={styles.chip}
+              >
+                Group
+              </Chip>
+            </View>
+
+            {visibilityOption === 'selectPartners' && (
+              <PartnerGroupSelector
+                partners={connectedPartners}
+                groups={[]}
+                selectedPartners={selectedPartnerIds}
+                selectedGroups={[]}
+                onPartnerSelectionChange={setSelectedPartnerIds}
+                onGroupSelectionChange={() => {}}
+              />
+            )}
+            {visibilityOption === 'group' && (
+              <PartnerGroupSelector
+                partners={[]}
+                groups={groups}
+                selectedPartners={[]}
+                selectedGroups={selectedGroupIds}
+                onPartnerSelectionChange={() => {}}
+                onGroupSelectionChange={setSelectedGroupIds}
+              />
+            )}
+
+            {/* Note input */}
             <TextInput
               mode="outlined"
               value={note}
@@ -591,40 +651,6 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
               multiline
               style={{ marginBottom: 12 }}
             />
-
-            {/* Visibility options */}
-            <View>
-              <TouchableOpacity onPress={() => setVisibilityOption('private')} style={styles.radioOptionContainer}>
-                <RadioButton value="private" status={visibilityOption === 'private' ? 'checked' : 'unchecked'} onPress={() => setVisibilityOption('private')} />
-                <Text style={{ color: Colors.text.primary }}>Private (only you)</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setVisibilityOption('allPartners')} style={styles.radioOptionContainer}>
-                <RadioButton value="allPartners" status={visibilityOption === 'allPartners' ? 'checked' : 'unchecked'} onPress={() => setVisibilityOption('allPartners')} />
-                <Text style={{ color: Colors.text.primary }}>All partners</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setVisibilityOption('selectPartners')} style={styles.radioOptionContainer}>
-                <RadioButton value="selectPartners" status={visibilityOption === 'selectPartners' ? 'checked' : 'unchecked'} onPress={() => setVisibilityOption('selectPartners')} />
-                <Text style={{ color: Colors.text.primary }}>Select partners…</Text>
-              </TouchableOpacity>
-            </View>
-
-            {visibilityOption === 'selectPartners' && (
-              <View style={{ marginVertical: 8 }}>
-                {partnerChoices.length === 0 ? (
-                  <Text style={{ color: Colors.text.secondary }}>No partners yet.</Text>
-                ) : (
-                  partnerChoices.map((p) => (
-                    <View key={String(p.id)} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                      <Checkbox
-                        status={selectedPartnerIds.includes(p.id) ? 'checked' : 'unchecked'}
-                        onPress={() => togglePartnerSelected(p.id)}
-                      />
-                      <Text style={{ color: Colors.text.primary }}>{p.name}</Text>
-                    </View>
-                  ))
-                )}
-              </View>
-            )}
 
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
               <Button mode="text" onPress={() => setCheckinVisible(false)}>Cancel</Button>
@@ -636,8 +662,8 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
             visible={inviteVisible}
             onDismiss={() => {
               setInviteVisible(false);
-              setInviteEmailsText('');
-              setInviteEmails([]);
+              setCurrentEmail('');
+              setEmails([]);
               setCustomCode('');
             }}
             contentContainerStyle={{ backgroundColor: Colors.background.secondary, margin: 16, padding: 16, borderRadius: 12 }}
@@ -648,32 +674,42 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
             </Text>
 
             {/* Chips */}
-            {inviteEmails.length > 0 && (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-                {inviteEmails.map(email => (
-                  <Surface key={email} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, backgroundColor: Colors.background.primary, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ color: Colors.text.primary }}>{email}</Text>
-                    <TouchableOpacity onPress={() => removeEmailChip(email)}>
-                      <Icon name="close-outline" color={Colors.text.secondary} size="sm" />
-                    </TouchableOpacity>
-                  </Surface>
+            {emails.length > 0 && (
+              <View style={styles.chipContainer}>
+                {emails.map((email, index) => (
+                  <Chip
+                    key={index}
+                    mode="outlined"
+                    onClose={() => removeEmail(email)}
+                    style={styles.chip}
+                    textStyle={styles.chipText}
+                  >
+                    {email}
+                  </Chip>
                 ))}
               </View>
             )}
 
             <TextInput
               mode="outlined"
-              value={inviteEmailsText}
-              onChangeText={setInviteEmailsText}
-              onSubmitEditing={addChippedEmailsFromInput}
-              placeholder="Type an email and press Enter"
-              multiline={false}
-              style={{ marginBottom: 12 }}
-              returnKeyType="done"
+              label="Add email(s)"
+              placeholder="friend@example.com, partner@work.com"
+              value={currentEmail}
+              onChangeText={setCurrentEmail}
+              onSubmitEditing={handleEmailInputSubmit}
+              onBlur={handleEmailInputSubmit}
+              style={styles.emailInput}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              right={
+                currentEmail.trim() ? (
+                  <TextInput.Icon
+                    icon="plus"
+                    onPress={handleEmailInputSubmit}
+                  />
+                ) : null
+              }
             />
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: -4, marginBottom: 12 }}>
-              <Button mode="text" onPress={addChippedEmailsFromInput}>Add</Button>
-            </View>
 
             <TextInput
               mode="outlined"
@@ -694,7 +730,7 @@ const AccountabilityScreen: React.FC<AccountabilityScreenProps> = ({ navigation 
               <Button
                 mode="contained"
                 onPress={handleEmailSend}
-                disabled={invitationLoading || inviteEmails.length === 0}
+                disabled={invitationLoading || emails.length === 0}
               >
                 Invite Partners
               </Button>
@@ -1025,6 +1061,23 @@ const styles = StyleSheet.create({
   sectionTitleSmall: {
     fontSize: 16,
   },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  chip: {
+    backgroundColor: `${Colors.primary.main}10`,
+    borderColor: Colors.primary.main,
+  },
+  chipText: {
+    color: Colors.text.primary,
+  },
+  emailInput: {
+    backgroundColor: Colors.background.tertiary,
+    marginBottom: 16,
+  },
   groupCard: {
     backgroundColor: Colors.background.secondary,
     borderRadius: 8,
@@ -1076,6 +1129,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  visibilityContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
   },
 });
 

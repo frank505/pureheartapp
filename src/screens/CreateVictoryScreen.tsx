@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Button, Chip, TextInput } from 'react-native-paper';
@@ -9,21 +9,38 @@ import { CreateVictoryPayload } from '../services/victoryService';
 import { Colors, Icons } from '../constants';
 import Icon from '../components/Icon';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
+import { fetchPartners, fetchGroups, Partner } from '../store/slices/invitationSlice';
+import PartnerGroupSelector from '../components/PartnerGroupSelector';
+import { GroupSummary } from '../services/groupService';
 
 const CreateVictoryScreen = ({ navigation }: any) => {
   const dispatch = useDispatch<AppDispatch>();
   const { loading, error } = useSelector((state: RootState) => state.victories);
+  const { connectedPartners, groups } = useSelector((state: RootState) => state.invitation);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [visibility, setVisibility] = useState<CreateVictoryPayload['visibility']>('private');
+  const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const richText = useRef<RichEditor>(null);
+
+  useEffect(() => {
+    dispatch(fetchPartners());
+    dispatch(fetchGroups());
+  }, [dispatch]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
       Alert.alert('Title required', 'Please enter a title for your victory.');
       return;
     }
-    const payload: CreateVictoryPayload = { title, body, visibility };
+    const payload: CreateVictoryPayload = {
+      title,
+      body,
+      visibility,
+      partnerIds: selectedPartners.map(Number),
+      groupIds: selectedGroups.map(Number),
+    };
     try {
       await dispatch(createVictory(payload)).unwrap();
       navigation.goBack();
@@ -88,6 +105,27 @@ const CreateVictoryScreen = ({ navigation }: any) => {
               </Chip>
             ))}
           </View>
+
+          {visibility === 'partner' && (
+            <PartnerGroupSelector
+              partners={connectedPartners}
+              groups={[]}
+              selectedPartners={selectedPartners}
+              selectedGroups={selectedGroups}
+              onPartnerSelectionChange={setSelectedPartners}
+              onGroupSelectionChange={setSelectedGroups}
+            />
+          )}
+          {visibility === 'group' && (
+            <PartnerGroupSelector
+              partners={[]}
+              groups={groups}
+              selectedPartners={selectedPartners}
+              selectedGroups={selectedGroups}
+              onPartnerSelectionChange={setSelectedPartners}
+              onGroupSelectionChange={setSelectedGroups}
+            />
+          )}
 
           <Button mode="contained" onPress={handleSubmit} style={styles.submitButton} buttonColor={Colors.primary.main} loading={loading}>
             Submit

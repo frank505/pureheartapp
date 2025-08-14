@@ -30,6 +30,8 @@ export interface UpdateVictoryPayload {
   title?: string;
   body?: string;
   visibility?: 'private' | 'partner' | 'group' | 'public';
+  partnerIds?: number[];
+  groupIds?: number[];
 }
 
 const createVictory = async (payload: CreateVictoryPayload): Promise<Victory> => {

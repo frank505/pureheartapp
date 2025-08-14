@@ -155,13 +155,7 @@ const PartnersListScreen: React.FC<PartnersListScreenProps> = ({ navigation }) =
         <FlatList
           ListHeaderComponent={
             <View style={styles.section}>
-              <View>
-                <Text style={styles.sectionTitle}>Invite by Email</Text>
-                {/* Minimal input to keep screen lean; reuse full modal UX in AccountabilityScreen if needed */}
-                {/* In a larger refactor, we can extract the chips input into a shared component */}
-                <EmailInviteInline />
-              </View>
-
+            
               {/* Connected Partners */}
               <Text style={styles.sectionTitle}>Connected Partners</Text>
               {connectedPartners.length === 0 ? (

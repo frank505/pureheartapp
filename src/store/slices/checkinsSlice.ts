@@ -53,6 +53,11 @@ const checkinsSlice = createSlice({
     clearError(state) {
       state.error = null;
     },
+    resetCheckinStatus(state) {
+      state.isLoading = false;
+      state.isCreating = false;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -86,7 +91,7 @@ const checkinsSlice = createSlice({
   },
 });
 
-export const { clearError } = checkinsSlice.actions;
+export const { clearError, resetCheckinStatus } = checkinsSlice.actions;
 export default checkinsSlice.reducer;
 
 

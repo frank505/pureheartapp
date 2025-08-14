@@ -11,6 +11,7 @@ import EditVictoryScreen from '../screens/EditVictoryScreen';
 import PublicVictoriesScreen from '../screens/PublicVictoriesScreen';
 import CheckInHistoryScreen from '../screens/CheckInHistoryScreen';
 import CheckInDetailScreen from '../screens/CheckInDetailScreen';
+import InvitePartnerScreen from '../screens/InvitePartnerScreen';
 import MyVictoriesScreen from '../screens/MyVictoriesScreen';
 import EditPrayerRequestScreen from '../screens/EditPrayerRequestScreen';
 
@@ -32,6 +33,7 @@ const AccountabilityNavigator = () => {
       <Stack.Screen name="MyVictories" component={MyVictoriesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CheckInHistory" component={CheckInHistoryScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CheckInDetail" component={CheckInDetailScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="InvitePartner" component={InvitePartnerScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 };

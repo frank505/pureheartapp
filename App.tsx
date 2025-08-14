@@ -8,10 +8,10 @@
  * @format
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StatusBar, useColorScheme, Linking, Alert, Platform } from 'react-native';
+import { StatusBar, useColorScheme, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as StoreProvider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -41,12 +41,7 @@ import InvitationAcceptModal from './src/components/InvitationAcceptModal';
 import ShareInvitationModal from './src/components/ShareInvitationModal';
 
 // Import Redux hooks and actions
-import { useAppSelector, useAppDispatch } from './src/store/hooks';
-import { processDeepLinkInvitation, matchInstall } from './src/store/slices/invitationSlice';
-
-// Import invitation service
-import InvitationService from './src/services/invitationService';
-import DeviceInfo from 'react-native-device-info';
+import { useAppSelector } from './src/store/hooks';
 
 // Import centralized theme
 import { Theme } from './src/constants';
@@ -100,108 +95,10 @@ const appTheme = {
  * It handles the authentication flow, deep linking, and shows appropriate screens.
  */
 const AppContent: React.FC = () => {
-  const dispatch = useAppDispatch();
  
-
-  useEffect(() => {
-    AsyncStorage.clear();
-  }, []);
-
   // Get authentication and onboarding state from Redux
   const { isAuthenticated } = useAppSelector(state => state.user);
   const { isFirstLaunch, hasCompletedOnboarding } = useAppSelector(state => state.app);
-  const { processingInvitation, isProcessingDeepLink } = useAppSelector(state => state.invitation);
-  const [shouldClearAsyncStorage, setShouldClearAsyncStorage] = useState(false);
-
-  useEffect(() => {
-    const checkFirstLaunch = async () => {
-      try {
-        const hasLaunched = await AsyncStorage.getItem('hasLaunched');
-        if (hasLaunched === null) {
-          console.log('First app launch detected. Checking for install match...');
-          const deviceInfo = {
-            os: DeviceInfo.getSystemName(),
-            osVersion: DeviceInfo.getSystemVersion(),
-            deviceModel: DeviceInfo.getModel(),
-          };
-
-          const resultAction = await dispatch(matchInstall(deviceInfo));
-          if (matchInstall.fulfilled.match(resultAction) && resultAction.payload.inviteId) {
-            console.log('Found matching invite ID:', resultAction.payload.inviteId);
-            await AsyncStorage.setItem('init_sent_accountability_id', resultAction.payload.inviteId);
-          }
-          await AsyncStorage.setItem('hasLaunched', 'true');
-        }
-      } catch (error) {
-        console.error('Failed to check first launch:', error);
-      }
-    };
-
-    checkFirstLaunch();
-  }, [dispatch]);
-  
-  /**
-   * Deep Link Handler
-   * 
-   * Handles incoming deep links when app is opened via URL.
-   * Processes invitation links and navigates appropriately.
-   * Tracks different scenarios for proper attribution.
-   */
-  useEffect(() => {
-    const handleDeepLink = async (url: string | null, isInitial: boolean = false) => {
-      if (!url || !url.includes('invite')) {
-        return;
-      }
-
-      console.log(`Handling deep link URL (${isInitial ? 'initial' : 'runtime'}):`, url);
-      
-      // Extract invite ID from URL
-      const inviteMatch = url.match(/\/invite\/([^/?&#]+)/);
-      const inviteId = inviteMatch ? inviteMatch[1] : null;
-
-      if (inviteId) {
-        // Store for later processing after authentication
-        await AsyncStorage.setItem('init_sent_accountability_id', inviteId);  
-        // Track the deep link click event
-        try {
-          if(!isAuthenticated){  
-            // Track that an unauthenticated user clicked the link
-            const deviceInfo = {
-              os: DeviceInfo.getSystemName(),
-              osVersion: DeviceInfo.getSystemVersion(),
-              deviceModel: DeviceInfo.getModel(),
-              isInitialLaunch: isInitial,
-              timestamp: new Date().toISOString(),
-            };
-            
-            // Store device info for backend matching
-            await AsyncStorage.setItem('inviteLinkClickInfo', JSON.stringify({
-              inviteId,
-              deviceInfo,
-              clickedAt: new Date().toISOString(),
-            }));
-          }
-
-        } catch (error) {
-          console.error('Error processing deep link invitation:', error);
-        }
-      }
-    };
-
-    // Handle the link that opened the app
-    Linking.getInitialURL().then(url => {
-      handleDeepLink(url, true);
-    });
-
-    // Handle links clicked when the app is already open
-    const subscription = Linking.addEventListener('url', event => {
-      handleDeepLink(event.url, false);
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [isAuthenticated, dispatch]);
 
   // iOS push notification handling: navigate to group chat when tapped
   useEffect(() => {

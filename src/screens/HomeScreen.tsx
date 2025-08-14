@@ -27,6 +27,9 @@ import { Colors, Icons } from '../constants';
 // Redux imports for debug
 import { useAppDispatch } from '../store/hooks';
 import { resetOnboarding } from '../store/slices/appSlice';
+import { useAppSelector } from '../store/hooks';
+import { getUserDetails } from '../store/slices/userSlice';
+import { getStreaks } from '../store/slices/streaksSlice';
 
 interface HomeScreenProps {
   navigation?: any;
@@ -34,8 +37,13 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
-  const currentStreak = 14;
-  const userName = 'Ethan';
+  const { currentUser } = useAppSelector((state) => state.user);
+  const { streaks } = useAppSelector((state) => state.streaks);
+
+  React.useEffect(() => {
+    dispatch(getUserDetails());
+    dispatch(getStreaks());
+  }, [dispatch]);
 
   // Debug function to reset onboarding
   const handleResetOnboarding = () => {
@@ -89,13 +97,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       >
         {/* Greeting Section */}
         <View style={styles.greetingSection}>
-          <Text style={styles.greeting}>Good morning, {userName}</Text>
+          <Text style={styles.greeting}>Good morning, {currentUser?.firstName}</Text>
         </View>
 
         {/* Streak Card */}
         <Surface style={styles.streakCard} elevation={3}>
           <Text style={styles.streakLabel}>Streak</Text>
-          <Text style={styles.streakNumber}>{currentStreak}</Text>
+          <Text style={styles.streakNumber}>{streaks?.currentStreak}</Text>
           <Text style={styles.streakUnit}>days</Text>
         </Surface>
 
