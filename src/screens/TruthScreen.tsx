@@ -65,7 +65,7 @@ const TruthScreen: React.FC<TruthScreenProps> = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Identify Lies</Text>
           <Text style={styles.sectionDescription}>
-            Recognize the lies that fuel your struggle. Understanding these falsehoods is the first step towards freedom.
+            Recognize the lies the devil might be telling you that fuel your struggle. Understanding these falsehoods is the first step towards freedom.
           </Text>
         </View>
 

@@ -24,6 +24,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import ProfileDropdown from '../components/ProfileDropdown';
 import { Colors, Icons } from '../constants';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchTodaysRecommendation } from '../store/slices/recommendationsSlice';
 
 interface EmergencyScreenProps {
   navigation?: any;
@@ -32,7 +34,13 @@ interface EmergencyScreenProps {
 
 const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
   const [feelingText, setFeelingText] = useState('');
+  const dispatch = useAppDispatch();
+  const { today: todaysRecommendation } = useAppSelector((state) => state.recommendations);
  
+  React.useEffect(() => {
+    dispatch(fetchTodaysRecommendation());
+  }, [dispatch]);
+
   // Handle main emergency button
   const handleEmergencyHelp = () => {
     Alert.alert(
@@ -170,7 +178,7 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
 
           {/* Scripture Power Verses Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Scripture Power Verses</Text>
+            <Text style={styles.sectionTitle}>Power Verse for the day</Text>
             <ImageBackground
               source={{ 
                 uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDJ87m37g4Nzqol-5HwrAqG5tuz0iLsPn6SlN35g7W0m2rmY8KkqJlTjnc1A7Q-zJbqa6R3MC9cS-3-_VoMJmZwvNw8-6voNswPtWixjoA1u4DTs_1QOXXUj0vKfxcSVm3QAuzhRSo_VkjTCc0qkgWXkQRnKhG1_7GxhxY3602QraOfB2RjNFdz7Id7Q1Y-BAMTF3Q9tjV_aNoAypAWaV2tuPszKiclQGk60gOhMsDuKJ9XcKnI4Ts41zKaYl5wVpxkw3GonWSgnp47' 
@@ -179,12 +187,16 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
               imageStyle={styles.scriptureCardImage}
             >
               <View style={styles.scriptureOverlay}>
-                <View style={styles.scriptureContent}>
-                  <Text style={styles.scriptureReference}>1 Corinthians 10:13</Text>
+                <ScrollView 
+                  style={styles.scriptureContent}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled={true}
+                >
+                  <Text style={styles.scriptureReference}>{todaysRecommendation?.scriptureReference || '1 Corinthians 10:13'}</Text>
                   <Text style={styles.scriptureText}>
-                    No temptation has overtaken you except what is common to mankind. And God is faithful; he will not let you be tempted beyond what you can bear...
+                    {todaysRecommendation?.scriptureText || 'No temptation has overtaken you except what is common to mankind. And God is faithful; he will not let you be tempted beyond what you can bear...'}
                   </Text>
-                </View>
+                </ScrollView>
               </View>
             </ImageBackground>
           </View>
@@ -233,22 +245,7 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
             </View>
           </View>
 
-          {/* Feeling Check-In Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Feeling Check-In</Text>
-            <View style={styles.checkInContainer}>
-              <TextInput
-                style={styles.feelingInput}
-                placeholder="How are you feeling right now?"
-                placeholderTextColor={Colors.text.secondary}
-                value={feelingText}
-                onChangeText={setFeelingText}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-          </View>
+         
         </View>
       </ScrollView>
     </SafeAreaView>

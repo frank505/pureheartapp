@@ -1,208 +1,791 @@
 /**
- * HomeScreen Component
+ * AccountabilityScreen Component
  * 
- * "Freedom In Christ" main dashboard displaying spiritual journey.
- * Features streak tracking, daily identity, quick actions, and focus content.
+ * This screen implements the accountability partner feature as shown in the design.
+ * Features include:
+ * - Partner profile display
+ * - Daily check-in with mood slider
+ * - Quick action buttons (Check-in, SOS, Prayer Request, Share Victory)
+ * - Emergency contact access
+ * 
+ * The design focuses on spiritual accountability and support between partners.
  */
 
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   ImageBackground,
+  Alert,
+  Image,
+  useWindowDimensions,
 } from 'react-native';
-import {
-  Text,
-  Surface,
-  Button,
-} from 'react-native-paper';
+import { Text, Surface, Button, ProgressBar, Portal, Modal, TextInput, RadioButton, Checkbox, Chip } from 'react-native-paper';
+import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import ProfileDropdown from '../components/ProfileDropdown';
+import PartnerGroupSelector from '../components/PartnerGroupSelector';
 import { Colors, Icons } from '../constants';
-
-// Redux imports for debug
-import { useAppDispatch } from '../store/hooks';
-import { resetOnboarding } from '../store/slices/appSlice';
-import { useAppSelector } from '../store/hooks';
-import { getUserDetails } from '../store/slices/userSlice';
+import groupService, { GroupSummary } from '../services/groupService';
+import { useFocusEffect } from '@react-navigation/native';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import {
+  fetchCheckIns,
+  createCheckIn,
+  resetCheckinStatus,
+} from '../store/slices/checkinsSlice';
+import { fetchPartners, generateInvitationHash, acceptByCode, sendInvitesByEmail, fetchGroups } from '../store/slices/invitationSlice';
 import { getStreaks } from '../store/slices/streaksSlice';
+import VictoryStories from '../components/VictoryStories';
+import ConfettiCannon from 'react-native-confetti-cannon';
+// import InvitationService from '../services/invitationService';
 
+/**
+ * HomeScreen Component
+ * 
+ * Main accountability partner screen with all features
+ */
 interface HomeScreenProps {
   navigation?: any;
+  route?: any;
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const isSmall = width < 360;
+  // State for daily check-in mood slider
+  const [moodValue, setMoodValue] = useState(0.75); // 75% = "doing well"
+  const [checkinVisible, setCheckinVisible] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [visibilityOption, setVisibilityOption] = useState<'private' | 'allPartners' | 'selectPartners' | 'group'>('private');
+  const [selectedPartnerIds, setSelectedPartnerIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [note, setNote] = useState('');
+
   const dispatch = useAppDispatch();
-  const { currentUser } = useAppSelector((state) => state.user);
-  const { streaks } = useAppSelector((state) => state.streaks);
+  const { items: checkins, isLoading, isCreating } = useAppSelector((s) => s.checkins);
+  const { connectedPartners, groups } = useAppSelector((s) => s.invitation);
+  const { streaks } = useAppSelector((s) => s.streaks);
+  const currentUser = useAppSelector((s) => s.user.currentUser);
+  const invitationLoading = useAppSelector((s) => s.invitation.loading);
 
-  React.useEffect(() => {
-    dispatch(getUserDetails());
-    dispatch(getStreaks());
-  }, [dispatch]);
+  const partnerChoices = (connectedPartners || []).map((p) => ({
+    id: p.partner?.id ?? p.id,
+    name: p.partner ? `${p.partner.firstName} ${p.partner.lastName}` : 'Partner',
+  }));
 
-  // Debug function to reset onboarding
-  const handleResetOnboarding = () => {
-    dispatch(resetOnboarding());
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const hasCheckedInToday = checkins.some((c) => new Date(c.createdAt).toISOString().slice(0, 10) === todayISO);
+
+  /**
+   * Handle daily check-in submission
+   */
+  const handleDailyCheckin = () => {
+    // If not checked in today, open modal to create
+    if (!hasCheckedInToday) {
+      setCheckinVisible(true);
+      setShowConfetti(true);
+    } else if (navigation) {
+      navigation.navigate('CheckInHistory');
+    }
   };
 
-  // Quick Actions with proper icons
-  const quickActions = [
-    {
-      title: 'Emergency Help',
-      icon: 'medical-outline',
-      onPress: () => console.log('Emergency Help pressed'),
-    },
-    {
-      title: 'Daily Check-in',
-      icon: 'calendar-outline',
-      onPress: () => console.log('Daily Check-in pressed'),
-    },
-    {
-      title: 'Read Scripture',
-      icon: 'book-outline',
-      onPress: () => console.log('Read Scripture pressed'),
-    },
-    {
-      title: 'Pray Together',
-      icon: 'people-outline',
-      onPress: () => console.log('Pray Together pressed'),
-    },
-  ];
+ 
+
+  /**
+   * Handle prayer request
+   */
+  const handlePrayerRequest = () => {
+    navigation?.navigate('PrayerRequests');
+  };
+
+  /**
+   * Handle share victory
+   */
+  const handleShareVictory = () => {
+    navigation?.navigate('CreateVictory');
+  };
+
+  /**
+   * Handle invite partner
+   */
+  const [inviteVisible, setInviteVisible] = useState(false);
+  const [emails, setEmails] = useState<string[]>([]);
+  const [currentEmail, setCurrentEmail] = useState('');
+  const [customCode, setCustomCode] = useState('');
+  // We no longer display generated invite; we store any generated code into the custom code field
+
+  const [acceptVisible, setAcceptVisible] = useState(false);
+  const [partnerCode, setPartnerCode] = useState('');
+  const [accepting, setAccepting] = useState(false);
+
+  const handleInvitePartner = () => {
+    setInviteVisible(true);
+  };
+
+  const handleEmailInputSubmit = () => {
+    const newEmails = currentEmail.split(',')
+      .map(email => email.trim())
+      .filter(Boolean);
+
+    if (newEmails.length === 0) return;
+
+    const validEmails: string[] = [];
+    const invalidEmails: string[] = [];
+
+    newEmails.forEach(email => {
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && !emails.includes(email)) {
+        validEmails.push(email);
+      } else {
+        invalidEmails.push(email);
+      }
+    });
+
+    if (validEmails.length > 0) {
+      setEmails(prevEmails => [...prevEmails, ...validEmails]);
+    }
+
+    if (invalidEmails.length > 0) {
+      Alert.alert('Invalid or Duplicate Email', `The following emails could not be added: ${invalidEmails.join(', ')}`);
+    }
+
+    setCurrentEmail('');
+  };
+
+  const removeEmail = (emailToRemove: string) => {
+    setEmails(emails.filter(email => email !== emailToRemove));
+  };
+
+  const handleGenerateInvite = () => {
+    const newHash = generateInvitationHash();
+    setCustomCode(newHash);
+  };
+
+  const handleEmailSend = async () => {
+    if (emails.length === 0) {
+      Alert.alert('No emails', 'Add at least one email to send invitations.');
+      return;
+    }
+    try {
+      const payload = { emails, hash: customCode?.trim() || undefined } as any;
+      await dispatch(sendInvitesByEmail(payload)).unwrap();
+      Alert.alert('Invitations sent', 'Your invitations have been sent successfully.');
+    } catch (e: any) {
+      Alert.alert('Send failed', e?.message || 'Failed to send invitations.');
+    }
+  };
+
+  const handleAcceptPartner = async () => {
+    const code = partnerCode.trim();
+    if (!code) return;
+    try {
+      setAccepting(true);
+      await dispatch(acceptByCode(code)).unwrap();
+      setAcceptVisible(false);
+      setPartnerCode('');
+      await dispatch(fetchPartners());
+      Alert.alert('Connected', 'You are now connected as accountability partners.');
+    } catch (e: any) {
+      Alert.alert('Join failed', e?.message || 'Invalid or expired code');
+    } finally {
+      setAccepting(false);
+    }
+  };
+
+  /**
+   * Handle emergency contact
+   */
+  const handleEmergencyContact = () => {
+    Alert.alert(
+      'Emergency Contact',
+      'Calling emergency contact...',
+      [{ text: 'Cancel' }, { text: 'Call', onPress: () => {} }]
+    );
+  };
+
+  /**
+   * Handle scripture sharing
+   */
+  const handleShareScripture = () => {
+    Alert.alert(
+      'Share Scripture',
+      'Share an encouraging scripture with your partner.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  // Community Groups integration
+  const [myGroups, setMyGroups] = useState<GroupSummary[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
+  const [joinVisible, setJoinVisible] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+
+  const loadGroups = useCallback(async () => {
+    try {
+      setLoadingGroups(true);
+      const [groups, unread] = await Promise.all([
+        groupService.listMyGroups({ page: 1, pageSize: 10 }),
+        groupService.unreadCounts(),
+      ]);
+      setMyGroups(groups.items);
+      const map: Record<string, number> = {};
+      (unread.items || []).forEach((u: any) => { map[u.groupId] = u.unread; });
+      setUnreadMap(map);
+    } catch (e) {
+      console.error('Failed to load groups', e);
+    } finally {
+      setLoadingGroups(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadGroups();
+    // Load check-ins to compute today's status and partners for selection
+    dispatch(fetchCheckIns({ page: 1, limit: 50 }));
+    dispatch(fetchPartners());
+    dispatch(fetchGroups());
+    dispatch(getStreaks());
+  }, [loadGroups, dispatch]);
+
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(resetCheckinStatus());
+      loadGroups();
+      dispatch(fetchCheckIns({ page: 1, limit: 50 }));
+      dispatch(fetchPartners());
+      dispatch(fetchGroups());
+      dispatch(getStreaks());
+    }, [loadGroups, dispatch])
+  );
+
+  const submitCheckIn = async () => {
+    try {
+      const payload: any = {
+        mood: Math.max(0, Math.min(1, moodValue)),
+        note: note?.trim() || undefined,
+      };
+      if (visibilityOption === 'private') {
+        payload.visibility = 'private';
+      } else {
+        payload.visibility = 'partner';
+        if (visibilityOption === 'allPartners') {
+          payload.partnerIds = partnerChoices.map((p) => p.id);
+        } else if (visibilityOption === 'selectPartners') {
+          payload.partnerIds = selectedPartnerIds;
+        }
+      }
+      if (visibilityOption === 'group') {
+        payload.visibility = 'group';
+        payload.groupIds = selectedGroupIds;
+      }
+     
+      await dispatch(createCheckIn(payload)).unwrap();
+      setCheckinVisible(false);
+      setNote('');
+      setSelectedPartnerIds([]);
+      setSelectedGroupIds([]);
+      setVisibilityOption('private');
+      await dispatch(fetchCheckIns({ page: 1, limit: 50 }));
+      Alert.alert('Check-in created', 'Your daily check-in has been saved.');
+    } catch (e: any) {
+      Alert.alert('Check-in failed', e?.message || 'Unable to create check-in.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Custom Header */}
       <View style={styles.header}>
-        <View style={styles.profileContainer}>
-          <Image 
-            source={{ 
-              uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDIRWc85ZTTIgMVwjHfCy9dooUKl5F1ZnVH2k-vW7LgzIDnW4fWQf0eV63vgkqilLw7ss1TvZgYxzVsER4Kn9R70AFKhBkYQDPIHjEkmLM_EQdqeHYSskiertWlBCUNIC-wHOrSH_DaJWdB7ag0lsvIfPs3t5rL233ytutv9Nz19l-hqc7tEl7IyQ0_eC0hWQYXeLqbOH2Eh2vDdVgIZP9_tmmH5fjWTvSWFCT44Sptr9yt79hI5uxm0DrUoRaJyAAN6_akrA5vLikF'
-            }}
-            style={styles.profileImage}
-          />
-        </View>
-        <Text style={styles.headerTitle}>FREEDOM IN CHRIST</Text>
+        <View style={styles.headerSpacer} />
+        <Text style={styles.headerTitle}>Home</Text>
         <ProfileDropdown navigation={navigation} />
       </View>
 
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Greeting Section */}
-        <View style={styles.greetingSection}>
-          <Text style={styles.greeting}>Good morning, {currentUser?.firstName}</Text>
-        </View>
-
+        {showConfetti && (
+          <ConfettiCannon
+            count={200}
+            origin={{ x: -10, y: 0 }}
+            autoStart={true}
+            onAnimationEnd={() => setShowConfetti(false)}
+          />
+        )}
         {/* Streak Card */}
         <Surface style={styles.streakCard} elevation={3}>
-          <Text style={styles.streakLabel}>Streak</Text>
-          <Text style={styles.streakNumber}>{streaks?.currentStreak}</Text>
+          <Text style={styles.streakLabel}>Current Streak</Text>
+          <Text style={styles.streakNumber}>{streaks?.currentStreak ?? 0}</Text>
           <Text style={styles.streakUnit}>days</Text>
         </Surface>
 
-        {/* Daily Identity */}
-        <Surface style={styles.identityCard} elevation={3}>
-          <View style={styles.identityContent}>
-            <View style={styles.identityText}>
-              <Text style={styles.identityLabel}>DAILY IDENTITY</Text>
-              <Text style={styles.identityTitle}>I am a new creation in Christ</Text>
-              <Text style={styles.identityVerse}>2 Corinthians 5:17</Text>
+        {/* Daily Check-In Section */}
+        <Surface style={styles.checkInCard} elevation={2}>
+          <Text style={styles.sectionTitle}>Daily Check-In</Text>
+          <Text style={styles.checkInQuestion}>How's your heart today?</Text>
+          
+          {/* Mood Slider */}
+          <View style={styles.moodSlider}>
+            <View style={styles.moodIndicators}>
+              <View style={styles.moodIcon}>
+                <Text style={styles.emoji}>😔</Text>
+                <Text style={styles.moodLabel}>Struggling</Text>
+        </View>
+
+              <View style={styles.progressContainer}>
+                <ProgressBar
+                  progress={moodValue}
+                  color={Colors.primary.main}
+                  style={styles.progressBar}
+                />
+              </View>
+              
+              <View style={styles.moodIcon}>
+                <Text style={styles.emoji}>😊</Text>
+                <Text style={styles.moodLabel}>Victorious</Text>
+              </View>
             </View>
-            <View style={styles.identityImageContainer}>
-              <Image 
-                source={{ 
-                  uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDIRWc85ZTTIgMVwjHfCy9dooUKl5F1ZnVH2k-vW7LgzIDnW4fWQf0eV63vgkqilLw7ss1TvZgYxzVsER4Kn9R70AFKhBkYQDPIHjEkmLM_EQdqeHYSskiertWlBCUNIC-wHOrSH_DaJWdB7ag0lsvIfPs3t5rL233ytutv9Nz19l-hqc7tEl7IyQ0_eC0hWQYXeLqbOH2Eh2vDdVgIZP9_tmmH5fjWTvSWFCT44Sptr9yt79hI5uxm0DrUoRaJyAAN6_akrA5vLikF'
-                }}
-                style={styles.identityImage}
-              />
+            
+            <View style={styles.moodScale}>
+              <Text style={styles.scaleNumber}>1</Text>
+              <Text style={styles.scaleNumber}>10</Text>
             </View>
           </View>
+
+          <Button
+            mode="contained"
+            onPress={handleDailyCheckin}
+            style={styles.shareScriptureButton}
+            contentStyle={styles.shareScriptureContent}
+            labelStyle={styles.shareScriptureLabel}
+            buttonColor={Colors.primary.main}
+            loading={isCreating}
+            disabled={isCreating}
+          >
+            {hasCheckedInToday ? 'View Check-ins' : 'Check in today'}
+          </Button>
         </Surface>
 
-        {/* Quick Actions */}
+        {/* Quick Actions Section */}
         <View style={styles.quickActionsSection}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
-            {quickActions.map((action, index) => (
+          <View style={styles.quickActionsGrid}>
+            {/* Daily Dose */}
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => navigation.navigate('DailyDose')}
+            >
+              <Icon 
+                name="book-outline" 
+                color={Colors.text.primary} 
+                size="lg" 
+              />
+              <Text style={styles.quickActionLabel}>Daily Dose</Text>
+            </TouchableOpacity>
+            
+           
+
+             {/* Invite Partner */}
+             <TouchableOpacity 
+              style={[styles.quickActionButton, styles.inviteButton]}
+              onPress={() => navigation?.navigate('InvitePartner')}
+            >
+              <Icon 
+                name="person-add-outline" 
+                color={Colors.white} 
+                size="lg" 
+              />
+              <Text style={[styles.quickActionLabel, styles.inviteLabel]}>Invite Partner</Text>
+            </TouchableOpacity>
+
+
+              {/* Manage Partners */}
               <TouchableOpacity 
-                key={index}
-                style={styles.actionButton}
-                onPress={action.onPress}
+              style={styles.quickActionButton}
+              onPress={() => navigation?.navigate('PartnersList')}
+            >
+              <Icon 
+                name="people-outline" 
+                color={Colors.text.primary} 
+                size="lg" 
+              />
+              <Text style={styles.quickActionLabel}>Manage Partners</Text>
+            </TouchableOpacity>
+
+            {/* Prayers */}
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => navigation?.navigate('PrayerRequests')}
+            >
+              <Icon 
+                name="list-outline" 
+                color={Colors.text.primary} 
+                size="lg" 
+              />
+              <Text style={styles.quickActionLabel}>Prayers</Text>
+            </TouchableOpacity>
+
+            {/* Share Prayer */}
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => navigation?.navigate('CreatePrayerRequest')}
+            >
+              <Icon 
+                name="hand-right-outline" 
+                color={Colors.text.primary} 
+                size="lg" 
+              />
+              <Text style={styles.quickActionLabel}>Prayer Request</Text>
+            </TouchableOpacity>
+
+            {/* Share Victory */}
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={handleShareVictory}
+            >
+              <Icon 
+                name="trophy-outline" 
+                color={Colors.text.primary} 
+                size="lg" 
+              />
+              <Text style={styles.quickActionLabel}>Share Victory</Text>
+            </TouchableOpacity>
+
+            {/* My Victories */}
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => navigation?.navigate('MyVictories')}
+            >
+              <Icon
+                name="medal-outline"
+                color={Colors.text.primary}
+                size="lg"
+              />
+              <Text style={styles.quickActionLabel}>My Victories</Text>
+            </TouchableOpacity>
+
+            {/* Accept Invitation */}
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => setAcceptVisible(true)}
+            >
+              <Icon 
+                name={Icons.security.key.name}
+                color={Colors.text.primary}
+                size="lg" 
+              />
+              <Text style={styles.quickActionLabel}>Accept Invitation</Text>
+            </TouchableOpacity>
+
+            {/* Daily Check-in */}
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={handleDailyCheckin}
+            >
+              <Icon 
+                name={Icons.communication.bell.name} 
+                color={Colors.text.primary} 
+                size="lg" 
+              />
+              <Text style={styles.quickActionLabel}>Daily Check-in's</Text>
+            </TouchableOpacity>
+            {/* AI Accountability (coming soon) */}
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => Alert.alert('Coming soon', 'AI Accountability is coming soon.')} 
+            >
+              <Icon 
+                name="bulb-outline" 
+                color={Colors.text.primary} 
+                size="lg" 
+              />
+              <Text style={styles.quickActionLabel}>AI Accountability</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Community Groups Section */}
+        <View style={styles.communitySection}>
+          <View style={[styles.sectionHeader, isSmall && styles.sectionHeaderSmall]}>
+            <Text style={[styles.sectionTitle, isSmall && styles.sectionTitleSmall]}>Community Groups</Text>
+            <View style={[styles.headerActionsRow, isSmall && styles.headerActionsRowSmall]}>
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={() => navigation?.navigate('NewGroup')}
               >
-                <Surface style={styles.actionSurface} elevation={3}>
-                  <Icon 
-                    name={action.icon} 
-                    size="xl" 
-                    color={Colors.primary.main} 
-                  />
-                  <Text style={styles.actionText}>{action.title}</Text>
+                <Icon name="add-outline" color={Colors.white} size="sm" />
+                <Text style={[styles.createButtonText, isSmall && styles.createButtonTextSmall]}>Create</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={() => setJoinVisible(true)}
+              >
+                <Icon name={Icons.security.key.name} color={Colors.white} size="sm" />
+                <Text style={[styles.createButtonText, isSmall && styles.createButtonTextSmall]}>Join by Code</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          {loadingGroups ? (
+            <Text style={{ color: Colors.text.secondary }}>Loading groups…</Text>
+          ) : myGroups.length === 0 ? (
+            <Text style={{ color: Colors.text.secondary }}>No groups yet. Join or create one.</Text>
+          ) : (
+            myGroups.map(g => (
+              <TouchableOpacity key={g.id} onPress={() => navigation?.navigate('GroupChat', { groupId: g.id, groupName: g.name, memberCount: g.membersCount })}>
+                <Surface style={styles.groupCard} elevation={1}>
+                  <View style={styles.groupInfo}>
+                    <View style={styles.groupAvatarContainer}>
+                      <Image source={{ uri: g.iconUrl || 'https://placehold.co/96x96' }} style={styles.groupAvatar} />
+                      <View style={styles.onlineIndicator} />
+                    </View>
+                    <View style={styles.groupDetails}>
+                      <Text style={styles.groupName}>{g.name}</Text>
+                      <Text style={styles.groupMessage} numberOfLines={1}>{g.description || 'Tap to open chat'}</Text>
+                    </View>
+                    <Text style={styles.groupTime}>{unreadMap[g.id] ? `${unreadMap[g.id]} new` : ''}</Text>
+                  </View>
                 </Surface>
               </TouchableOpacity>
-            ))}
-          </View>
+            ))
+          )}
         </View>
 
-        {/* Today's Focus */}
-        <View style={styles.focusSection}>
-          <Text style={styles.sectionTitle}>Today's Focus</Text>
-          <Surface style={styles.focusCard} elevation={3}>
-            <ImageBackground
-              source={{ 
-                uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDIRWc85ZTTIgMVwjHfCy9dooUKl5F1ZnVH2k-vW7LgzIDnW4fWQf0eV63vgkqilLw7ss1TvZgYxzVsER4Kn9R70AFKhBkYQDPIHjEkmLM_EQdqeHYSskiertWlBCUNIC-wHOrSH_DaJWdB7ag0lsvIfPs3t5rL233ytutv9Nz19l-hqc7tEl7IyQ0_eC0hWQYXeLqbOH2Eh2vDdVgIZP9_tmmH5fjWTvSWFCT44Sptr9yt79hI5uxm0DrUoRaJyAAN6_akrA5vLikF'
-              }}
-              style={styles.focusImageBackground}
-              imageStyle={styles.focusImageStyle}
-            />
-            <View style={styles.focusContent}>
-              <Text style={styles.focusTitle}>Overcoming Temptation</Text>
-              <Text style={styles.focusDescription}>
-                Practical steps to resist and overcome temptation.
-              </Text>
+        <Portal>
+          {/* Modal: Daily Check-in */}
+          <Modal visible={checkinVisible} onDismiss={() => setCheckinVisible(false)} contentContainerStyle={{ backgroundColor: Colors.background.secondary, margin: 16, padding: 16, borderRadius: 12 }}>
+            <Text style={styles.sectionTitle}>Daily Check-In</Text>
+            <Text style={{ color: Colors.text.secondary, marginBottom: 12 }}>Set your mood and choose who can see this.</Text>
+
+            {/* Mood input slider 0..1 */}
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ color: Colors.text.secondary, marginBottom: 8 }}>Mood: {Math.round(moodValue * 100)}%</Text>
+              <Slider
+                minimumValue={0}
+                maximumValue={1}
+                step={0.01}
+                value={moodValue}
+                onValueChange={setMoodValue}
+                minimumTrackTintColor={Colors.primary.main}
+                maximumTrackTintColor={Colors.background.tertiary}
+                thumbTintColor={Colors.primary.main}
+              />
             </View>
-          </Surface>
-        </View>
 
-        {/* Partner Update */}
-        <View style={styles.partnerSection}>
-          <Text style={styles.sectionTitle}>Partner Update</Text>
-          <Surface style={styles.partnerCard} elevation={3}>
-            <ImageBackground
-              source={{ 
-                uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDIRWc85ZTTIgMVwjHfCy9dooUKl5F1ZnVH2k-vW7LgzIDnW4fWQf0eV63vgkqilLw7ss1TvZgYxzVsER4Kn9R70AFKhBkYQDPIHjEkmLM_EQdqeHYSskiertWlBCUNIC-wHOrSH_DaJWdB7ag0lsvIfPs3t5rL233ytutv9Nz19l-hqc7tEl7IyQ0_eC0hWQYXeLqbOH2Eh2vDdVgIZP9_tmmH5fjWTvSWFCT44Sptr9yt79hI5uxm0DrUoRaJyAAN6_akrA5vLikF'
-              }}
-              style={styles.partnerImageBackground}
-              imageStyle={styles.partnerImageStyle}
-            />
-            <View style={styles.partnerContent}>
-              <Text style={styles.partnerTitle}>Partner Check-in</Text>
-              <Text style={styles.partnerDescription}>
-                Send a quick update to your accountability partner.
-              </Text>
+            {/* Visibility options */}
+            <View style={styles.visibilityContainer}>
+              <Chip
+                selected={visibilityOption === 'private'}
+                onPress={() => setVisibilityOption('private')}
+                style={styles.chip}
+              >
+                Private
+              </Chip>
+              <Chip
+                selected={visibilityOption === 'allPartners'}
+                onPress={() => setVisibilityOption('allPartners')}
+                style={styles.chip}
+              >
+                All Partners
+              </Chip>
+              <Chip
+                selected={visibilityOption === 'selectPartners'}
+                onPress={() => setVisibilityOption('selectPartners')}
+                style={styles.chip}
+              >
+                Select Partners
+              </Chip>
+              <Chip
+                selected={visibilityOption === 'group'}
+                onPress={() => setVisibilityOption('group')}
+                style={styles.chip}
+              >
+                Group
+              </Chip>
             </View>
-          </Surface>
-        </View>
 
-        {/* Debug Section - Only show in development */}
-        {__DEV__ && (
-          <View style={styles.debugSection}>
-            <Text style={styles.debugTitle}>🔧 Debug Tools</Text>
-            <Button
+            {visibilityOption === 'selectPartners' && (
+              <PartnerGroupSelector
+                partners={connectedPartners}
+                groups={[]}
+                selectedPartners={selectedPartnerIds}
+                selectedGroups={[]}
+                onPartnerSelectionChange={setSelectedPartnerIds}
+                onGroupSelectionChange={() => {}}
+              />
+            )}
+            {visibilityOption === 'group' && (
+              <PartnerGroupSelector
+                partners={[]}
+                groups={groups}
+                selectedPartners={[]}
+                selectedGroups={selectedGroupIds}
+                onPartnerSelectionChange={() => {}}
+                onGroupSelectionChange={setSelectedGroupIds}
+              />
+            )}
+
+            {/* Note input */}
+            <TextInput
               mode="outlined"
-              onPress={handleResetOnboarding}
-              style={styles.debugButton}
-              textColor={Colors.primary.main}
-            >
-              Reset Onboarding Flow
+              value={note}
+              onChangeText={setNote}
+              placeholder="Add an optional note"
+              multiline
+              style={{ marginBottom: 12 }}
+            />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <Button mode="text" onPress={() => setCheckinVisible(false)}>Cancel</Button>
+              <Button mode="contained" onPress={submitCheckIn} disabled={isCreating} loading={isCreating}>Save Check-in</Button>
+            </View>
+          </Modal>
+          {/* Modal: Invite Partner */}
+          <Modal
+            visible={inviteVisible}
+            onDismiss={() => {
+              setInviteVisible(false);
+              setCurrentEmail('');
+              setEmails([]);
+              setCustomCode('');
+            }}
+            contentContainerStyle={{ backgroundColor: Colors.background.secondary, margin: 16, padding: 16, borderRadius: 12 }}
+          >
+            <Text style={styles.sectionTitle}>Invite Accountability Partner</Text>
+            <Text style={{ color: Colors.text.secondary, marginBottom: 12 }}>
+              Add email addresses. A code will be generated and sent unless you specify a custom code below.
+            </Text>
+
+            {/* Chips */}
+            {emails.length > 0 && (
+              <View style={styles.chipContainer}>
+                {emails.map((email, index) => (
+                  <Chip
+                    key={index}
+                    mode="outlined"
+                    onClose={() => removeEmail(email)}
+                    style={styles.chip}
+                    textStyle={styles.chipText}
+                  >
+                    {email}
+                  </Chip>
+                ))}
+        </View>
+        )}
+
+            <TextInput
+              mode="outlined"
+              label="Add email(s)"
+              placeholder="friend@example.com, partner@work.com"
+              value={currentEmail}
+              onChangeText={setCurrentEmail}
+              onSubmitEditing={handleEmailInputSubmit}
+              onBlur={handleEmailInputSubmit}
+              style={styles.emailInput}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              right={
+                currentEmail.trim() ? (
+                  <TextInput.Icon
+                    icon="plus"
+                    onPress={handleEmailInputSubmit}
+                  />
+                ) : null
+              }
+            />
+
+            <TextInput
+              mode="outlined"
+              value={customCode}
+              onChangeText={setCustomCode}
+              placeholder="Optional custom code (starts with ph_)"
+              style={{ marginBottom: 12 }}
+            />
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              <Button
+                mode="outlined"
+                onPress={handleGenerateInvite}
+                loading={invitationLoading}
+                disabled={invitationLoading}
+              >
+                Generate Code
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleEmailSend}
+                disabled={invitationLoading || emails.length === 0}
+              >
+                Invite Partners
+              </Button>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
+              <Button mode="text" onPress={() => { setInviteVisible(false); }}>Close</Button>
+        </View>
+          </Modal>
+
+          {/* Modal: Accept Partner by Code */}
+          {/* Keep accept-by-code modal accessible via a clear button elsewhere */}
+          <Modal
+            visible={acceptVisible}
+            onDismiss={() => { setAcceptVisible(false); setPartnerCode(''); }}
+            contentContainerStyle={{ backgroundColor: Colors.background.secondary, margin: 16, padding: 16, borderRadius: 12 }}
+          >
+            <Text style={styles.sectionTitle}>Join as Partner by Code</Text>
+            <Text style={{ color: Colors.text.secondary, marginBottom: 12 }}>Enter the code you received to become partners.</Text>
+            <TextInput
+              mode="outlined"
+              value={partnerCode}
+              onChangeText={setPartnerCode}
+              placeholder="Enter invite code (e.g., ph_...)"
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <Button mode="text" onPress={() => { setAcceptVisible(false); setPartnerCode(''); }}>Cancel</Button>
+              <Button mode="contained" onPress={handleAcceptPartner} loading={accepting} disabled={accepting || !partnerCode.trim()}>
+                Accept
+              </Button>
+            </View>
+          </Modal>
+          <Modal visible={joinVisible} onDismiss={() => setJoinVisible(false)} contentContainerStyle={{ backgroundColor: Colors.background.secondary, margin: 16, padding: 16, borderRadius: 12 }}>
+            <Text style={styles.sectionTitle}>Join by Access Code</Text>
+            <Text style={{ color: Colors.text.secondary, marginBottom: 12 }}>Enter the invite/access code you received via email</Text>
+            <TextInput
+              mode="outlined"
+              value={joinCode}
+              onChangeText={setJoinCode}
+              placeholder="Enter code"
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <Button mode="text" onPress={() => { setJoinVisible(false); setJoinCode(''); }}>Cancel</Button>
+              <Button
+                mode="contained"
+                onPress={async () => {
+                  try {
+                    await groupService.joinByCode(joinCode.trim());
+                    setJoinVisible(false);
+                    setJoinCode('');
+                    await loadGroups();
+                  } catch (e: any) {
+                    Alert.alert('Join failed', e?.response?.data?.message || 'Invalid or expired code');
+                  }
+                }}
+              >
+                Join
             </Button>
           </View>
-        )}
+          </Modal>
+        </Portal>
+
+        {/* Victory Stories Section */}
+        <VictoryStories navigation={navigation} />
+
+        
       </ScrollView>
     </SafeAreaView>
   );
@@ -211,70 +794,42 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.primary, // #121212
+    backgroundColor: Colors.background.primary,
   },
-
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: `${Colors.background.primary}CC`, // 80% opacity
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border.primary,
+    backgroundColor: Colors.background.primary,
   },
-  profileContainer: {
-    width: 48,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  profileImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
   },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     color: Colors.text.primary,
     textAlign: 'center',
-    flex: 1,
-    letterSpacing: 0.5,
   },
-  profileButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: `${Colors.background.secondary}80`, // Semi-transparent
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerSpacer: {
+    width: 40,
   },
-
-  // Content
   scrollView: {
     flex: 1,
   },
-  content: {
-    paddingHorizontal: 16,
-    paddingBottom: 96, // Account for tab bar
-  },
-
-  // Greeting
-  greetingSection: {
-    marginBottom: 24,
-  },
-  greeting: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.text.primary,
-    lineHeight: 36,
+  scrollContent: {
+    padding: 16,
   },
 
   // Streak Card
   streakCard: {
-    backgroundColor: Colors.background.secondary, // #1f2937
-    borderRadius: 12,
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 16,
     padding: 24,
     alignItems: 'center',
     marginBottom: 24,
@@ -297,165 +852,275 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
   },
 
-  // Daily Identity
-  identityCard: {
+  // Daily Check-in Section
+  checkInCard: {
     backgroundColor: Colors.background.secondary,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 24,
     marginBottom: 24,
   },
-  identityContent: {
+  streaksContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  identityText: {
-    flex: 1,
-  },
-  identityLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: Colors.text.secondary,
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  identityTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text.primary,
-    lineHeight: 24,
-    marginBottom: 4,
-  },
-  identityVerse: {
-    fontSize: 14,
-    color: Colors.text.secondary,
-  },
-  identityImageContainer: {
-    flexShrink: 0,
-  },
-  identityImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-  },
-
-  // Quick Actions
-  quickActionsSection: {
-    marginBottom: 24,
+    justifyContent: 'space-around',
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: Colors.text.primary,
     marginBottom: 16,
-    lineHeight: 24,
   },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  actionButton: {
-    width: '48%',
+  checkInQuestion: {
+    fontSize: 16,
+    color: Colors.text.secondary,
     marginBottom: 16,
   },
-  actionSurface: {
-    backgroundColor: Colors.background.secondary,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 100,
-    width: '100%',
+  moodSlider: {
+    marginBottom: 24,
   },
-  actionText: {
+  moodIndicators: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  moodIcon: {
+    alignItems: 'center',
+    width: 60,
+  },
+  emoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  moodLabel: {
+    fontSize: 12,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+  },
+  progressContainer: {
+    flex: 1,
+    marginHorizontal: 16,
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.background.tertiary,
+  },
+  moodScale: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 32,
+  },
+  scaleNumber: {
+    fontSize: 12,
+    color: Colors.text.secondary,
+  },
+  shareScriptureButton: {
+    borderRadius: 8,
+  },
+  shareScriptureContent: {
+    paddingVertical: 8,
+  },
+  shareScriptureLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Quick Actions Section
+  quickActionsSection: {
+    marginBottom: 24,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  quickActionButton: {
+    width: '48%',
+    height: 96,
+    backgroundColor: Colors.background.tertiary,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sosButton: {
+    backgroundColor: Colors.error.main,
+  },
+  quickActionLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: Colors.text.primary,
     textAlign: 'center',
+  },
+  sosLabel: {
+    color: Colors.white,
+  },
+  inviteButton: {
+    backgroundColor: Colors.primary.main,
+  },
+  inviteLabel: {
+    color: Colors.white,
+    fontWeight: '600',
+  },
+
+  // Emergency Section
+  emergencySection: {
+    marginBottom: 24,
+  },
+  emergencyButton: {
+    borderRadius: 12,
+  },
+  emergencyCard: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  emergencyContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    flex: 1,
+  },
+  emergencyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: `${Colors.error.main}20`, // 20% opacity
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emergencyDetails: {
+    flex: 1,
+  },
+  emergencyTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.text.primary,
+  },
+
+  // Community Section Styles
+  communitySection: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionHeaderSmall: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  headerActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexShrink: 1,
+    marginLeft: 12,
+  },
+  headerActionsRowSmall: {
+    flexWrap: 'wrap',
+    rowGap: 8,
+    maxWidth: '60%',
     marginTop: 8,
   },
-
-  // Focus Section
-  focusSection: {
-    marginBottom: 24,
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary.main,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 4,
   },
-  focusCard: {
-    backgroundColor: Colors.background.secondary,
-    borderRadius: 12,
-    overflow: 'hidden',
+  createButtonText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: '600',
   },
-  focusImageBackground: {
-    width: '100%',
-    height: 128,
-  },
-  focusImageStyle: {
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  focusContent: {
-    padding: 16,
-  },
-  focusTitle: {
+  createButtonTextSmall: {
+    fontSize: 11,
+   },
+  sectionTitleSmall: {
     fontSize: 16,
-    fontWeight: '700',
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  chip: {
+    backgroundColor: `${Colors.primary.main}10`,
+    borderColor: Colors.primary.main,
+  },
+  chipText: {
     color: Colors.text.primary,
-    marginBottom: 4,
   },
-  focusDescription: {
-    fontSize: 14,
-    color: Colors.text.secondary,
-    lineHeight: 20,
+  emailInput: {
+    backgroundColor: Colors.background.tertiary,
+    marginBottom: 16,
   },
-
-  // Partner Section
-  partnerSection: {
-    marginBottom: 24,
-  },
-  partnerCard: {
+  groupCard: {
     backgroundColor: Colors.background.secondary,
-    borderRadius: 12,
-    overflow: 'hidden',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
   },
-  partnerImageBackground: {
-    width: '100%',
-    height: 128,
+  groupInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  partnerImageStyle: {
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+  groupAvatarContainer: {
+    position: 'relative',
   },
-  partnerContent: {
-    padding: 16,
+  groupAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
-  partnerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text.primary,
-    marginBottom: 4,
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#22c55e',
+    borderWidth: 2,
+    borderColor: Colors.background.secondary,
   },
-  partnerDescription: {
-    fontSize: 14,
-    color: Colors.text.secondary,
-    lineHeight: 20,
+  groupDetails: {
+    flex: 1,
   },
-  debugSection: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: 'rgba(245, 153, 61, 0.1)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 153, 61, 0.3)',
-  },
-  debugTitle: {
+  groupName: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.primary.main,
-    marginBottom: 12,
-    textAlign: 'center',
+    color: Colors.text.primary,
+    marginBottom: 2,
   },
-  debugButton: {
-    borderColor: Colors.primary.main,
+  groupMessage: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+  },
+  groupTime: {
+    fontSize: 12,
+    color: Colors.text.secondary,
+  },
+  radioOptionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  visibilityContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
   },
 });
 

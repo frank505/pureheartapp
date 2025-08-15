@@ -120,7 +120,7 @@ export const TabIcon: React.FC<{ name: string; focused: boolean; color?: string 
 }) => (
   <Icon
     name={name}
-    size={focused ? 'lg' : 'md'}
+    size={focused ? 'xl' : 'lg'}
     color={color}
     style={{ opacity: focused ? 1 : 0.7 }}
   />
