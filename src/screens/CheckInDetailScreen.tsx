@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Surface, TextInput, Button, Chip } from 'react-native-paper';
 import checkinService, { CheckInDTO, Comment } from '../services/checkinService';
 import { Colors } from '../constants';
+import { ScreenHeader, Icon } from '../components';
 
 const CheckInDetailScreen = ({ route, navigation }: any) => {
   const { checkInId } = route.params;
@@ -19,6 +20,7 @@ const CheckInDetailScreen = ({ route, navigation }: any) => {
     try {
       setLoading(true);
       const data = await checkinService.getById(checkInId);
+    
       setCheckIn(data);
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Failed to load check-in');
@@ -31,6 +33,7 @@ const CheckInDetailScreen = ({ route, navigation }: any) => {
     try {
       setLoading(true);
       const res = await checkinService.getComments(checkInId, { page: pageNum, limit: 20 });
+      // Alert.alert('comments data', JSON.stringify(res));
       setComments(res.items);
       setPage(res.page);
       setTotalPages(res.totalPages);
@@ -85,10 +88,12 @@ const CheckInDetailScreen = ({ route, navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Custom Screen Header with Back Button */}
+      <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
-          <Text style={{ color: Colors.text.primary }}>{'< Back'}</Text>
+          <View style={styles.iconContainer}>
+            <Icon name="arrow-back" color={Colors.primary.main} size="md" />
+          </View>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Check-in</Text>
         <View style={styles.headerSpacer} />
@@ -98,7 +103,11 @@ const CheckInDetailScreen = ({ route, navigation }: any) => {
         <Surface style={styles.card} elevation={2}>
           <View style={styles.rowBetween}>
             <View style={styles.col}>
-              <Text style={styles.dateText}>{new Date(checkIn.createdAt).toLocaleString()}</Text>
+              {(() => {
+                const d = new Date(checkIn.createdAt);
+                const txt = isNaN(d.getTime()) ? 'Unknown date' : d.toLocaleString();
+                return <Text style={styles.dateText}>{txt}</Text>;
+              })()}
               {checkIn.note ? <Text style={styles.noteText}>{checkIn.note}</Text> : null}
               <View style={styles.row}>
                 <Chip compact style={styles.metaChip}>visibility: {checkIn.visibility}</Chip>
@@ -152,8 +161,23 @@ const CheckInDetailScreen = ({ route, navigation }: any) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background.primary },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: Colors.background.primary },
+  headerContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 16, 
+    paddingVertical: 12, 
+    backgroundColor: Colors.background.primary 
+  },
   backButton: { padding: 8 },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.background.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.text.primary, textAlign: 'center', flex: 1 },
   headerSpacer: { width: 40 },
   card: { backgroundColor: Colors.background.secondary, borderRadius: 8, padding: 16, margin: 16 },

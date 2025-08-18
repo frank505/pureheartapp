@@ -30,6 +30,7 @@ import OnboardingButton from '../../components/OnboardingButton';
 import OnboardingCard from '../../components/OnboardingCard';
 import ProgressIndicator from '../../components/ProgressIndicator';
 import { Colors } from '../../constants';
+import { responsiveFontSizes, responsiveSpacing } from '../../utils/responsive';
 
 interface Onboarding1ScreenProps {
   navigation: any;
@@ -201,13 +202,13 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: responsiveSpacing.lg,
     paddingTop: 80,
     justifyContent: 'center',
     zIndex: 10,
   },
   mainTitle: {
-    fontSize: 28,
+    fontSize: responsiveFontSizes.mainTitle,
     fontWeight: '700',
     color: Colors.text.primary,
     textAlign: 'center',
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: responsiveFontSizes.subtitle,
     color: Colors.text.secondary,
     textAlign: 'center',
     lineHeight: 24,
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   didYouKnowLabel: {
-    fontSize: 12,
+    fontSize: responsiveFontSizes.caption,
     fontWeight: '500',
     color: Colors.text.secondary,
     textTransform: 'uppercase',
@@ -235,13 +236,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   statisticNumber: {
-    fontSize: 48,
+    fontSize: responsiveFontSizes.statisticNumber,
     fontWeight: '700',
     color: Colors.text.primary,
     marginBottom: 8,
   },
   statisticDescription: {
-    fontSize: 16,
+    fontSize: responsiveFontSizes.body,
     color: Colors.text.secondary,
     textAlign: 'center',
     lineHeight: 22,
@@ -251,7 +252,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   verseText: {
-    fontSize: 16,
+    fontSize: responsiveFontSizes.body,
     color: Colors.text.secondary,
     textAlign: 'center',
     fontStyle: 'italic',
@@ -259,12 +260,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   verseReference: {
-    fontSize: 14,
+    fontSize: responsiveFontSizes.bodySmall,
     color: Colors.text.secondary,
     fontStyle: 'italic',
   },
   confidentialityText: {
-    fontSize: 14,
+    fontSize: responsiveFontSizes.bodySmall,
     color: Colors.text.secondary,
     textAlign: 'center',
     lineHeight: 20,
@@ -275,14 +276,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: Colors.background.primary,
-    paddingHorizontal: 24,
+    paddingHorizontal: responsiveSpacing.lg,
     paddingBottom: 32,
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: 'rgba(74, 74, 74, 0.3)',
   },
   bottomNote: {
-    fontSize: 12,
+    fontSize: responsiveFontSizes.caption,
     color: Colors.text.secondary,
     textAlign: 'center',
     marginTop: 16,

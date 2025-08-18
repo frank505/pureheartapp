@@ -1,27 +1,61 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, FlatList, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Surface, TextInput, Button } from 'react-native-paper';
 import Icon from '../components/Icon';
 import { Colors, Icons } from '../constants';
+import { sendAiMessage, getSessionMessages, deleteSession } from '../services/aiChatService';
+import { Alert } from 'react-native';
 
-interface AIChatScreenProps { navigation?: any }
+interface AIChatScreenProps { navigation?: any; route?: any }
 
 type Msg = { id: string; role: 'user'|'assistant'; text: string };
 
-const AIChatScreen: React.FC<AIChatScreenProps> = ({ navigation }) => {
+const AIChatScreen: React.FC<AIChatScreenProps> = ({ navigation, route }) => {
+  const initialSessionId: number | undefined = route?.params?.sessionId;
+  const initialTitle: string | undefined = route?.params?.title;
+  const [sessionId, setSessionId] = useState<number | undefined>(initialSessionId);
   const [messages, setMessages] = useState<Msg[]>([
-    { id: 'm1', role: 'assistant', text: 'Hi, I am your AI companion. How can I support you today?' },
+    { id: 'm1', role: 'assistant', text: 'I’m here for you. What are you facing right now?' },
   ]);
   const [input, setInput] = useState('');
   const listRef = useRef<FlatList<Msg>>(null);
+  const [initialLoading, setInitialLoading] = useState(false);
 
-  const send = () => {
+  useEffect(() => {
+    const load = async () => {
+      if (!initialSessionId) return;
+      try {
+        setInitialLoading(true);
+        const res = await getSessionMessages(initialSessionId, { page: 1, limit: 100 });
+        const msgs: Msg[] = res.items.map((m) => ({ id: String(m.id), role: m.role === 'user' ? 'user' : 'assistant', text: m.content }));
+        if (msgs.length) setMessages(msgs);
+      } finally {
+        setInitialLoading(false);
+        setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 10);
+      }
+    };
+    load();
+  }, [initialSessionId]);
+
+  const send = async () => {
     if (!input.trim()) return;
-    const userMsg: Msg = { id: String(Date.now()), role: 'user', text: input.trim() };
-    setMessages((prev) => [...prev, userMsg, { id: `${Date.now()}_a`, role: 'assistant', text: 'Thank you for sharing. Remember Philippians 4:13 — I can do all things through Him who strengthens me.' }]);
+    const text = input.trim();
+    const userMsg: Msg = { id: String(Date.now()), role: 'user', text };
+    setMessages((prev) => [...prev, userMsg]);
     setInput('');
+    Keyboard.dismiss();
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+
+    try {
+      const res = await sendAiMessage({ sessionId, message: text });
+      if (!sessionId) setSessionId(res.session.id);
+      const aiMsg: Msg = { id: String(res.message.id), role: 'assistant', text: res.message.content };
+      setMessages((prev) => [...prev, aiMsg]);
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+    } catch (e) {
+      setMessages((prev) => [...prev, { id: `${Date.now()}_err`, role: 'assistant', text: 'Sorry, I had trouble responding. Please try again.' }]);
+    }
   };
 
   const quicks = useMemo(() => [
@@ -37,8 +71,27 @@ const AIChatScreen: React.FC<AIChatScreenProps> = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
           <Icon name={Icons.navigation.back.name} color={Colors.text.primary} size="md" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Companion</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={styles.headerTitle}>{initialTitle || 'AI Companion'}</Text>
+        {sessionId ? (
+          <TouchableOpacity
+            onPress={() => {
+              Alert.alert('Delete chat?', 'This will permanently delete this AI session.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: async () => {
+                  try {
+                    await deleteSession(sessionId);
+                    navigation?.goBack();
+                  } catch (_) {}
+                }}
+              ]);
+            }}
+            style={styles.deleteBtn}
+          >
+            <Icon name="trash-outline" color={Colors.error.main} size="md" />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
       </View>
 
       {/* Quick prompts */}
@@ -51,6 +104,11 @@ const AIChatScreen: React.FC<AIChatScreenProps> = ({ navigation }) => {
       </View>
 
       {/* Messages */}
+      {initialLoading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: Colors.text.secondary }}>Loading conversation…</Text>
+        </View>
+      ) : (
       <FlatList
         ref={listRef}
         data={messages}
@@ -65,6 +123,7 @@ const AIChatScreen: React.FC<AIChatScreenProps> = ({ navigation }) => {
         contentContainerStyle={styles.messages}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
       />
+      )}
 
       {/* Input */}
       <View style={styles.inputRow}>
@@ -89,6 +148,7 @@ const styles = StyleSheet.create({
   backButton: { padding: 8 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.text.primary, textAlign: 'center', flex: 1 },
   headerSpacer: { width: 40 },
+  deleteBtn: { padding: 8 },
   quickRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
   quickBtn: { borderColor: Colors.border.primary },
   messages: { paddingHorizontal: 16, paddingBottom: 16, gap: 8 },

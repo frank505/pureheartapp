@@ -11,7 +11,7 @@
  * The design focuses on spiritual accountability and support between partners.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -21,12 +21,14 @@ import {
   Alert,
   Image,
   useWindowDimensions,
+  Animated,
+  Dimensions,
+  Platform,
 } from 'react-native';
 import { Text, Surface, Button, ProgressBar, Portal, Modal, TextInput, RadioButton, Checkbox, Chip } from 'react-native-paper';
 import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from '../components/Icon';
-import ProfileDropdown from '../components/ProfileDropdown';
+import { Icon, ProfileDropdown, ScreenHeader } from '../components';
 import PartnerGroupSelector from '../components/PartnerGroupSelector';
 import { Colors, Icons } from '../constants';
 import groupService, { GroupSummary } from '../services/groupService';
@@ -41,6 +43,9 @@ import { fetchPartners, generateInvitationHash, acceptByCode, sendInvitesByEmail
 import { getStreaks } from '../store/slices/streaksSlice';
 import VictoryStories from '../components/VictoryStories';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { generateDailyRecommendation } from '../services/recommendationService';
+
+const { width: screenWidth } = Dimensions.get('window');
 // import InvitationService from '../services/invitationService';
 
 /**
@@ -56,6 +61,19 @@ interface HomeScreenProps {
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const isSmall = width < 360;
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const streakPulse = useRef(new Animated.Value(1)).current;
+  const quickActionAnimations = useRef(Array(12).fill(0).map(() => new Animated.Value(0))).current;
+  const cardAnimations = useRef({
+    streak: new Animated.Value(0),
+    checkin: new Animated.Value(0),
+    quickActions: new Animated.Value(0),
+    community: new Animated.Value(0),
+  }).current;
+  
   // State for daily check-in mood slider
   const [moodValue, setMoodValue] = useState(0.75); // 75% = "doing well"
   const [checkinVisible, setCheckinVisible] = useState(false);
@@ -77,14 +95,100 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     name: p.partner ? `${p.partner.firstName} ${p.partner.lastName}` : 'Partner',
   }));
 
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const hasCheckedInToday = checkins.some((c) => new Date(c.createdAt).toISOString().slice(0, 10) === todayISO);
+  // Safely determine if there's a check-in for today (avoid toISOString on invalid dates)
+  const today = new Date();
+  const isValidDate = (d: Date) => !isNaN(d.getTime());
+  const isSameUTCDay = (a: Date, b: Date) =>
+    a.getUTCFullYear() === b.getUTCFullYear() &&
+    a.getUTCMonth() === b.getUTCMonth() &&
+    a.getUTCDate() === b.getUTCDate();
+  const hasCheckedInToday = checkins.some((c) => {
+    if (!c?.createdAt) return false;
+    const d = new Date(c.createdAt);
+    if (!isValidDate(d)) return false;
+    return isSameUTCDay(d, today);
+  });
+
+  /**
+   * Handle relapse
+   */
+  const handleRelapsed = () => {
+    Alert.alert(
+      'Record a Relapse',
+      'This will reset your streak count to 0. Are you sure?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes, I Relapsed',
+          onPress: async () => {
+            try {
+              // Create a check-in with status "relapse"
+              await dispatch(createCheckIn({
+                mood: 0.25, // Default to a low mood for relapse
+                note: 'I struggled today and relapsed.',
+                visibility: 'private',
+                status: 'relapse'
+              })).unwrap();
+              
+              // Call API to reset streak - would ideally use a dedicated resetStreak action
+              // For now, we can simulate by setting streak to 0 in the backend
+              await fetch('/api/streaks/reset', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+              });
+              
+              Alert.alert('Streak Reset', 'Your relapse has been recorded and your streak has been reset to 0. Remember, tomorrow is a new day to start fresh!');
+              // Refresh streaks data and check-ins
+              dispatch(getStreaks());
+              dispatch(fetchCheckIns({ page: 1, limit: 50 }));
+            } catch (e: any) {
+              Alert.alert('Error', e?.message || 'Failed to record relapse');
+            }
+          },
+          style: 'destructive',
+        },
+      ],
+    );
+  };
+
+  /**
+   * Calculate days to next milestone
+   */
+  const calculateNextMilestone = (currentDays: number) => {
+    const milestones = [7, 14, 30, 60, 90, 180, 270, 365];
+    
+    // Find the next milestone
+    for (const milestone of milestones) {
+      if (currentDays < milestone) {
+        return {
+          current: currentDays,
+          next: milestone,
+          daysToGo: milestone - currentDays
+        };
+      }
+    }
+    
+    // If passed all milestones, use yearly milestones (365 days)
+    const yearsMilestone = Math.ceil(currentDays / 365) * 365;
+    
+    return {
+      current: currentDays,
+      next: yearsMilestone,
+      daysToGo: yearsMilestone - currentDays
+    };
+  };
 
   /**
    * Handle daily check-in submission
    */
   const handleDailyCheckin = () => {
-    // If not checked in today, open modal to create
+    // This function is no longer used directly by buttons
+    // We're now handling check-in and view check-ins separately
     if (!hasCheckedInToday) {
       setCheckinVisible(true);
       setShowConfetti(true);
@@ -228,7 +332,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     try {
       setLoadingGroups(true);
       const [groups, unread] = await Promise.all([
-        groupService.listMyGroups({ page: 1, pageSize: 10 }),
+        groupService.listMyGroups({ page: 1, pageSize: 5 }),
         groupService.unreadCounts(),
       ]);
       setMyGroups(groups.items);
@@ -249,7 +353,57 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     dispatch(fetchPartners());
     dispatch(fetchGroups());
     dispatch(getStreaks());
-  }, [loadGroups, dispatch]);
+    
+    // Entrance animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Streak pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(streakPulse, {
+          toValue: 1.05,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(streakPulse, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Staggered card animations
+    Object.values(cardAnimations).forEach((anim, index) => {
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 600,
+        delay: index * 150,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    // Quick action button animations
+    quickActionAnimations.forEach((anim, index) => {
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 400,
+        delay: 800 + index * 50,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [dispatch]);
 
   useFocusEffect(
     useCallback(() => {
@@ -259,7 +413,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       dispatch(fetchPartners());
       dispatch(fetchGroups());
       dispatch(getStreaks());
-    }, [loadGroups, dispatch])
+    }, [dispatch]) // Removed loadGroups from dependencies to prevent infinite loop
   );
 
   const submitCheckIn = async () => {
@@ -267,6 +421,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       const payload: any = {
         mood: Math.max(0, Math.min(1, moodValue)),
         note: note?.trim() || undefined,
+        status: 'victory', // Explicitly set status to victory for normal check-ins
       };
       if (visibilityOption === 'private') {
         payload.visibility = 'private';
@@ -290,7 +445,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       setSelectedGroupIds([]);
       setVisibilityOption('private');
       await dispatch(fetchCheckIns({ page: 1, limit: 50 }));
-      Alert.alert('Check-in created', 'Your daily check-in has been saved.');
+      Alert.alert('Victory Recorded!', 'Your daily victory has been saved. Keep going strong! 💪');
     } catch (e: any) {
       Alert.alert('Check-in failed', e?.message || 'Unable to create check-in.');
     }
@@ -298,12 +453,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Custom Header */}
-      <View style={styles.header}>
-        <View style={styles.headerSpacer} />
-        <Text style={styles.headerTitle}>Home</Text>
-        <ProfileDropdown navigation={navigation} />
-      </View>
+      {/* Enhanced Header */}
+      <Animated.View 
+        style={[
+          styles.header,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }]
+          }
+        ]}
+      >
+        <ScreenHeader title="Home" iconName="home" navigation={navigation} />
+      </Animated.View>
 
       <ScrollView 
         style={styles.scrollView}
@@ -318,27 +479,150 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             onAnimationEnd={() => setShowConfetti(false)}
           />
         )}
-        {/* Streak Card */}
-        <Surface style={styles.streakCard} elevation={3}>
-          <Text style={styles.streakLabel}>Current Streak</Text>
-          <Text style={styles.streakNumber}>{streaks?.currentStreak ?? 0}</Text>
-          <Text style={styles.streakUnit}>days</Text>
-        </Surface>
+        
+        {/* Enhanced Streak Card */}
+        <Animated.View
+          style={[
+            {
+              opacity: cardAnimations.streak,
+              transform: [
+                {
+                  translateY: cardAnimations.streak.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0],
+                  }),
+                },
+                { scale: streakPulse },
+              ],
+            },
+          ]}
+        >
+          <Surface style={styles.streakCard} elevation={3}>
+            <View style={styles.streakIconContainer}>
+              <Icon name="flame" color={Colors.primary.main} size="xl" />
+            </View>
+            <Text style={styles.streakLabel}>Current Streak</Text>
+            <Text style={styles.streakNumber}>{streaks?.currentStreak ?? 0}</Text>
+            <Text style={styles.streakUnit}>days strong</Text>
+            
+            {/* Display current progress towards milestone */}
+            {(() => {
+              const currentStreak = streaks?.currentStreak ?? 0;
+              const { next } = calculateNextMilestone(currentStreak);
+              return (
+                <View style={styles.streakMilestoneContainer}>
+                  <Text style={styles.streakMilestoneProgress}>
+                    <Text style={styles.streakMilestoneHighlight}>{currentStreak}</Text> of <Text style={styles.streakMilestoneHighlight}>{next}</Text> days
+                  </Text>
+                </View>
+              );
+            })()}
+            
+            <View style={styles.streakProgressContainer}>
+              <View style={styles.streakProgress}>
+                {/* Calculate progress percentage based on the next milestone */}
+                {(() => {
+                  const currentStreak = streaks?.currentStreak ?? 0;
+                  const { next, daysToGo } = calculateNextMilestone(currentStreak);
+                  // Calculate progress percentage based on the next milestone
+                  const progressPercentage = Math.min((currentStreak / next) * 100, 100);
+                  
+                  // Check if current streak is exactly on a milestone
+                  const milestones = [7, 14, 30, 60, 90, 180, 270, 365];
+                  const isExactMilestone = milestones.includes(currentStreak);
+                  
+                  // Check if we've reached a year or more
+                  const years = Math.floor(currentStreak / 365);
+                  const remainingDays = currentStreak % 365;
+                  
+                  // Customize message based on progress
+                  let milestoneMessage = '';
+                  
+                  if (years >= 1) {
+                    if (remainingDays === 0) {
+                      // Exactly X years
+                      const yearText = years === 1 ? "year" : "years";
+                      milestoneMessage = `🏆 Amazing! ${years} ${yearText} of victory! Keep going strong!`;
+                    } else {
+                      // X years and Y days
+                      const yearText = years === 1 ? "year" : "years";
+                      milestoneMessage = `${daysToGo} days to next milestone`;
+                    }
+                  } else if (isExactMilestone) {
+                    milestoneMessage = `🎉 Congratulations on reaching your milestone!`;
+                  } else if (daysToGo === 1) {
+                    milestoneMessage = `Just 1 more day to go!`;
+                  } else if (daysToGo <= 3) {
+                    milestoneMessage = `Almost there! ${daysToGo} days to go`;
+                  } else {
+                    milestoneMessage = `${daysToGo} days to next milestone`;
+                  }
+                  
+                  return (
+                    <>
+                      <View 
+                        style={[
+                          styles.streakProgressFill, 
+                          { width: `${progressPercentage}%` }
+                        ]} 
+                      />
+                      <Text 
+                        style={[
+                          styles.streakMilestoneText, 
+                          { marginTop: 4 },
+                          (isExactMilestone || (years >= 1 && remainingDays === 0)) && styles.streakMilestoneCelebration
+                        ]}
+                      >
+                        {milestoneMessage}
+                      </Text>
+                    </>
+                  );
+                })()}
+              </View>
+            </View>
+          </Surface>
+        </Animated.View>
 
-        {/* Daily Check-In Section */}
-        <Surface style={styles.checkInCard} elevation={2}>
-          <Text style={styles.sectionTitle}>Daily Check-In</Text>
-          <Text style={styles.checkInQuestion}>How's your heart today?</Text>
-          
-          {/* Mood Slider */}
-          <View style={styles.moodSlider}>
-            <View style={styles.moodIndicators}>
-              <View style={styles.moodIcon}>
-                <Text style={styles.emoji}>😔</Text>
-                <Text style={styles.moodLabel}>Struggling</Text>
-        </View>
+        {/* Enhanced Daily Check-In Section */}
+        <Animated.View
+          style={[
+            {
+              opacity: cardAnimations.checkin,
+              transform: [
+                {
+                  translateY: cardAnimations.checkin.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Surface style={styles.checkInCard} elevation={2}>
+            <View style={styles.checkInHeader}>
+              <Icon name="heart" color={Colors.primary.main} size="lg" style={styles.checkInIcon} />
+              <View style={styles.sectionTitleContainer}>
+                <Text style={styles.sectionTitle}>Daily Check-In</Text>
+              </View>
+              {hasCheckedInToday && (
+                <View style={styles.checkInStatusBadge}>
+                  <Icon name="checkmark-circle" color={Colors.primary.main} size="sm" />
+                </View>
+              )}
+            </View>
+            
+            <Text style={styles.checkInQuestion}>How's your heart today?</Text>
+            
+            {/* Enhanced Mood Slider */}
+            <View style={styles.moodSlider}>
+              <View style={styles.moodIndicators}>
+                <View style={styles.moodIcon}>
+                  <Text style={styles.emoji}>😔</Text>
+                  <Text style={styles.moodLabel}>Struggling</Text>
+                </View>
 
-              <View style={styles.progressContainer}>
+                <View style={styles.progressContainer}>
                 <ProgressBar
                   progress={moodValue}
                   color={Colors.primary.main}
@@ -358,162 +642,197 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             </View>
           </View>
 
-          <Button
-            mode="contained"
-            onPress={handleDailyCheckin}
-            style={styles.shareScriptureButton}
-            contentStyle={styles.shareScriptureContent}
-            labelStyle={styles.shareScriptureLabel}
-            buttonColor={Colors.primary.main}
-            loading={isCreating}
-            disabled={isCreating}
-          >
-            {hasCheckedInToday ? 'View Check-ins' : 'Check in today'}
-          </Button>
-        </Surface>
+          {hasCheckedInToday && (
+            <View style={styles.checkedInStatusContainer}>
+              <Icon name="checkmark-circle" color={Colors.primary.main} size="sm" />
+              <Text style={styles.checkedInStatusText}>You have checked in today! (revelations 12:11 NIV) 🎉</Text>
+            </View>
+          )}
 
-        {/* Quick Actions Section */}
-        <View style={styles.quickActionsSection}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
-            {/* Daily Dose */}
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => navigation.navigate('DailyDose')}
+          <View style={styles.checkInButtonsContainer}>
+            <Button
+              mode="contained"
+              onPress={() => {
+                setCheckinVisible(true);
+                setShowConfetti(true);
+              }}
+              style={styles.checkInButton}
+              contentStyle={styles.shareScriptureContent}
+              labelStyle={styles.shareScriptureLabel}
+              buttonColor={Colors.primary.main}
+              loading={isCreating}
+              disabled={isCreating || hasCheckedInToday}
             >
-              <Icon 
-                name="book-outline" 
-                color={Colors.text.primary} 
-                size="lg" 
-              />
-              <Text style={styles.quickActionLabel}>Daily Dose</Text>
-            </TouchableOpacity>
+              I Overcame Today! 😊
+            </Button>
             
-           
-
-             {/* Invite Partner */}
-             <TouchableOpacity 
-              style={[styles.quickActionButton, styles.inviteButton]}
-              onPress={() => navigation?.navigate('InvitePartner')}
+            <Button
+              mode="outlined"
+              onPress={() => navigation.navigate('CheckInHistory')}
+              style={styles.viewCheckinButton}
+              contentStyle={styles.shareScriptureContent}
+              labelStyle={styles.shareScriptureLabel}
+              buttonColor={Colors.white}
             >
-              <Icon 
-                name="person-add-outline" 
-                color={Colors.white} 
-                size="lg" 
-              />
-              <Text style={[styles.quickActionLabel, styles.inviteLabel]}>Invite Partner</Text>
-            </TouchableOpacity>
-
-
-              {/* Manage Partners */}
-              <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => navigation?.navigate('PartnersList')}
+              View Check-ins
+            </Button>
+            
+            <Button
+              mode="outlined"
+              onPress={handleRelapsed}
+              style={styles.relapsedButton}
+              contentStyle={styles.shareScriptureContent}
+              labelStyle={[styles.shareScriptureLabel, {color: Colors.error.main}]}
+              buttonColor={Colors.white}
+              textColor={Colors.error.main}
+              disabled={hasCheckedInToday}
             >
-              <Icon 
-                name="people-outline" 
-                color={Colors.text.primary} 
-                size="lg" 
-              />
-              <Text style={styles.quickActionLabel}>Manage Partners</Text>
-            </TouchableOpacity>
-
-            {/* Prayers */}
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => navigation?.navigate('PrayerRequests')}
-            >
-              <Icon 
-                name="list-outline" 
-                color={Colors.text.primary} 
-                size="lg" 
-              />
-              <Text style={styles.quickActionLabel}>Prayers</Text>
-            </TouchableOpacity>
-
-            {/* Share Prayer */}
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => navigation?.navigate('CreatePrayerRequest')}
-            >
-              <Icon 
-                name="hand-right-outline" 
-                color={Colors.text.primary} 
-                size="lg" 
-              />
-              <Text style={styles.quickActionLabel}>Prayer Request</Text>
-            </TouchableOpacity>
-
-            {/* Share Victory */}
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={handleShareVictory}
-            >
-              <Icon 
-                name="trophy-outline" 
-                color={Colors.text.primary} 
-                size="lg" 
-              />
-              <Text style={styles.quickActionLabel}>Share Victory</Text>
-            </TouchableOpacity>
-
-            {/* My Victories */}
-            <TouchableOpacity
-              style={styles.quickActionButton}
-              onPress={() => navigation?.navigate('MyVictories')}
-            >
-              <Icon
-                name="medal-outline"
-                color={Colors.text.primary}
-                size="lg"
-              />
-              <Text style={styles.quickActionLabel}>My Victories</Text>
-            </TouchableOpacity>
-
-            {/* Accept Invitation */}
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => setAcceptVisible(true)}
-            >
-              <Icon 
-                name={Icons.security.key.name}
-                color={Colors.text.primary}
-                size="lg" 
-              />
-              <Text style={styles.quickActionLabel}>Accept Invitation</Text>
-            </TouchableOpacity>
-
-            {/* Daily Check-in */}
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={handleDailyCheckin}
-            >
-              <Icon 
-                name={Icons.communication.bell.name} 
-                color={Colors.text.primary} 
-                size="lg" 
-              />
-              <Text style={styles.quickActionLabel}>Daily Check-in's</Text>
-            </TouchableOpacity>
-            {/* AI Accountability (coming soon) */}
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => Alert.alert('Coming soon', 'AI Accountability is coming soon.')} 
-            >
-              <Icon 
-                name="bulb-outline" 
-                color={Colors.text.primary} 
-                size="lg" 
-              />
-              <Text style={styles.quickActionLabel}>AI Accountability</Text>
-            </TouchableOpacity>
+              I Relapsed Today 😔
+            </Button>
           </View>
-        </View>
+        </Surface>
+        </Animated.View>
 
-        {/* Community Groups Section */}
-        <View style={styles.communitySection}>
+        {/* Enhanced Quick Actions Section */}
+        <Animated.View
+          style={[
+            styles.quickActionsSection,
+            {
+              opacity: cardAnimations.quickActions,
+              transform: [
+                {
+                  translateY: cardAnimations.quickActions.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleContainer}>
+              <Icon name="flash" color={Colors.primary.main} size="md" />
+              <Text style={styles.sectionTitle}>Quick Actions</Text>
+            </View>
+          </View>
+          <View style={styles.quickActionsGrid}>
+            {[
+              // { 
+              //   icon: 'book-outline', 
+              //   label: 'Daily Dose', 
+              //   onPress: () => navigation.navigate('DailyDose'),
+              //   color: Colors.primary.main
+              // },
+              { 
+                icon: 'person-add-outline', 
+                label: 'Invite Partner', 
+                onPress: () => navigation?.navigate('InvitePartner'),
+                color: Colors.primary.main,
+                special: 'invite'
+              },
+              { 
+                icon: 'people-outline', 
+                label: 'Partners', 
+                onPress: () => navigation?.navigate('PartnersList'),
+                color: Colors.secondary.main
+              },
+              { 
+                icon: 'list-outline', 
+                label: 'Prayer Requests', 
+                onPress: () => navigation?.navigate('PrayerRequests'),
+                color: Colors.primary.light
+              },
+              { 
+                icon: 'hand-right-outline', 
+                label: 'Ask for Prayer', 
+                onPress: () => navigation?.navigate('CreatePrayerRequest'),
+                color: Colors.warning.main
+              },
+              { 
+                icon: 'trophy-outline', 
+                label: 'Share Victory', 
+                onPress: handleShareVictory,
+                color: Colors.primary.main
+              },
+              { 
+                icon: 'medal-outline', 
+                label: 'My Victories', 
+                onPress: () => navigation?.navigate('MyVictories'),
+                color: Colors.secondary.main
+              },
+              { 
+                icon: Icons.security.key.name, 
+                label: 'Accept Code', 
+                onPress: () => setAcceptVisible(true),
+                color: Colors.primary.dark
+              }
+            ].map((action, index) => (
+              <Animated.View
+                key={action.label}
+                style={[
+                  styles.quickActionItemContainer,
+                  {
+                    opacity: quickActionAnimations[index],
+                    transform: [{
+                      scale: quickActionAnimations[index].interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.8, 1],
+                      })
+                    }]
+                  }
+                ]}
+              >
+                <TouchableOpacity 
+                  style={[
+                    styles.quickActionItem,
+                    action.special === 'invite' && styles.inviteActionItem
+                  ]}
+                  onPress={action.onPress}
+                  activeOpacity={0.7}
+                >
+                  {action.special !== 'invite' && <View style={styles.quickActionBorderAccent} />}
+                  <View style={[styles.quickActionIconContainer, { backgroundColor: action.special === 'invite' ? 'rgba(255,255,255,0.2)' : action.color + '20' }]}>
+                    <Icon 
+                      name={action.icon} 
+                      color={action.special === 'invite' ? Colors.white : action.color} 
+                      size="lg" 
+                    />
+                  </View>
+                  <Text style={[
+                    styles.quickActionText,
+                    action.special === 'invite' && styles.inviteActionText
+                  ]}>
+                    {action.label}
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            ))}
+          </View>
+        </Animated.View>
+
+        {/* Enhanced Community Groups Section */}
+        <Animated.View
+          style={[
+            styles.communitySection,
+            {
+              opacity: cardAnimations.community,
+              transform: [
+                {
+                  translateY: cardAnimations.community.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           <View style={[styles.sectionHeader, isSmall && styles.sectionHeaderSmall]}>
-            <Text style={[styles.sectionTitle, isSmall && styles.sectionTitleSmall]}>Community Groups</Text>
+            <View style={styles.sectionTitleContainer}>
+              <Icon name="people" color={Colors.primary.main} size="md" />
+              <Text style={[styles.sectionTitle, isSmall && styles.sectionTitleSmall]}>Community Groups</Text>
+            </View>
             <View style={[styles.headerActionsRow, isSmall && styles.headerActionsRowSmall]}>
               <TouchableOpacity 
                 style={styles.createButton}
@@ -533,35 +852,78 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           </View>
           
           {loadingGroups ? (
-            <Text style={{ color: Colors.text.secondary }}>Loading groups…</Text>
+            <View style={styles.loadingContainer}>
+              <Icon name="refresh" color={Colors.primary.main} size="lg" />
+              <Text style={styles.loadingText}>Loading groups…</Text>
+            </View>
           ) : myGroups.length === 0 ? (
-            <Text style={{ color: Colors.text.secondary }}>No groups yet. Join or create one.</Text>
+            <View style={styles.emptyGroupsContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Icon name="people-outline" color={Colors.text.secondary} size="xl" />
+              </View>
+              <Text style={styles.emptyGroupsTitle}>No Groups Yet</Text>
+              <Text style={styles.emptyGroupsText}>Join or create a community group to connect with others</Text>
+            </View>
           ) : (
-            myGroups.map(g => (
-              <TouchableOpacity key={g.id} onPress={() => navigation?.navigate('GroupChat', { groupId: g.id, groupName: g.name, memberCount: g.membersCount })}>
-                <Surface style={styles.groupCard} elevation={1}>
-                  <View style={styles.groupInfo}>
-                    <View style={styles.groupAvatarContainer}>
-                      <Image source={{ uri: g.iconUrl || 'https://placehold.co/96x96' }} style={styles.groupAvatar} />
-                      <View style={styles.onlineIndicator} />
-                    </View>
-                    <View style={styles.groupDetails}>
-                      <Text style={styles.groupName}>{g.name}</Text>
-                      <Text style={styles.groupMessage} numberOfLines={1}>{g.description || 'Tap to open chat'}</Text>
-                    </View>
-                    <Text style={styles.groupTime}>{unreadMap[g.id] ? `${unreadMap[g.id]} new` : ''}</Text>
-                  </View>
-                </Surface>
-              </TouchableOpacity>
-            ))
+            <>
+              {myGroups.map((g, index) => (
+                <Animated.View
+                  key={g.id}
+                  style={[
+                    {
+                      opacity: cardAnimations.community,
+                      transform: [
+                        {
+                          translateX: cardAnimations.community.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [30, 0],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <TouchableOpacity onPress={() => navigation?.navigate('GroupChat', { groupId: g.id, groupName: g.name, memberCount: g.membersCount })}>
+                    <Surface style={styles.groupCard} elevation={1}>
+                      <View style={styles.groupInfo}>
+                        <View style={styles.groupAvatarContainer}>
+                          <Image source={{ uri: g.iconUrl || 'https://placehold.co/96x96' }} style={styles.groupAvatar} />
+                          <View style={styles.onlineIndicator} />
+                        </View>
+                        <View style={styles.groupDetails}>
+                          <Text style={styles.groupName}>{g.name}</Text>
+                          <Text style={styles.groupMessage} numberOfLines={1}>{g.description || 'Tap to open chat'}</Text>
+                        </View>
+                        <View style={styles.groupMeta}>
+                          {unreadMap[g.id] ? (
+                            <View style={styles.unreadBadge}>
+                              <Text style={styles.unreadCount}>{unreadMap[g.id]}</Text>
+                            </View>
+                          ) : (
+                            <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="sm" />
+                          )}
+                        </View>
+                      </View>
+                    </Surface>
+                  </TouchableOpacity>
+                </Animated.View>
+              ))}
+              <Button 
+                mode="outlined"
+                onPress={() => navigation?.navigate('AllGroups')}
+                style={styles.seeAllButton}
+              >
+                See All Groups
+              </Button>
+            </>
           )}
-        </View>
+        </Animated.View>
 
         <Portal>
           {/* Modal: Daily Check-in */}
           <Modal visible={checkinVisible} onDismiss={() => setCheckinVisible(false)} contentContainerStyle={{ backgroundColor: Colors.background.secondary, margin: 16, padding: 16, borderRadius: 12 }}>
-            <Text style={styles.sectionTitle}>Daily Check-In</Text>
-            <Text style={{ color: Colors.text.secondary, marginBottom: 12 }}>Set your mood and choose who can see this.</Text>
+            <Text style={styles.sectionTitle}>I Overcame Today! 😊</Text>
+            <Text style={{ color: Colors.text.secondary, marginBottom: 12 }}>Record your victory and choose who to share it with.</Text>
 
             {/* Mood input slider 0..1 */}
             <View style={{ marginBottom: 12 }}>
@@ -796,28 +1158,42 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background.primary,
   },
+  // Enhanced Header
   header: {
+    backgroundColor: Colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.background.tertiary,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.primary,
-    backgroundColor: Colors.background.primary,
-  },
-  backButton: {
-    padding: 8,
-    borderRadius: 8,
+    paddingVertical: 16,
   },
   headerTitle: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: Colors.text.primary,
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   headerSpacer: {
+    width: 24,
+  },
+  headerIconContainer: {
     width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.background.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
@@ -851,6 +1227,30 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Colors.text.secondary,
   },
+  streakMilestoneProgress: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.error.main,
+    marginTop: 5,
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  streakMilestoneContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 8,
+    backgroundColor: Colors.error.light + '15',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    alignSelf: 'center',
+  },
+  streakMilestoneHighlight: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.error.main,
+  },
 
   // Daily Check-in Section
   checkInCard: {
@@ -868,7 +1268,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: Colors.text.primary,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   checkInQuestion: {
     fontSize: 16,
@@ -914,6 +1314,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.text.secondary,
   },
+  checkInButtonsContainer: {
+    flexDirection: 'column',
+    gap: 8,
+    marginTop: 8,
+  },
+  checkedInStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: `${Colors.primary.main}10`,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  checkedInStatusText: {
+    marginLeft: 8,
+    color: Colors.primary.main,
+    fontWeight: '500',
+  },
+  checkInButton: {
+    borderRadius: 8,
+  },
+  viewCheckinButton: {
+    borderRadius: 8,
+    borderColor: Colors.primary.main,
+  },
+  relapsedButton: {
+    borderRadius: 8,
+    borderColor: Colors.error.main,
+  },
   shareScriptureButton: {
     borderRadius: 8,
   },
@@ -928,11 +1358,6 @@ const styles = StyleSheet.create({
   // Quick Actions Section
   quickActionsSection: {
     marginBottom: 24,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
   },
   quickActionButton: {
     width: '48%',
@@ -1111,6 +1536,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.text.secondary,
   },
+  seeAllButton: {
+    marginTop: 16,
+    marginHorizontal: 8,
+  },
   radioOptionContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1121,6 +1550,218 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 16,
+  },
+  
+  // Enhanced Streak Card Styles
+  streakIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.error.light,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  streakProgress: {
+    height: 10, // Increased height for better visibility
+    backgroundColor: '#e5e7eb', // Light gray background
+    borderRadius: 5,
+    marginTop: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  streakProgressFill: {
+    height: '100%',
+    backgroundColor: '#22c55e', // Green color to indicate positive progress
+    borderRadius: 5,
+    // Add animation effect
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  streakMilestone: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: Colors.error.light + '20',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.error.main,
+  },
+  streakMilestoneText: {
+    fontSize: 12,
+    color: Colors.error.main,
+    fontWeight: '600',
+  },
+  streakMilestoneCelebration: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.error.main,
+    textAlign: 'center',
+    paddingVertical: 2,
+    backgroundColor: Colors.error.light + '20',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  
+  streakProgressContainer: {
+    width: '100%',
+    marginBottom: 4,
+  },
+  
+  // Enhanced Check-in Styles
+  checkInHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  checkInIcon: {
+    marginRight: 8,
+  },
+  checkInStatusBadge: {
+    marginLeft: 'auto',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: Colors.primary.light + '30',
+  },
+  checkInStatusText: {
+    fontSize: 12,
+    color: Colors.primary.main,
+    fontWeight: '600',
+  },
+  
+  // Quick Actions Grid Styles
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  quickActionItemContainer: {
+    width: '48%',
+    marginBottom: 12,
+  },
+  quickActionItem: {
+    height: 100,
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.black,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  inviteActionItem: {
+    backgroundColor: Colors.primary.main,
+    borderColor: Colors.primary.dark,
+  },
+  quickActionIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  quickActionText: {
+    fontSize: 12,
+    color: Colors.text.primary,
+    textAlign: 'center',
+    fontWeight: '600',
+    lineHeight: 16,
+    maxWidth: '90%',
+  },
+  inviteActionText: {
+    color: Colors.white,
+  },
+  quickActionBorderAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    backgroundColor: Colors.primary.main,
+  },
+  
+  // Enhanced Community Section Styles
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+  },
+  loadingText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: Colors.text.secondary,
+  },
+  emptyGroupsContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.background.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: Colors.border.primary,
+  },
+  emptyGroupsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyGroupsText: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  groupMeta: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadBadge: {
+    backgroundColor: Colors.primary.main,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.white,
   },
 });
 

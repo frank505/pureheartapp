@@ -9,21 +9,26 @@ import { getVictoriesByUserId } from '../store/slices/victorySlice';
 import { RootState, AppDispatch } from '../store';
 import { Victory } from '../services/victoryService';
 
-const UserVictoriesList = ({ navigation }: any) => {
+interface UserVictoriesListProps {
+  navigation: any;
+  searchQuery?: string;
+}
+
+const UserVictoriesList = ({ navigation, searchQuery = '' }: UserVictoriesListProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const { victories, loading, error } = useSelector((state: RootState) => state.victories);
   const { currentUser } = useSelector((state: RootState) => state.user);
 
   const load = (page = 1) => {
     if (currentUser) {
-      dispatch(getVictoriesByUserId({ userId: Number(currentUser.id), page, limit: 10 }));
+      dispatch(getVictoriesByUserId({ userId: Number(currentUser.id), page, limit: 10, search: searchQuery || undefined }));
     }
   };
 
   useEffect(() => {
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchQuery]);
 
   const onEndReached = () => {
     if (!loading && victories.page < victories.totalPages) {

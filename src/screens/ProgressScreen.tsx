@@ -22,8 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { LineChart } from 'react-native-chart-kit';
-import Icon from '../components/Icon';
-import ProfileDropdown from '../components/ProfileDropdown';
+import { Icon, ProfileDropdown, ScreenHeader } from '../components';
 import { Colors } from '../constants';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchAchievements, fetchAnalytics, fetchCalendar } from '../store/slices/progressSlice';
@@ -122,9 +121,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       {/* Custom Header */}
       <View style={styles.header}>
-        <View style={styles.headerSpacer} />
-        <Text style={styles.headerTitle}>Progress & Victory</Text>
-        <ProfileDropdown navigation={navigation} />
+        <ScreenHeader title="Progress & Victory" iconName="stats-chart" navigation={navigation} />
       </View>
 
       <ScrollView 
@@ -291,26 +288,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     backgroundColor: Colors.background.primary,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border.primary,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.text.primary,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 24,
   },
   scrollView: {
     flex: 1,

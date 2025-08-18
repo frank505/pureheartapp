@@ -9,18 +9,23 @@ import { getSharedVictories } from '../store/slices/victorySlice';
 import { RootState, AppDispatch } from '../store';
 import { Victory } from '../services/victoryService';
 
-const SharedVictoriesList = ({ navigation }: any) => {
+interface SharedVictoriesListProps {
+  navigation: any;
+  searchQuery?: string;
+}
+
+const SharedVictoriesList = ({ navigation, searchQuery = '' }: SharedVictoriesListProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const { sharedVictories, loading, error } = useSelector((state: RootState) => state.victories);
 
   const load = (page = 1) => {
-    dispatch(getSharedVictories({ page, limit: 10 }));
+    dispatch(getSharedVictories({ page, limit: 10, search: searchQuery || undefined }));
   };
 
   useEffect(() => {
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchQuery]);
 
   const onEndReached = () => {
     if (!loading && sharedVictories?.page < sharedVictories?.totalPages) {

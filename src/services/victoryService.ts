@@ -44,18 +44,30 @@ const getVictories = async (page = 1, limit = 10): Promise<PaginatedVictories> =
   return dataGet.data;
 };
 
-const getPublicVictories = async (page = 1, limit = 10): Promise<PaginatedVictories> => {
-  const { data } = await api.get('/accountability/victories/public', { params: { page, limit } });
+const getPublicVictories = async (page = 1, limit = 10, search?: string): Promise<PaginatedVictories> => {
+  const params: any = { page, limit };
+  if (search) {
+    params.search = search;
+  }
+  const { data } = await api.get('/accountability/victories/public', { params });
   return data.data;
 };
 
-const getVictoriesByUserId = async (userId: number, page = 1, limit = 10): Promise<PaginatedVictories> => {
-  const { data } = await api.get(`/accountability/victories/user/${userId}`, { params: { page, limit } });
+const getVictoriesByUserId = async (userId: number, page = 1, limit = 10, search?: string): Promise<PaginatedVictories> => {
+  const params: any = { page, limit };
+  if (search) {
+    params.search = search;
+  }
+  const { data } = await api.get(`/accountability/victories/user/${userId}`, { params });
   return data.data;
 };
 
-const getSharedVictories = async (page = 1, limit = 10): Promise<PaginatedVictories> => {
-  const { data } = await api.get('/accountability/victories/shared', { params: { page, limit } });
+const getSharedVictories = async (page = 1, limit = 10, search?: string): Promise<PaginatedVictories> => {
+  const params: any = { page, limit };
+  if (search) {
+    params.search = search;
+  }
+  const { data } = await api.get('/accountability/victories/shared', { params });
   return data.data;
 };
 

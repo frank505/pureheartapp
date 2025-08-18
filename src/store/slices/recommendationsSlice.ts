@@ -8,13 +8,16 @@ export interface Recommendation {
   bibleVersion?: string;
   scriptureReference?: string;
   scriptureText?: string;
+  prayerFocus?: string;
+  scripturesToPrayWith?: Array<{ reference: string; text?: string; version?: string; reason?: string }>
   youtube?: {
-    url: string;
+    url?: string;
     videoId?: string;
     title?: string;
     channelId?: string;
     channelTitle?: string;
   };
+  queryContext?: Record<string, any>;
 }
 
 export interface PaginatedRecommendations {

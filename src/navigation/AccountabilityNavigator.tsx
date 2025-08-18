@@ -15,6 +15,7 @@ import InvitePartnerScreen from '../screens/InvitePartnerScreen';
 import MyVictoriesScreen from '../screens/MyVictoriesScreen';
 import EditPrayerRequestScreen from '../screens/EditPrayerRequestScreen';
 import DailyDoseScreen from '../screens/DailyDoseScreen';
+import AllGroupsScreen from '../screens/AllGroupsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -36,6 +37,7 @@ const AccountabilityNavigator = () => {
       <Stack.Screen name="CheckInDetail" component={CheckInDetailScreen} />
       <Stack.Screen name="InvitePartner" component={InvitePartnerScreen} options={{ headerShown: false }} />
       <Stack.Screen name="DailyDose" component={DailyDoseScreen} />
+      <Stack.Screen name="AllGroups" component={AllGroupsScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 };

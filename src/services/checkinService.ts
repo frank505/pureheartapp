@@ -10,6 +10,7 @@ export interface CheckInDTO {
   visibility: CheckInVisibility;
   partnerId?: number | null;
   groupId?: string | null;
+  status?: 'victory' | 'relapse'; // Status of the check-in
   createdAt: string;
   updatedAt: string;
 }
@@ -58,11 +59,13 @@ const checkinService = {
     visibility?: CheckInVisibility;
     partnerIds?: Array<number | string>;
     groupIds?: string[];
+    status?: 'victory' | 'relapse';
   }): Promise<CheckInDTO> {
     const payload: any = {
       mood: input.mood,
       note: input.note,
       visibility: input.visibility,
+      status: input.status || 'victory', // Default to victory if not specified
     };
     if (input.partnerIds && input.partnerIds.length > 0) {
       payload.partnerIds = input.partnerIds; // backend accepts array under partnerId
@@ -90,6 +93,16 @@ const checkinService = {
     return (data as any).data ?? data;
   },
 
+  /**
+   * Updates a check-in by its ID with the provided `input` parameters.
+   *
+   * @param {string} id - The ID of the check-in to update.
+   * @param {Object} input - The updated attributes of the check-in.
+   * @param {number} [input.mood] - The updated mood of the check-in.
+   * @param {string} [input.note] - The updated note of the check-in.
+   * @param {CheckInVisibility} [input.visibility] - The updated visibility of the check-in.
+   * @return {Promise<CheckInDTO>} A promise that resolves to the updated check-in.
+   */
   async update(id: string, input: { mood?: number; note?: string; visibility?: CheckInVisibility }): Promise<CheckInDTO> {
     const { data } = await api.patch<CheckInDTO>(`/accountability/checkins/${id}`, input);
     return (data as any).data ?? data;
@@ -105,7 +118,7 @@ const checkinService = {
   },
 
   async getComments(checkInId: string, params?: { page?: number; limit?: number }): Promise<PaginatedComments> {
-    const { data } = await api.get(`/accountability/checkins/${checkInId}/comments`, { params });
+    const { data } = await api.get(`/accountability/get/checkins/comments/${checkInId}`, { params });
     return (data as any).data ?? data;
   },
 

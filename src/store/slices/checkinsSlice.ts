@@ -34,7 +34,14 @@ export const fetchCheckIns = createAsyncThunk(
 export const createCheckIn = createAsyncThunk(
   'checkins/create',
   async (
-    input: { mood: number; note?: string; visibility?: 'private' | 'partner' | 'group'; partnerIds?: Array<number | string>; groupIds?: string[] },
+    input: { 
+      mood: number; 
+      note?: string; 
+      visibility?: 'private' | 'partner' | 'group'; 
+      partnerIds?: Array<number | string>; 
+      groupIds?: string[];
+      status?: 'victory' | 'relapse';
+    },
     { rejectWithValue }
   ) => {
     try {

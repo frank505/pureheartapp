@@ -5,149 +5,463 @@
  * Features common lies, custom lie input, biblical truth response, and progress tracking.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   TextInput,
+  ScrollView,
+  FlatList,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import {
   Text,
   Surface,
+  Searchbar,
+  Chip,
+  Portal,
+  Modal,
 } from 'react-native-paper';
+import { truthService, TruthEntry } from '../services/truthService';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from '../components/Icon';
-import ProfileDropdown from '../components/ProfileDropdown';
+import { Icon, ProfileDropdown, ScreenHeader } from '../components';
 import { Colors, Icons } from '../constants';
+import InfiniteScrollList from '../components/InfiniteScrollList';
+import useDebounce from '../hooks/useDebounce';
 
-interface TruthScreenProps {
-  navigation?: any;
-  route?: any;
-}
+import { CompositeScreenProps } from '@react-navigation/native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { TruthStackParamList } from '../navigation/TruthNavigator';
+import { RootStackParamList } from '../navigation/types';
+
+const { width: screenWidth } = Dimensions.get('window');
+
+
+type TruthScreenProps = CompositeScreenProps<
+  NativeStackScreenProps<TruthStackParamList, 'TruthList'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 const TruthScreen: React.FC<TruthScreenProps> = ({ navigation }) => {
-  const [customLie, setCustomLie] = useState('');
-  const [biblicalTruth, setBiblicalTruth] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+  const [isAddingLie, setIsAddingLie] = useState(false);
+  const [newLie, setNewLie] = useState('');
   
-  // Common lies with add functionality
-  const commonLies = [
-    "I am beyond God's grace",
-    "This is my only way to cope", 
-    "I will never be free"
-  ];
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const fabScale = useRef(new Animated.Value(0)).current;
+  const cardAnimations = useRef<Animated.Value[]>([]).current;
 
-  const handleAddLie = (lie: string) => {
-    console.log('Adding lie:', lie);
-    // Here you would add logic to track this lie
+  const startShimmerAnimation = useCallback(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [shimmerAnim]);
+  const [loading, setLoading] = useState(false);
+  const [lies, setLies] = useState<TruthEntry[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const fetchLies = useCallback(async (resetPage = false) => {
+    try {
+      if (resetPage) {
+        setPage(1);
+      }
+      
+      setError(null);
+      if (!refreshing) {
+        setLoading(true);
+      }
+      
+      const currentPage = resetPage ? 1 : page;
+      const response = await truthService.getUserTruthEntries({
+        search: debouncedSearchQuery || undefined
+      });
+      
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to fetch lies');
+      }
+
+      if (currentPage === 1) {
+        setLies(response.data);
+      } else {
+        setLies(prevLies => [...prevLies, ...response.data]);
+      }
+      // Since we don't have pagination from the API, we'll set totalPages to 1
+      setTotalPages(1);
+      
+    } catch (err) {
+      setError('Failed to fetch lies. Please try again.');
+      console.error('Error fetching lies:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [debouncedSearchQuery, page, refreshing]);
+
+  useEffect(() => {
+    fetchLies(true);
+    
+    // Entrance animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(fabScale, {
+        toValue: 1,
+        delay: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [debouncedSearchQuery]);
+
+  // Animate cards when data changes
+  useEffect(() => {
+    if (lies.length > 0) {
+      // Reset animations for existing cards
+      cardAnimations.forEach(anim => anim.setValue(0));
+      
+      // Create animations for new cards if needed
+      while (cardAnimations.length < lies.length) {
+        cardAnimations.push(new Animated.Value(0));
+      }
+      
+      // Animate cards in sequence
+      lies.forEach((_, index) => {
+        if (cardAnimations[index]) {
+          Animated.timing(cardAnimations[index], {
+            toValue: 1,
+            duration: 400,
+            delay: index * 100,
+            useNativeDriver: true,
+          }).start();
+        }
+      });
+    }
+  }, [lies.length]);
+
+  useEffect(() => {
+    if (loading && !refreshing) {
+      startShimmerAnimation();
+    }
+  }, [loading, refreshing, startShimmerAnimation]);
+
+  const handleRetry = () => {
+    fetchLies(true);
   };
 
-  const openScriptureBrowser = () => {
-    if (navigation) navigation.navigate('ScriptureBrowser');
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchLies(true);
+  }, [fetchLies]);
+
+  const viewTruthDetail = async (lie: string, truth?: string, explanation?: string) => {
+    try {
+      if (!truth) {
+        const response = await truthService.generateResponseToLie(lie);
+        if (response.success && response.data) {
+          truth = response.data.biblicalTruth;
+          explanation = response.data.explanation;
+        }
+      }
+      navigation.navigate('TruthDetail', { lie, truth, explanation });
+    } catch (err) {
+      console.error('Error generating truth response:', err);
+      navigation.navigate('TruthDetail', { lie, truth, explanation });
+    }
+  };
+
+  const editTruth = (lie: string, truth?: string) => {
+    navigation.navigate('AddTruth', { lie, truth, isEditing: true });
+  };
+
+  const handleAddNewTruth = () => {
+    navigation.navigate('AddTruth', {});
+  };
+
+
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const renderLieItem = ({ item, index }: { item: TruthEntry; index: number }) => {
+    const cardAnim = cardAnimations[index] || new Animated.Value(1);
+    
+    return (
+      <Animated.View
+        style={[
+          {
+            opacity: cardAnim,
+            transform: [
+              {
+                translateY: cardAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [30, 0],
+                }),
+              },
+              {
+                scale: cardAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.9, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <TouchableOpacity 
+          onPress={() => viewTruthDetail(item.lie, item.biblicalTruth, item.explanation)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.lieCard}>
+            <View style={styles.lieCardHeader}>
+              <View style={styles.lieIconContainer}>
+                <Icon 
+                  name={item.biblicalTruth ? "checkmark-circle" : "help-circle-outline"} 
+                  size="md" 
+                  color={item.biblicalTruth ? Colors.primary.main : Colors.warning.main} 
+                />
+              </View>
+              <View style={styles.lieStatusBadge}>
+                <Text style={[
+                  styles.lieStatusText, 
+                  { color: item.biblicalTruth ? Colors.primary.main : Colors.warning.main }
+                ]}>
+                  {item.biblicalTruth ? 'Truth Found' : 'Needs Truth'}
+                </Text>
+              </View>
+            </View>
+            
+            <View style={styles.lieContent}>
+              <Text style={styles.lieText} numberOfLines={3}>{item.lie}</Text>
+              {item.biblicalTruth && (
+                <View style={styles.truthPreview}>
+                  <Text style={styles.truthPreviewText} numberOfLines={2}>
+                    {item.biblicalTruth}
+                  </Text>
+                </View>
+              )}
+            </View>
+            
+            <View style={styles.lieCardFooter}>
+              <TouchableOpacity 
+                style={[
+                  styles.actionChip,
+                  { backgroundColor: item.biblicalTruth ? Colors.primary.main + '20' : Colors.warning.main + '20' }
+                ]}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  editTruth(item.lie, item.biblicalTruth);
+                }}
+              >
+                <Icon 
+                  name={item.biblicalTruth ? "create-outline" : "add-circle-outline"}
+                  color={item.biblicalTruth ? Colors.primary.main : Colors.warning.main}
+                  size="sm" 
+                />
+                <Text style={[
+                  styles.actionChipText,
+                  { color: item.biblicalTruth ? Colors.primary.main : Colors.warning.main }
+                ]}>
+                  {item.biblicalTruth ? 'Edit Truth' : 'Add Truth'}
+                </Text>
+              </TouchableOpacity>
+              
+              <View style={styles.chevronContainer}>
+                <Icon 
+                  name="chevron-forward-outline" 
+                  color={Colors.text.secondary} 
+                  size="sm" 
+                />
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
+  const loadMoreData = () => {
+    if (!loading && page < totalPages) {
+      setPage(prev => prev + 1);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Custom Header */}
-      <View style={styles.header}>
-        <View style={styles.headerSpacer} />
-        <Text style={styles.headerTitle}>Lies vs Truth Center</Text>
-        <ProfileDropdown navigation={navigation} />
-      </View>
-
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+      {/* Enhanced Header */}
+      <Animated.View 
+        style={[
+          styles.header,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }]
+          }
+        ]}
       >
-        {/* Identify Lies Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Identify Lies</Text>
-          <Text style={styles.sectionDescription}>
-            Recognize the lies the devil might be telling you that fuel your struggle. Understanding these falsehoods is the first step towards freedom.
-          </Text>
-        </View>
+        <ScreenHeader title="Lies vs Truth" iconName="shield-checkmark" navigation={navigation} />
+      </Animated.View>
 
-        {/* Common Lies */}
-        <View style={styles.section}>
-          <Text style={styles.subsectionTitle}>Common Lies</Text>
-          <View style={styles.liesContainer}>
-            {commonLies.map((lie, index) => (
-              <Surface key={index} style={styles.lieCard} elevation={2}>
-                <Text style={styles.lieText}>{lie}</Text>
-                <TouchableOpacity 
-                  style={styles.addButton}
-                  onPress={() => handleAddLie(lie)}
-                >
-                  <Icon 
-                    name="add-circle-outline" 
-                    color={Colors.primary.main} 
-                    size="md" 
-                  />
-                </TouchableOpacity>
-              </Surface>
-            ))}
-          </View>
-        </View>
-
-        {/* Custom Lie Input */}
-        <View style={styles.section}>
-          <Text style={styles.subsectionTitle}>Custom Lie</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter a lie you are believing..."
+      {/* Enhanced Search Section */}
+      <Animated.View 
+        style={[
+          styles.searchSection,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }]
+          }
+        ]}
+      >
+        <View style={styles.searchContainer}>
+          <Searchbar
+            placeholder="Search lies and truths..."
+            onChangeText={handleSearch}
+            value={searchQuery}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            iconColor={Colors.primary.main}
             placeholderTextColor={Colors.text.secondary}
-            value={customLie}
-            onChangeText={setCustomLie}
-            multiline={false}
           />
         </View>
+        
+        
+      </Animated.View>
 
-        {/* Biblical Truth Response */}
-        <View style={styles.section}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={styles.sectionTitle}>Biblical Truth Response</Text>
-            <TouchableOpacity onPress={openScriptureBrowser}>
-              <Text style={{ color: Colors.primary.main, fontWeight: '600' }}>Browse Scripture</Text>
+      {/* Content Area */}
+      <Animated.View 
+        style={[
+          styles.contentContainer,
+          {
+            opacity: fadeAnim,
+          }
+        ]}
+      >
+        {loading && !refreshing ? (
+          <FlatList
+            data={[1, 2, 3, 4, 5]}
+            renderItem={() => {
+              const animatedStyle = {
+                opacity: shimmerAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.3, 0.7],
+                }),
+              };
+
+              return (
+                <View style={styles.skeletonCard}>
+                  <View style={styles.skeletonHeader}>
+                    <Animated.View style={[styles.skeletonCircle, animatedStyle]} />
+                    <Animated.View style={[styles.skeletonBadge, animatedStyle]} />
+                  </View>
+                  <View style={styles.skeletonContent}>
+                    <Animated.View style={[styles.skeletonLine, { width: '90%' }, animatedStyle]} />
+                    <Animated.View style={[styles.skeletonLine, { width: '70%' }, animatedStyle]} />
+                  </View>
+                  <View style={styles.skeletonFooter}>
+                    <Animated.View style={[styles.skeletonChip, animatedStyle]} />
+                  </View>
+                </View>
+              );
+            }}
+            keyExtractor={(item) => item.toString()}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <View style={styles.errorIconContainer}>
+              <Icon name="alert-circle" color={Colors.error.main} size="xl" />
+            </View>
+            <Text style={styles.errorTitle}>Oops! Something went wrong</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+              <Icon name="refresh" color={Colors.white} size="sm" />
+              <Text style={styles.retryButtonText}>Try Again</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.sectionDescription}>
-            Combat lies with the power of God's Word. Select or write a biblical truth to replace the lie.
-          </Text>
-          <TextInput
-            style={styles.textArea}
-            placeholder='e.g., "I can do all things through Christ who strengthens me." - Philippians 4:13'
-            placeholderTextColor={Colors.text.secondary}
-            value={biblicalTruth}
-            onChangeText={setBiblicalTruth}
-            multiline={true}
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
-
-        {/* Progress Tracking */}
-        <View style={styles.section}>
-          <Text style={styles.subsectionTitle}>Progress Tracking</Text>
-          <Surface style={styles.progressCard} elevation={2}>
-            <View style={styles.progressHeader}>
-              <Text style={styles.progressTitle}>Truths Embraced</Text>
-              <Text style={styles.progressPercentage}>75%</Text>
+        ) : lies.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconContainer}>
+              <Icon name="library-outline" color={Colors.text.secondary} size="xl" />
             </View>
-            
-            <View style={styles.progressBarContainer}>
-              <View style={styles.progressBarBackground}>
-                <View style={[styles.progressBarFill, { width: '75%' }]} />
-              </View>
-            </View>
-            
-            <Text style={styles.progressDescription}>
-              You have successfully replaced 3 out of 4 identified lies with biblical truth.
+            <Text style={styles.emptyTitle}>No Lies Recorded Yet</Text>
+            <Text style={styles.emptyText}>
+              Start your journey to truth by recording lies you want to overcome
             </Text>
-          </Surface>
-        </View>
-      </ScrollView>
+            <TouchableOpacity 
+              style={styles.emptyButton} 
+              onPress={() => navigation.navigate('AddTruth', {})}
+            >
+              <Icon name="add" color={Colors.white} size="sm" />
+              <Text style={styles.emptyButtonText}>Add Your First Lie</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={lies}
+            renderItem={renderLieItem}
+            keyExtractor={(item: TruthEntry) => item.id.toString()}
+            onEndReached={loadMoreData}
+            onEndReachedThreshold={0.5}
+            contentContainerStyle={styles.listContent}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            showsVerticalScrollIndicator={false}
+            ListFooterComponent={() => loading && page > 1 ? (
+              <View style={styles.footerLoader}>
+                <ActivityIndicator color={Colors.primary.main} size="large" />
+                <Text style={styles.loadingText}>Loading more...</Text>
+              </View>
+            ) : null}
+          />
+        )}
+      </Animated.View>
+      
+      {/* Enhanced Floating Action Button */}
+      <Animated.View 
+        style={[
+          styles.fabContainer,
+          {
+            transform: [{ scale: fabScale }]
+          }
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => navigation.navigate('AddTruth', {})}
+          activeOpacity={0.8}
+        >
+          <Icon name="add" size="lg" color={Colors.white} />
+        </TouchableOpacity>
+        <Text style={styles.fabLabel}>Add Lie</Text>
+      </Animated.View>
     </SafeAreaView>
   );
 };
@@ -155,152 +469,455 @@ const TruthScreen: React.FC<TruthScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.primary, // Consistent with other screens
+    backgroundColor: Colors.background.primary,
   },
 
-  // Header
+  // Enhanced Header
   header: {
+    backgroundColor: Colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.background.tertiary,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: Colors.background.primary, // Consistent with other tab screens
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.primary,
-  },
-  backButton: {
-    padding: 8,
+    paddingVertical: 16,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: Colors.text.primary, // Consistent text color
-    textAlign: 'center',
     flex: 1,
-    paddingRight: 24, // Offset for back button
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.text.primary,
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
   headerSpacer: {
     width: 24,
   },
+  headerIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.background.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
-  // Content
-  scrollView: {
-    flex: 1,
+  // Enhanced Search Section
+  searchSection: {
+    backgroundColor: Colors.background.primary,
+    paddingBottom: 16,
   },
-  content: {
-    padding: 24,
-    paddingBottom: 96, // Account for tab bar
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
-
-  // Sections
-  section: {
-    marginBottom: 32,
+  searchBar: {
+    elevation: 0,
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.background.tertiary,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  searchInput: {
     color: Colors.text.primary,
+    fontSize: 16,
+  },
+
+  // Stats Cards
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.background.tertiary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statIconContainer: {
+    backgroundColor: Colors.primary.main + '20',
+    borderRadius: 12,
+    padding: 8,
     marginBottom: 8,
   },
-  subsectionTitle: {
+  statNumber: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: Colors.text.primary,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: Colors.text.secondary,
+    textAlign: 'center',
+  },
+
+  // Content Container
+  contentContainer: {
+    flex: 1,
+  },
+
+  // Enhanced Lie Cards
+  lieCard: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 20,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: Colors.background.tertiary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  lieCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    paddingBottom: 8,
+  },
+  lieIconContainer: {
+    backgroundColor: Colors.background.tertiary,
+    borderRadius: 12,
+    padding: 8,
+  },
+  lieStatusBadge: {
+    backgroundColor: Colors.background.tertiary,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  lieStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  lieContent: {
+    padding: 16,
+    paddingTop: 0,
+  },
+  lieText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    lineHeight: 24,
+    marginBottom: 12,
+  },
+  truthPreview: {
+    backgroundColor: Colors.primary.main + '10',
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary.main,
+    paddingLeft: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  truthPreviewText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.text.secondary,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  lieCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    paddingTop: 8,
+    backgroundColor: Colors.background.primary + '40',
+  },
+  actionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 6,
+  },
+  actionChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  chevronContainer: {
+    backgroundColor: Colors.background.tertiary,
+    padding: 6,
+    borderRadius: 8,
+  },
+
+  // Enhanced Loading States
+  skeletonCard: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 20,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.background.tertiary,
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  skeletonCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.background.tertiary,
+  },
+  skeletonBadge: {
+    width: 80,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.background.tertiary,
+  },
+  skeletonContent: {
+    marginBottom: 12,
+  },
+  skeletonLine: {
+    height: 16,
+    backgroundColor: Colors.background.tertiary,
+    borderRadius: 8,
+    marginVertical: 4,
+  },
+  skeletonFooter: {
+    alignItems: 'flex-start',
+  },
+  skeletonChip: {
+    width: 100,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.background.tertiary,
+  },
+
+  // Enhanced Error State
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorIconContainer: {
+    backgroundColor: Colors.error.main + '20',
+    borderRadius: 32,
+    padding: 16,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.text.primary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorText: {
+    color: Colors.text.secondary,
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  retryButton: {
+    backgroundColor: Colors.primary.main,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Enhanced Empty State
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyIconContainer: {
+    backgroundColor: Colors.background.tertiary,
+    borderRadius: 32,
+    padding: 16,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.text.primary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: Colors.text.secondary,
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  emptyButton: {
+    backgroundColor: Colors.primary.main,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // List
+  listContent: {
+    paddingVertical: 8,
+    paddingBottom: 120,
+  },
+  footerLoader: {
+    padding: 24,
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    color: Colors.text.secondary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // Enhanced FAB
+  fabContainer: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    alignItems: 'center',
+  },
+  fab: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.primary.main,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    marginBottom: 8,
+  },
+  fabLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text.secondary,
+  },
+
+  // Legacy styles (keeping for compatibility)
+  skeletonContainer: {
+    flex: 1,
+    padding: 8,
+  },
+  separator: {
+    height: 12,
+  },
+  truthIndicator: {
+    marginRight: 8,
+  },
+  addButton: {
+    padding: 4,
+    alignSelf: 'flex-end',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalContent: {
+    backgroundColor: Colors.background.primary,
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: Colors.text.primary,
     marginBottom: 16,
   },
-  sectionDescription: {
-    fontSize: 16,
-    color: Colors.text.secondary,
-    lineHeight: 24,
-  },
-
-  // Common Lies
-  liesContainer: {
-    gap: 12,
-  },
-  lieCard: {
-    backgroundColor: Colors.background.secondary,
-    borderRadius: 8,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  lieText: {
-    fontSize: 16,
-    color: Colors.text.primary,
-    flex: 1,
-  },
-  addButton: {
-    padding: 4,
-  },
-
-  // Input Fields
   input: {
     backgroundColor: Colors.background.secondary,
     borderWidth: 1,
-    borderColor: Colors.background.tertiary,
-    borderRadius: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    color: Colors.text.primary,
-    marginTop: 16,
-  },
-  textArea: {
-    backgroundColor: Colors.background.secondary,
-    borderWidth: 1,
-    borderColor: Colors.background.tertiary,
-    borderRadius: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    color: Colors.text.primary,
-    minHeight: 128,
-    marginTop: 16,
-  },
-
-  // Progress Tracking
-  progressCard: {
-    backgroundColor: Colors.background.secondary,
+    borderColor: Colors.border.primary,
     borderRadius: 8,
-    padding: 16,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  progressTitle: {
+    padding: 12,
+    color: Colors.text.primary,
     fontSize: 16,
-    fontWeight: '500',
+    marginBottom: 16,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: Colors.background.secondary,
+  },
+  addButtonModal: {
+    backgroundColor: Colors.primary.main,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: Colors.text.primary,
   },
-  progressPercentage: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.primary.main,
-  },
-  progressBarContainer: {
-    marginBottom: 8,
-  },
-  progressBarBackground: {
-    width: '100%',
-    height: 10,
-    backgroundColor: Colors.background.tertiary,
-    borderRadius: 5,
-  },
-  progressBarFill: {
-    height: 10,
-    backgroundColor: Colors.primary.main,
-    borderRadius: 5,
-  },
-  progressDescription: {
-    fontSize: 12,
-    color: Colors.text.secondary,
-    lineHeight: 16,
+  addButtonText: {
+    color: Colors.white,
   },
 });
 

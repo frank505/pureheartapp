@@ -139,6 +139,17 @@ export const IconNames = {
     navigate: 'navigate-outline',
     compass: 'compass-outline',
   },
+
+  // Emergency Screen Specific
+  emergency: {
+    alert: 'alert-circle-outline',
+    breathe: 'spa-outline',
+    speakTruth: 'book-outline',
+    call: 'call-outline',
+    worship: 'musical-notes-outline',
+    aiCompanion: 'sparkles-outline',
+    partners: 'people-outline',
+  },
 } as const;
 
 /**
@@ -235,6 +246,17 @@ export const Icons = {
     email: { name: IconNames.communication.email, library: 'Ionicons' },
     lock: { name: IconNames.security.lock, library: 'Ionicons' },
     shield: { name: IconNames.security.shield, library: 'Ionicons' },
+  },
+
+  // Emergency Screen Icons
+  emergency: {
+    alert: { name: IconNames.emergency.alert, library: 'Ionicons' },
+    breathe: { name: IconNames.emergency.breathe, library: 'Ionicons' },
+    speakTruth: { name: IconNames.emergency.speakTruth, library: 'Ionicons' },
+    call: { name: IconNames.emergency.call, library: 'Ionicons' },
+    worship: { name: IconNames.emergency.worship, library: 'Ionicons' },
+    aiCompanion: { name: IconNames.emergency.aiCompanion, library: 'Ionicons' },
+    partners: { name: IconNames.emergency.partners, library: 'Ionicons' },
   },
 } as const;
 
