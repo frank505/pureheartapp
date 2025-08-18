@@ -94,12 +94,13 @@ const EditPartnerPhoneScreen: React.FC<EditPartnerPhoneScreenProps> = ({
     }
 
     try {
-      await dispatch(
+    const data =  await dispatch(
         updatePartnerPhone({
           partnerId: parseInt(partner.id),
           phoneNumber: fullPhoneNumber,
         })
       ).unwrap();
+      
 
       Alert.alert(
         'Success',

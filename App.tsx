@@ -38,6 +38,7 @@ import NotificationsCenterScreen from './src/screens/NotificationsCenterScreen';
 import ScriptureBrowserScreen from './src/screens/ScriptureBrowserScreen';
 import AIChatScreen from './src/screens/AIChatScreen';
 import GrowthTrackerScreen from './src/screens/GrowthTrackerScreen';
+import EditPartnerPhoneScreen from './src/screens/EditPartnerPhoneScreen';
 import InvitationAcceptModal from './src/components/InvitationAcceptModal';
 import ShareInvitationModal from './src/components/ShareInvitationModal';
 
@@ -227,6 +228,11 @@ const AppContent: React.FC = () => {
         <Stack.Screen 
           name="GrowthTracker" 
           component={GrowthTrackerScreen} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="EditPartnerPhone" 
+          component={EditPartnerPhoneScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

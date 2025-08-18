@@ -15,4 +15,12 @@ export type RootStackParamList = {
   PrayerRequests: undefined;
   NotificationsCenter: undefined;
   AIChat: undefined;
+  EditPartnerPhone: {
+    partner: {
+      id: string;
+      name: string;
+      phoneNumber?: string | null;
+      canEdit: boolean;
+    };
+  };
 };

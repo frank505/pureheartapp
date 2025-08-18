@@ -40,7 +40,7 @@ const partnerService = {
    * @param phoneNumber - The full phone number with country code (e.g., "+1234567890")
    */
   async updatePartnerPhone(partnerId: number, phoneNumber: string): Promise<PartnerPhoneResponse> {
-    const { data } = await api.patch(`/partners/${partnerId}/phone`, {
+    const { data } = await api.patch(`/accountability/partners/${partnerId}/phone`, {
       phoneNumber: phoneNumber.trim()
     });
     return data.data || data;
@@ -51,7 +51,7 @@ const partnerService = {
    * @param partnerId - The partner ID
    */
   async getPartnerPhone(partnerId: number): Promise<PartnerPhoneResponse> {
-    const { data } = await api.get(`/partners/${partnerId}/phone`);
+    const { data } = await api.get(`/accountability/partners/${partnerId}/phone`);
     return data.data || data;
   },
 
@@ -60,8 +60,10 @@ const partnerService = {
    * For the emergency contact feature
    */
   async getPartnersWithPhones(): Promise<PartnerWithPhone[]> {
-    const { data } = await api.get('/partners');
-    return data.data || data.items || data;
+    const { data } = await api.get('/partners/phones');
+    return data.data;
+    // console.error(JSON.stringify({data}));
+    // return data?.data || data?.items || data;
   },
 
   /**

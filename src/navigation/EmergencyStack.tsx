@@ -15,7 +15,7 @@ export type EmergencyStackParamList = {
 };
 
 const Stack = createStackNavigator<EmergencyStackParamList>();
-
+ 
 const EmergencyStack = () => {
   return (
     <Stack.Navigator
@@ -30,7 +30,7 @@ const EmergencyStack = () => {
       <Stack.Screen 
         name="BreatheScreen" 
         component={BreatheScreen}
-      />
+      /> 
       <Stack.Screen 
         name="WorshipScreen" 
         component={WorshipScreen}
@@ -39,10 +39,12 @@ const EmergencyStack = () => {
         name="AISessions" 
         component={AISessionsScreen}
       />
+      
       <Stack.Screen 
         name="AIChat" 
         component={AIChatScreen}
       />
+     
     </Stack.Navigator>
   );
 };

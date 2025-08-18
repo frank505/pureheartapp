@@ -52,6 +52,9 @@ export interface Partner {
   since: string;
   partner: PartnerUser | null;
   phoneNumber?: string | null; // Add phone number to partner interface
+  // IDs to determine who invited whom; used for permission checks
+  userId?: string; // inviter/current user's side when they created the invite
+  receiverId?: string; // invitee side
 }
 
 /**
@@ -95,6 +98,15 @@ interface InvitationState {
   
   // Connected partners from accepted invitations
   connectedPartners: Partner[];
+
+  partnersWithPhone : {
+    phoneNumbers: {
+      partnerId?: number,
+      name?:string,
+      email?: string,
+      phoneNumber?:string
+    }[]
+  };
   
   // Groups the user belongs to
   groups: GroupSummary[];
@@ -122,6 +134,9 @@ const initialState: InvitationState = {
   receivedInvitations: [],
   processingInvitation: null,
   connectedPartners: [],
+  partnersWithPhone: {
+    phoneNumbers: []
+  },
   groups: [],
   loading: false,
   error: null,
@@ -809,23 +824,9 @@ const invitationSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(getPartnersWithPhones.fulfilled, (state, action: PayloadAction<PartnerWithPhone[]>) => {
+      .addCase(getPartnersWithPhones.fulfilled, (state, action: any) => {
         state.loading = false;
-        // Update connected partners with phone numbers
-        state.connectedPartners = action.payload.map((p: PartnerWithPhone) => ({
-          id: p.id.toString(),
-          since: p.since,
-          partner: p.partner ? {
-            id: p.partner.id,
-            firstName: p.partner.firstName,
-            lastName: p.partner.lastName,
-            email: p.partner.email,
-            username: p.partner.email, // Use email as username if not provided
-            avatarUrl: undefined,
-          } : null,
-          phoneNumber: p.phoneNumber,
-        }));
-        state.error = null;
+        state.partnersWithPhone = action.payload;
       })
       .addCase(getPartnersWithPhones.rejected, (state, action) => {
         state.loading = false;

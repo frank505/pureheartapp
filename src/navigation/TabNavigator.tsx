@@ -112,7 +112,7 @@ const TabNavigator: React.FC = () => {
       <Tab.Screen
         name="Emergency"
         component={EmergencyStack}
-        options={{
+        options={{ 
           headerShown: false, // Custom header in EmergencyScreen
           tabBarIcon: ({ focused, color }) => (
             <CustomTabIcon 

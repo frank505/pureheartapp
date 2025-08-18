@@ -134,6 +134,25 @@ const PartnersListScreen: React.FC<PartnersListScreenProps> = ({ navigation }) =
     );
   };
 
+  // Find the connected partner corresponding to a sent invite (by receiver user id)
+  const findConnectedPartnerByInvite = (invite: { receiver: any }) =>
+    connectedPartners.find((p) => p.partner?.id === invite?.receiver?.id);
+
+  // Navigate to edit this partner's phone
+  const navigateToEditPhone = (partnerRel: any) => {
+    const name = partnerRel?.partner
+      ? `${partnerRel.partner.firstName} ${partnerRel.partner.lastName}`
+      : 'Partner';
+    navigation?.navigate('EditPartnerPhone', {
+      partner: {
+        id: partnerRel.id,
+        name,
+        phoneNumber: partnerRel?.phoneNumber ?? null,
+        canEdit: true,
+      },
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -158,7 +177,7 @@ const PartnersListScreen: React.FC<PartnersListScreenProps> = ({ navigation }) =
             
               {/* Connected Partners */}
               <Text style={styles.sectionTitle}>Connected Partners</Text>
-              {connectedPartners.length === 0 ? (
+              {!Array.isArray(connectedPartners) || connectedPartners.length === 0 ? (
                 <Surface style={styles.card} elevation={1}>
                   <Text style={styles.muted}>No partners yet. Send an invite to get started.</Text>
                 </Surface>
@@ -197,7 +216,23 @@ const PartnersListScreen: React.FC<PartnersListScreenProps> = ({ navigation }) =
                           Status: {i.usedAt ? `Accepted on ${new Date(i.usedAt).toLocaleDateString()}` : 'Pending'}
                         </Text>
                       </View>
-                      {!i.usedAt && (
+                      {i.usedAt ? (
+                        <TouchableOpacity
+                          onPress={() => {
+                            const partnerRel = findConnectedPartnerByInvite(i);
+                            if (partnerRel) {
+                              navigateToEditPhone(partnerRel);
+                            } else {
+                              Alert.alert('Not found', 'Could not locate the connected partner for this invite.');
+                            }
+                          }}
+                          style={{ padding: 4 }}
+                          accessibilityRole="button"
+                          accessibilityLabel="Edit partner phone"
+                        >
+                          <Icon name="create-outline" color={Colors.primary.main} size="md" />
+                        </TouchableOpacity>
+                      ) : (
                         <Button mode="text" onPress={() => handleRevoke(i.id)}>Revoke</Button>
                       )}
                     </View>

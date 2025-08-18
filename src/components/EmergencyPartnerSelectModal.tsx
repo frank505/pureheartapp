@@ -3,9 +3,11 @@
  * 
  * Modal for selecting a partner to call in emergency situations.
  * Features:
- * - List of partners with phone numbers
- * - Option to add phone number for partners without one
- * - Direct calling functionality
+ * - List of all available partners
+ * - Dynamic phone number retrieval on partner selection
+ * - Handles partners without phone numbers with Manage Partners navigation
+ * - Direct calling functionality after phone number confirmation
+ * - Loading states for phone number retrieval
  * - Emergency-focused UI design
  */
 
@@ -22,7 +24,7 @@ import { Modal, Text, Surface, Button, ActivityIndicator } from 'react-native-pa
 import { Colors, Icons } from '../constants';
 import Icon from '../components/Icon';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { getPartnersWithPhones } from '../store/slices/invitationSlice';
+import { getPartnersWithPhones, getPartnerPhone } from '../store/slices/invitationSlice';
 import partnerService from '../services/partnerService';
 
 interface EmergencyPartnerSelectModalProps {
@@ -45,69 +47,117 @@ const EmergencyPartnerSelectModal: React.FC<EmergencyPartnerSelectModalProps> = 
   navigation,
 }) => {
   const dispatch = useAppDispatch();
-  const { connectedPartners, loading } = useAppSelector((state) => state.invitation);
+  const { connectedPartners, loading, partnersWithPhone } = useAppSelector((state) => state.invitation);
   const { currentUser } = useAppSelector((state) => state.user);
   
   const [partners, setPartners] = useState<PartnerWithCallInfo[]>([]);
+  const [fetchingPhone, setFetchingPhone] = useState<string | null>(null); // Track which partner's phone we're fetching
 
   useEffect(() => {
     if (visible) {
-      loadPartners();
+      // Create an async function inside useEffect to properly handle the promise
+      const loadPartnersAsync = async () => {
+          await loadPartners();
+      };
+
+      loadPartnersAsync();
+    } else {
+      // Clear loading state when modal is closed
+      setFetchingPhone(null);
     }
   }, [visible]);
 
   useEffect(() => {
     // Transform connected partners into call-ready format
-    const transformedPartners: PartnerWithCallInfo[] = connectedPartners.map((partner) => {
-      const name = partner.partner 
-        ? `${partner.partner.firstName} ${partner.partner.lastName}`.trim()
-        : 'Unknown Partner';
-      
-      // Determine if user can edit this partner's phone number
-      // User can edit if they are the one who sent the invitation (they are userId, not receiverId)
-      const canEdit = true; // For now, allowing all partners to be edited - backend will enforce
+    const transformedPartners: PartnerWithCallInfo[] = partnersWithPhone?.phoneNumbers?.map((partner:any) => {
+      const name = partner?.name ?? 'Unknown Partner';
+
+      // Determine edit rights: user can edit if they were the inviter for this connection
+      const currentUserId = currentUser?.id?.toString?.() ?? String(currentUser?.id ?? '');
+      const canEdit = partner.partnerId === currentUserId;
 
       return {
-        id: partner.id,
+        id: partner.partnerId,
         name,
         phoneNumber: partner.phoneNumber || null,
         canEdit,
         since: partner.since,
       };
-    });
+    }) || [];
+    
+   
+      setPartners(transformedPartners);
 
-    setPartners(transformedPartners);
-  }, [connectedPartners, currentUser]);
+
+  }, [partnersWithPhone, currentUser]);
 
   const loadPartners = async () => {
-    try {
-      await dispatch(getPartnersWithPhones()).unwrap();
+    try { 
+    await dispatch(getPartnersWithPhones()).unwrap();
     } catch (error) {
       console.error('Failed to load partners:', error);
+      Alert.alert(
+        'Error',
+        'Unable to load partners. Please check your connection and try again.',
+        [{ text: 'OK', style: 'default' }]
+      );
     }
   };
 
-  const handleCall = (partner: PartnerWithCallInfo) => {
-    if (!partner.phoneNumber) {
-      handleAddPhoneNumber(partner);
-      return;
-    }
 
-    Alert.alert(
-      'Emergency Call',
-      `Call ${partner.name} at ${partnerService.formatPhoneNumber(partner.phoneNumber)}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Call Now',
-          style: 'default',
-          onPress: () => makePhoneCall(partner),
-        },
-      ]
-    );
+  const handleCall = async (partner: { id: string, name: string, phoneNumber: string }) => {
+    try {
+      setFetchingPhone(partner.id); // Set loading state for this partner
+      
+      const phoneNumber = partner.phoneNumber;
+      
+      setFetchingPhone(null); // Clear loading state
+      
+      if (!phoneNumber) {
+        // Show alert that partner has no mobile number
+        Alert.alert(
+          'No Phone Number',
+          `${partner.name} doesn't have a mobile number saved. They can update it in Manage Partners.`,
+          [
+            { text: 'OK', style: 'default' },
+            {
+              text: 'Manage Partners',
+              onPress: () => {
+                onDismiss();
+                // Navigate to manage partners screen
+                navigation?.navigate('ManagePartners');
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      // Show confirmation dialog with the fetched phone number
+      Alert.alert(
+        'Emergency Call',
+        `Call ${partner.name} at ${partnerService.formatPhoneNumber(phoneNumber)}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Call Now',
+            style: 'default',
+            onPress: () => makePhoneCall({ ...partner, phoneNumber }),
+          },
+        ]
+      );
+    } catch (error) {
+      setFetchingPhone(null); // Clear loading state on error
+      console.error('Failed to fetch partner phone number:', error);
+      Alert.alert(
+        'Error',
+        'Unable to retrieve partner\'s phone number. Please try again.',
+        [{ text: 'OK', style: 'default' }]
+      );
+    }
   };
 
-  const makePhoneCall = async (partner: PartnerWithCallInfo) => {
+  const makePhoneCall = async (partner:{id: string, name: string, phoneNumber: string }) => {
     if (!partner.phoneNumber) return;
 
     try {
@@ -131,65 +181,42 @@ const EmergencyPartnerSelectModal: React.FC<EmergencyPartnerSelectModalProps> = 
     }
   };
 
-  const handleAddPhoneNumber = (partner: PartnerWithCallInfo) => {
-    Alert.alert(
-      'No Phone Number',
-      `${partner.name} doesn't have a phone number saved. Would you like to add one?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Add Number',
-          onPress: () => {
-            onDismiss();
-            // Navigate to edit phone screen
-            navigation?.navigate('EditPartnerPhone', {
-              partner: {
-                id: partner.id,
-                name: partner.name,
-                phoneNumber: partner.phoneNumber,
-                canEdit: partner.canEdit,
-              },
-            });
-          },
-        },
-      ]
+  const renderPartnerItem = ( item : { id: string, name: string, phoneNumber: string } ) => {
+
+    const isLoading = fetchingPhone === item.id;
+    
+    return (
+      <TouchableOpacity
+        style={[styles.partnerItem, isLoading && styles.partnerItemLoading]}
+        onPress={() => !isLoading && handleCall(item)}
+        activeOpacity={isLoading ? 1 : 0.7}
+        disabled={isLoading}
+      >
+        <View style={styles.partnerIcon}>
+          <Icon name="person" color={Colors.primary.main} size="lg" />
+        </View>
+        
+        <View style={styles.partnerInfo}>
+          <Text style={styles.partnerName}>{item.name}</Text>
+          <Text style={styles.partnerStatusText}>
+            {isLoading ? 'Retrieving phone number...' : 'Tap to call • Phone number will be retrieved'}
+          </Text>
+        </View>
+
+        <View style={styles.partnerAction}>
+          {isLoading ? (
+            <View style={[styles.actionButton, styles.loadingButton]}>
+              <ActivityIndicator size="small" color={Colors.primary.main} />
+            </View>
+          ) : (
+            <View style={[styles.actionButton, styles.callButton]}>
+              <Icon name="call" color={Colors.white} size="md" />
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
     );
   };
-
-  const renderPartnerItem = ({ item }: { item: PartnerWithCallInfo }) => (
-    <TouchableOpacity
-      style={styles.partnerItem}
-      onPress={() => handleCall(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.partnerIcon}>
-        <Icon name="person" color={Colors.primary.main} size="lg" />
-      </View>
-      
-      <View style={styles.partnerInfo}>
-        <Text style={styles.partnerName}>{item.name}</Text>
-        {item.phoneNumber ? (
-          <Text style={styles.partnerPhone}>
-            {partnerService.formatPhoneNumber(item.phoneNumber)}
-          </Text>
-        ) : (
-          <Text style={styles.noPhone}>No phone number</Text>
-        )}
-      </View>
-
-      <View style={styles.partnerAction}>
-        {item.phoneNumber ? (
-          <View style={[styles.actionButton, styles.callButton]}>
-            <Icon name="call" color={Colors.white} size="md" />
-          </View>
-        ) : (
-          <View style={[styles.actionButton, styles.addButton]}>
-            <Icon name="add" color={Colors.primary.main} size="md" />
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -202,7 +229,8 @@ const EmergencyPartnerSelectModal: React.FC<EmergencyPartnerSelectModalProps> = 
         mode="contained"
         onPress={() => {
           onDismiss();
-          navigation?.navigate('AccountabilityScreen');
+          // Switch to Home tab where Accountability flows live
+          navigation?.getParent()?.navigate('Home');
         }}
         style={styles.emptyButton}
       >
@@ -225,31 +253,20 @@ const EmergencyPartnerSelectModal: React.FC<EmergencyPartnerSelectModalProps> = 
           </View>
           <Text style={styles.title}>Call My Brother</Text>
           <Text style={styles.subtitle}>Select a partner to call for emergency support</Text>
+          {
+            partners.length > 0 && !loading ?
+            (
+              partners.map((item:any) => renderPartnerItem(item))
+            )
+            :
+            renderEmptyState()
+          }
           <TouchableOpacity onPress={onDismiss} style={styles.closeButton}>
             <Icon name="close" color={Colors.text.primary} size="md" />
           </TouchableOpacity>
         </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={Colors.primary.main} />
-              <Text style={styles.loadingText}>Loading partners...</Text>
-            </View>
-          ) : partners.length === 0 ? (
-            renderEmptyState()
-          ) : (
-            <FlatList
-              data={partners}
-              renderItem={renderPartnerItem}
-              keyExtractor={(item) => item.id}
-              style={styles.partnersList}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.partnersListContent}
-            />
-          )}
-        </View>
+        
 
         {/* Footer */}
         {partners.length > 0 && (
@@ -269,6 +286,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 16,
+    height: '100%',
   },
   modalContent: {
     backgroundColor: Colors.background.primary,
@@ -338,6 +356,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border.primary,
   },
+  partnerItemLoading: {
+    opacity: 0.7,
+  },
   partnerIcon: {
     width: 48,
     height: 48,
@@ -360,6 +381,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.text.secondary,
   },
+  partnerStatusText: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    fontStyle: 'italic',
+  },
   noPhone: {
     fontSize: 14,
     color: Colors.warning.main,
@@ -377,6 +403,11 @@ const styles = StyleSheet.create({
   },
   callButton: {
     backgroundColor: Colors.secondary.main, // Using secondary for success/call action
+  },
+  loadingButton: {
+    backgroundColor: `${Colors.primary.main}20`,
+    borderWidth: 1,
+    borderColor: Colors.primary.main,
   },
   addButton: {
     backgroundColor: `${Colors.primary.main}20`,

@@ -132,16 +132,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 visibility: 'private',
                 status: 'relapse'
               })).unwrap();
-              
-              // Call API to reset streak - would ideally use a dedicated resetStreak action
-              // For now, we can simulate by setting streak to 0 in the backend
-              await fetch('/api/streaks/reset', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-              });
-              
+               
               Alert.alert('Streak Reset', 'Your relapse has been recorded and your streak has been reset to 0. Remember, tomorrow is a new day to start fresh!');
               // Refresh streaks data and check-ins
               dispatch(getStreaks());
@@ -738,6 +729,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 color: Colors.secondary.main
               },
               { 
+                icon: Icons.security.key.name, 
+                label: 'Accept Partner Invite Code', 
+                onPress: () => setAcceptVisible(true),
+                color: Colors.primary.dark
+              },
+              { 
                 icon: 'list-outline', 
                 label: 'Prayer Requests', 
                 onPress: () => navigation?.navigate('PrayerRequests'),
@@ -761,12 +758,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 onPress: () => navigation?.navigate('MyVictories'),
                 color: Colors.secondary.main
               },
-              { 
-                icon: Icons.security.key.name, 
-                label: 'Accept Code', 
-                onPress: () => setAcceptVisible(true),
-                color: Colors.primary.dark
-              }
+              
             ].map((action, index) => (
               <Animated.View
                 key={action.label}
