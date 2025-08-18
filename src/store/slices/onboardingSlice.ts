@@ -103,6 +103,8 @@ export interface AccountabilityPreferences {
   // for the invitation link. Persist it here so it can be sent to the backend
   // alongside other onboarding data during social login (Google/Apple).
   invitationHash?: string;
+  invitedEmails?: string[];
+  invitationCode?: string;
   completedAt?: string;
 }
 

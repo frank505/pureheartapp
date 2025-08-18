@@ -34,7 +34,14 @@ export const fetchCheckIns = createAsyncThunk(
 export const createCheckIn = createAsyncThunk(
   'checkins/create',
   async (
-    input: { mood: number; note?: string; visibility?: 'private' | 'partner' | 'group'; partnerIds?: Array<number | string>; groupIds?: string[] },
+    input: { 
+      mood: number; 
+      note?: string; 
+      visibility?: 'private' | 'partner' | 'group'; 
+      partnerIds?: Array<number | string>; 
+      groupIds?: string[];
+      status?: 'victory' | 'relapse';
+    },
     { rejectWithValue }
   ) => {
     try {
@@ -51,6 +58,11 @@ const checkinsSlice = createSlice({
   initialState,
   reducers: {
     clearError(state) {
+      state.error = null;
+    },
+    resetCheckinStatus(state) {
+      state.isLoading = false;
+      state.isCreating = false;
       state.error = null;
     },
   },
@@ -86,7 +98,7 @@ const checkinsSlice = createSlice({
   },
 });
 
-export const { clearError } = checkinsSlice.actions;
+export const { clearError, resetCheckinStatus } = checkinsSlice.actions;
 export default checkinsSlice.reducer;
 
 

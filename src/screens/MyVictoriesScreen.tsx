@@ -1,26 +1,39 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from 'react-native-paper';
-import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
+import { Text, SegmentedButtons, Searchbar } from 'react-native-paper';
 import Icon from '../components/Icon';
 import { Colors, Icons } from '../constants';
 import UserVictoriesList from '../components/UserVictoriesList';
 import SharedVictoriesList from '../components/SharedVictoriesList';
 
 const MyVictoriesScreen = ({ navigation }: any) => {
-  const layout = useWindowDimensions();
+  const [activeTab, setActiveTab] = useState<'myVictories' | 'sharedWithMe'>('myVictories');
+  const [myVictoriesSearchQuery, setMyVictoriesSearchQuery] = useState('');
+  const [sharedVictoriesSearchQuery, setSharedVictoriesSearchQuery] = useState('');
 
-  const [index, setIndex] = React.useState(0);
-  const [routes] = React.useState([
-    { key: 'myVictories', title: 'My Victories' },
-    { key: 'sharedWithMe', title: 'Shared With Me' },
-  ]);
+  const getCurrentSearchQuery = () => {
+    return activeTab === 'myVictories' ? myVictoriesSearchQuery : sharedVictoriesSearchQuery;
+  };
 
-  const renderScene = SceneMap({
-    myVictories: () => <UserVictoriesList navigation={navigation} />,
-    sharedWithMe: () => <SharedVictoriesList navigation={navigation} />,
-  });
+  const handleSearchChange = (query: string) => {
+    if (activeTab === 'myVictories') {
+      setMyVictoriesSearchQuery(query);
+    } else {
+      setSharedVictoriesSearchQuery(query);
+    }
+  };
+
+  const renderCurrentTab = () => {
+    switch (activeTab) {
+      case 'myVictories':
+        return <UserVictoriesList navigation={navigation} searchQuery={myVictoriesSearchQuery} />;
+      case 'sharedWithMe':
+        return <SharedVictoriesList navigation={navigation} searchQuery={sharedVictoriesSearchQuery} />;
+      default:
+        return <UserVictoriesList navigation={navigation} searchQuery={myVictoriesSearchQuery} />;
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -31,29 +44,83 @@ const MyVictoriesScreen = ({ navigation }: any) => {
         <Text style={styles.headerTitle}>Victories</Text>
         <View style={styles.headerSpacer} />
       </View>
-      <TabView
-        navigationState={{ index, routes }}
-        renderScene={renderScene}
-        onIndexChange={setIndex}
-        initialLayout={{ width: layout.width }}
-        renderTabBar={props => (
-          <TabBar
-            {...props}
-            style={{ backgroundColor: Colors.background.primary }}
-            indicatorStyle={{ backgroundColor: Colors.primary.main }}
-          />
-        )}
+
+      {/* Tab Selector */}
+      <View style={styles.tabContainer}>
+        <SegmentedButtons
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as 'myVictories' | 'sharedWithMe')}
+          buttons={[
+            {
+              value: 'myVictories',
+              label: 'My Victories',
+            },
+            {
+              value: 'sharedWithMe',
+              label: 'Shared With Me',
+            },
+          ]}
+          style={styles.segmentedButtons}
+        />
+      </View>
+
+      {/* Search Bar */}
+      <Searchbar
+        placeholder={`Search ${activeTab === 'myVictories' ? 'my' : 'shared'} victories`}
+        onChangeText={handleSearchChange}
+        value={getCurrentSearchQuery()}
+        style={styles.searchBar}
       />
+
+      {/* Current Tab Content */}
+      <View style={styles.content}>
+        {renderCurrentTab()}
+      </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background.primary },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: Colors.background.primary },
-  backButton: { padding: 8 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.text.primary, textAlign: 'center', flex: 1 },
-  headerSpacer: { width: 40 },
+  container: { 
+    flex: 1, 
+    backgroundColor: Colors.background.primary 
+  },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 16, 
+    paddingVertical: 12, 
+    backgroundColor: Colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border.primary,
+  },
+  backButton: { 
+    padding: 8 
+  },
+  headerTitle: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: Colors.text.primary, 
+    textAlign: 'center', 
+    flex: 1 
+  },
+  headerSpacer: { 
+    width: 40 
+  },
+  tabContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  segmentedButtons: {
+    backgroundColor: Colors.background.secondary,
+  },
+  searchBar: {
+    margin: 16,
+  },
+  content: {
+    flex: 1,
+  },
 });
 
 export default MyVictoriesScreen;

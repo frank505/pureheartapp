@@ -28,7 +28,7 @@ const VictoryStories = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Victory Stories</Text>
+        <Text style={styles.title}>Overcomers stories</Text>
         <TouchableOpacity onPress={() => navigation.navigate('PublicVictories')}>
           <Text style={styles.moreButton}>More</Text>
         </TouchableOpacity>

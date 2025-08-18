@@ -3,10 +3,9 @@ import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 // Import our screen components
-import HomeScreen from '../screens/HomeScreen';
-import EmergencyScreen from '../screens/EmergencyScreen';
+import EmergencyStack from './EmergencyStack';
 import AccountabilityNavigator from './AccountabilityNavigator';
-import TruthScreen from '../screens/TruthScreen';
+import TruthNavigator from './TruthNavigator';
 import ProgressScreen from '../screens/ProgressScreen';
 
 // Import centralized colors and icons
@@ -78,25 +77,27 @@ const TabNavigator: React.FC = () => {
           backgroundColor: ComponentColors.tabBar.background,
           borderTopWidth: 1,
           borderTopColor: ComponentColors.tabBar.border,
-          paddingTop: 8,
-          paddingBottom: 8,
-          height: 60,
+          paddingVertical: 6,
+          height: 56,
         },
-        tabBarActiveTintColor: ComponentColors.tabBar.activeTint,
+        tabBarActiveTintColor: Colors.primary.main,
         tabBarInactiveTintColor: ComponentColors.tabBar.inactiveTint,
+        tabBarItemStyle: {
+          paddingVertical: 4,
+        },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-          marginTop: 4,
+          fontSize: 11,
+          fontWeight: '500',
+          marginTop: 2,
         },
       }}
     >
       {/* Home Tab */}
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
+        component={AccountabilityNavigator}
         options={{
-          headerShown: false, // Custom header in HomeScreen
+          headerShown: false, // Custom header in AccountabilityScreen
           tabBarIcon: ({ focused, color }) => (
             <CustomTabIcon 
               iconName={Icons.tabs.home.name} 
@@ -107,54 +108,20 @@ const TabNavigator: React.FC = () => {
           tabBarLabel: 'Home',
         }}
       />
-
       {/* Emergency Tab */}
       <Tab.Screen
         name="Emergency"
-        component={EmergencyScreen}
-        options={{
+        component={EmergencyStack}
+        options={{ 
           headerShown: false, // Custom header in EmergencyScreen
           tabBarIcon: ({ focused, color }) => (
             <CustomTabIcon 
               iconName={Icons.tabs.emergency.name} 
               focused={focused} 
-              color={focused ? Colors.white : color} 
-            />
-          ),
-          tabBarLabel: ({ focused }) => (
-            <Text style={{
-              fontSize: 12,
-              fontWeight: focused ? '700' : '600',
-              marginTop: 4,
-              color: focused ? Colors.white : ComponentColors.tabBar.inactiveTint,
-            }}>
-              Emergency
-            </Text>
-          ),
-          tabBarItemStyle: {
-            backgroundColor: 'transparent',
-            borderRadius: 8,
-            marginHorizontal: 4,
-            marginVertical: 4,
-          },
-          tabBarActiveBackgroundColor: `${Colors.error.main}33`,
-        }}
-      />
-
-      {/* Accountability Tab */}
-      <Tab.Screen
-        name="Accountability"
-        component={AccountabilityNavigator}
-        options={{
-          headerShown: false, // Custom header in AccountabilityScreen
-          tabBarIcon: ({ focused, color }) => (
-            <CustomTabIcon 
-              iconName={Icons.tabs.accountability.name} 
-              focused={focused} 
               color={color} 
             />
           ),
-          tabBarLabel: 'Accountability',
+          tabBarLabel: 'Emergency',
         }}
       />
 
@@ -163,9 +130,9 @@ const TabNavigator: React.FC = () => {
       {/* Truth Tab */}
       <Tab.Screen
         name="Truth"
-        component={TruthScreen}
+        component={TruthNavigator}
         options={{
-          headerShown: false, // Custom header in TruthScreen
+          headerShown: false,
           tabBarIcon: ({ focused, color }) => (
             <CustomTabIcon 
               iconName={Icons.tabs.truth.name} 

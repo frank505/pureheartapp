@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Colors } from '../constants';
+import { responsiveFontSizes, responsiveSpacing } from '../utils/responsive';
 
 interface ProgressIndicatorProps {
   currentStep: number;
@@ -89,10 +90,10 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: responsiveSpacing.md,
   },
   stepText: {
-    fontSize: 14,
+    fontSize: responsiveFontSizes.bodySmall,
     fontWeight: '600',
     color: Colors.text.secondary,
     marginBottom: 12,
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
   dotsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: responsiveSpacing.sm,
   },
   dot: {
     width: 8,

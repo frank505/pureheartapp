@@ -30,6 +30,8 @@ export interface UpdatePrayerRequestPayload {
   title?: string;
   body?: string;
   visibility?: 'private' | 'partner' | 'group' | 'public';
+  partnerIds?: number[];
+  groupIds?: number[];
 }
 
 const createPrayerRequest = async (payload: CreatePrayerRequestPayload): Promise<PrayerRequest> => {
@@ -37,18 +39,30 @@ const createPrayerRequest = async (payload: CreatePrayerRequestPayload): Promise
   return data.data;
 };
 
-const getPrayerRequests = async (page = 1, limit = 10): Promise<PaginatedPrayerRequests> => {
-  const { data } = await api.get('/accountability/prayer-requests', { params: { page, limit } });
+const getPrayerRequests = async (page = 1, limit = 10, search?: string): Promise<PaginatedPrayerRequests> => {
+  const params: any = { page, limit };
+  if (search) {
+    params.search = search;
+  }
+  const { data } = await api.get('/accountability/prayer-requests', { params });
   return data.data;
 };
 
-const getPublicPrayerRequests = async (page = 1, limit = 10): Promise<PaginatedPrayerRequests> => {
-  const { data } = await api.get('/accountability/prayer-requests/public', { params: { page, limit } });
+const getPublicPrayerRequests = async (page = 1, limit = 10, search?: string): Promise<PaginatedPrayerRequests> => {
+  const params: any = { page, limit };
+  if (search) {
+    params.search = search;
+  }
+  const { data } = await api.get('/accountability/prayer-requests/public', { params });
   return data.data;
 };
 
-const getSharedPrayerRequests = async (page = 1, limit = 10): Promise<PaginatedPrayerRequests> => {
-  const { data } = await api.get('/accountability/prayer-requests/shared', { params: { page, limit } });
+const getSharedPrayerRequests = async (page = 1, limit = 10, search?: string): Promise<PaginatedPrayerRequests> => {
+  const params: any = { page, limit };
+  if (search) {
+    params.search = search;
+  }
+  const { data } = await api.get('/accountability/prayer-requests/shared', { params });
   return data.data;
 };
 

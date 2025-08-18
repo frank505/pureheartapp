@@ -66,6 +66,16 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
     navigation?.navigate('Subscription');
   };
 
+  const handleDailyDose = () => {
+    hideDropdown();
+    navigation?.navigate('DailyDose');
+  };
+
+  const handleGrowthTracker = () => {
+    hideDropdown();
+    navigation?.navigate('GrowthTracker');
+  };
+
   const handleLogout = () => {
     hideDropdown();
     Alert.alert(
@@ -93,16 +103,40 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        style={styles.profileButton}
-        onPress={showDropdown}
-      >
-        <Icon 
-          name="person-outline" 
-          color={Colors.text.primary} 
-          size="md" 
-        />
-      </TouchableOpacity>
+      <View style={styles.headerIcons}>
+        <TouchableOpacity 
+          style={styles.iconButton}
+          onPress={handleDailyDose}
+        >
+          <Icon 
+            name="book-outline" 
+            color={Colors.text.primary} 
+            size="sm" 
+          />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.iconButton}
+          onPress={handleGrowthTracker}
+        >
+          <Icon 
+            name="leaf-outline" 
+            color={Colors.text.primary} 
+            size="sm" 
+          />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.profileButton}
+          onPress={showDropdown}
+        >
+          <Icon 
+            name="person-outline" 
+            color={Colors.text.primary} 
+            size="sm" 
+          />
+        </TouchableOpacity>
+      </View>
 
       <Modal
         visible={isVisible}
@@ -151,6 +185,12 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
 
               <View style={styles.divider} />
 
+            
+
+              <View style={styles.divider} />
+
+           
+              <View style={styles.divider} />
               <TouchableOpacity 
                 style={styles.dropdownItem}
                 onPress={handleProfileSettings}
@@ -202,10 +242,23 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
   },
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: `${Colors.background.secondary}80`, // Semi-transparent
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   profileButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: `${Colors.background.secondary}80`, // Semi-transparent
     justifyContent: 'center',
     alignItems: 'center',

@@ -9,19 +9,28 @@ import { UpdateVictoryPayload } from '../services/victoryService';
 import { Colors, Icons } from '../constants';
 import Icon from '../components/Icon';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
+import PartnerGroupSelector from '../components/PartnerGroupSelector';
+import { fetchPartners, fetchGroups } from '../store/slices/invitationSlice';
 
 const EditVictoryScreen = ({ route, navigation }: any) => {
-  const { victoryId } = route.params;
+  const { victoryId } = route.params || {};
   const dispatch = useDispatch<AppDispatch>();
   const { selectedVictory, loading } = useSelector((state: RootState) => state.victories);
+  const { connectedPartners, groups } = useSelector((state: RootState) => state.invitation);
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [visibility, setVisibility] = useState<UpdateVictoryPayload['visibility']>('private');
+  const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const richText = useRef<RichEditor>(null);
 
   useEffect(() => {
-    dispatch(getVictoryById(victoryId));
+    if (victoryId) {
+      dispatch(getVictoryById(victoryId));
+    }
+    dispatch(fetchPartners());
+    dispatch(fetchGroups());
   }, [dispatch, victoryId]);
 
   useEffect(() => {
@@ -29,6 +38,8 @@ const EditVictoryScreen = ({ route, navigation }: any) => {
       setTitle(selectedVictory.title);
       setBody(selectedVictory.body || '');
       setVisibility(selectedVictory.visibility);
+      setSelectedPartners(Array.from(new Set(selectedVictory.partnerIds?.map(String) || [])));
+      setSelectedGroups(Array.from(new Set(selectedVictory.groupIds?.map(String) || [])));
     }
   }, [selectedVictory]);
 
@@ -37,9 +48,17 @@ const EditVictoryScreen = ({ route, navigation }: any) => {
       Alert.alert('Title required', 'Please enter a title for your victory.');
       return;
     }
-    const payload: UpdateVictoryPayload = { title, body, visibility };
+    const payload: UpdateVictoryPayload = {
+      title,
+      body,
+      visibility,
+      partnerIds: Array.from(new Set(selectedPartners.map(Number))),
+      groupIds: Array.from(new Set(selectedGroups.map(Number))),
+    };
+    
     try {
-      await dispatch(updateVictory({ id: victoryId, payload })).unwrap();
+     const data =  await dispatch(updateVictory({ id: victoryId, payload })).unwrap();
+   
       navigation.goBack();
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to update victory.');
@@ -102,6 +121,27 @@ const EditVictoryScreen = ({ route, navigation }: any) => {
               </Chip>
             ))}
           </View>
+
+          {visibility === 'partner' && (
+            <PartnerGroupSelector
+              partners={connectedPartners}
+              groups={[]}
+              selectedPartners={selectedPartners}
+              selectedGroups={selectedGroups}
+              onPartnerSelectionChange={setSelectedPartners}
+              onGroupSelectionChange={setSelectedGroups}
+            />
+          )}
+          {visibility === 'group' && (
+            <PartnerGroupSelector
+              partners={[]}
+              groups={groups}
+              selectedPartners={selectedPartners}
+              selectedGroups={selectedGroups}
+              onPartnerSelectionChange={setSelectedPartners}
+              onGroupSelectionChange={setSelectedGroups}
+            />
+          )}
 
           <Button mode="contained" onPress={handleSubmit} style={styles.submitButton} buttonColor={Colors.primary.main} loading={loading}>
             Update

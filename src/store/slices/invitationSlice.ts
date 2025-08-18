@@ -18,24 +18,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Dimensions } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import api from '../../services/api';
+import { GroupSummary } from '../../services/groupService';
+import groupService from '../../services/groupService';
+import partnerService, { PartnerPhoneResponse, PartnerWithPhone } from '../../services/partnerService';
 
-/**
- * User Type
- *
- * Represents a user involved in an invitation (sender, receiver, or partner).
- */
 export interface PartnerUser {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
+  username: string;
+  avatarUrl?: string;
 }
 
-/**
- * Sent Invite Type
- *
- * Represents an invitation sent by the authenticated user.
- */
 export interface SentInvite {
   id: string;
   hash: string;
@@ -44,11 +39,6 @@ export interface SentInvite {
   createdAt: string;
 }
 
-/**
- * Received Invite Type
- *
- * Represents an invitation received by the authenticated user.
- */
 export interface ReceivedInvite {
   id: string;
   hash: string;
@@ -57,15 +47,14 @@ export interface ReceivedInvite {
   createdAt: string;
 }
 
-/**
- * Partner Type
- *
- * Represents an established partnership.
- */
 export interface Partner {
   id: string; // Invitation ID
   since: string;
   partner: PartnerUser | null;
+  phoneNumber?: string | null; // Add phone number to partner interface
+  // IDs to determine who invited whom; used for permission checks
+  userId?: string; // inviter/current user's side when they created the invite
+  receiverId?: string; // invitee side
 }
 
 /**
@@ -109,6 +98,18 @@ interface InvitationState {
   
   // Connected partners from accepted invitations
   connectedPartners: Partner[];
+
+  partnersWithPhone : {
+    phoneNumbers: {
+      partnerId?: number,
+      name?:string,
+      email?: string,
+      phoneNumber?:string
+    }[]
+  };
+  
+  // Groups the user belongs to
+  groups: GroupSummary[];
   
   // Loading and error states
   loading: boolean;
@@ -133,6 +134,10 @@ const initialState: InvitationState = {
   receivedInvitations: [],
   processingInvitation: null,
   connectedPartners: [],
+  partnersWithPhone: {
+    phoneNumbers: []
+  },
+  groups: [],
   loading: false,
   error: null,
   isProcessingDeepLink: false,
@@ -199,6 +204,23 @@ export const fetchPartners = createAsyncThunk(
 );
 
 /**
+ * Fetch Groups Thunk
+ *
+ * Fetches all groups the authenticated user belongs to.
+ */
+export const fetchGroups = createAsyncThunk(
+  'invitation/fetchGroups',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await groupService.listMyGroups();
+      return response.items;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch groups.');
+    }
+  }
+);
+
+/**
  * Revoke Invitation Thunk
  *
  * Revokes an invitation by its ID.
@@ -240,7 +262,7 @@ export const createInviteAfterAuth = createAsyncThunk(
  * Creates a secure hash for invitation links.
  * Uses timestamp and random values for uniqueness.
  */
-const generateInvitationHash = (): string => {
+export const generateInvitationHash = (): string => {
   const timestamp = Date.now().toString();
   const randomString = Math.random().toString(36).substring(2, 15);
   const userHash = Math.random().toString(36).substring(2, 10);
@@ -259,81 +281,6 @@ const generateInvitationHash = (): string => {
   // Convert to positive hex string and add prefix
   return `ph_${Math.abs(hash).toString(16)}${randomString}`;
 };
-
-/**
- * Create Invitation Thunk
- * 
- * Creates a new invitation with hash and deep link URL.
- * This is called when user wants to invite someone.
- */
-export const createInvitation = createAsyncThunk(
-  'invitation/create',
-  async (
-    invitationData: { inviterName: string; inviterEmail: string; inviterUserId: string; customHash?: string },
-    { rejectWithValue }
-  ) => {
-    try {
-      // Generate or use provided custom hash
-      const custom = invitationData.customHash?.trim();
-      const isValidCustom = !!custom && /^ph_[a-z0-9]+$/i.test(custom) && custom.length >= 10;
-      const hash = isValidCustom ? (custom as string) : generateInvitationHash();
-      const invitation: Invitation = {
-        id: `inv_${Date.now()}`,
-        hash,
-        inviterUserId: invitationData.inviterUserId,
-        inviterName: invitationData.inviterName,
-        inviterEmail: invitationData.inviterEmail,
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
-        status: 'pending',
-        deepLinkUrl: `pureheart://invite/${hash}`,
-        metadata: {
-          invitationType: 'accountability_partner',
-        },
-      };
-      await AsyncStorage.setItem('init_sent_accountability_id', hash);
-      return invitation;
-    } catch (error) {
-      return rejectWithValue('Failed to create invitation. Please try again.');
-    }
-  }
-);
-
-export const matchInstall = createAsyncThunk(
-  'invitation/matchInstall',
-  async (deviceInfo: { os: string; osVersion: string; deviceModel: string }, { rejectWithValue }) => {
-    try {
-      // Create a more comprehensive device fingerprint
-      const userAgent = `${deviceInfo.deviceModel}; ${deviceInfo.os} ${deviceInfo.osVersion}`;
-      
-      // Get additional device info for better matching
-      const screenDimensions = {
-        width: Dimensions.get('window').width,
-        height: Dimensions.get('window').height,
-        scale: Dimensions.get('window').scale,
-      };
-      
-      const { data } = await api.post('/invites/invitations/match-install', {
-        deviceFingerprint: {
-          userAgent: userAgent,
-          os: deviceInfo.os,
-          osVersion: deviceInfo.osVersion,
-          deviceModel: deviceInfo.deviceModel,
-          screenDimensions: screenDimensions,
-          timezone: new Date().getTimezoneOffset(),
-          locale: 'en-US', // You can use DeviceInfo.getDeviceLocale() if available in your version
-          // Add app install time if available
-          firstInstallTime: await DeviceInfo.getFirstInstallTime(),
-        },
-      });
-      
-      return data; // Expected: { inviteId: string | null, matchConfidence: number }
-    } catch (error: any) {
-      console.error('Error matching install:', error);
-      return rejectWithValue('Failed to match installation.');
-    }
-  }
-);
 
 /**
  * Process Deep Link Invitation Thunk
@@ -466,6 +413,91 @@ export const loadInvitationData = createAsyncThunk(
   }
 );
 
+/**
+ * Update Partner Phone Number Thunk
+ *
+ * Updates a partner's phone number.
+ */
+export const updatePartnerPhone = createAsyncThunk(
+  'invitation/updatePartnerPhone',
+  async (
+    payload: { partnerId: number; phoneNumber: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await partnerService.updatePartnerPhone(
+        payload.partnerId,
+        payload.phoneNumber
+      );
+      return { partnerId: payload.partnerId, phoneNumber: response.phoneNumber };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to update partner phone number.'
+      );
+    }
+  }
+);
+
+/**
+ * Get Partner Phone Number Thunk
+ *
+ * Retrieves a partner's phone number.
+ */
+export const getPartnerPhone = createAsyncThunk(
+  'invitation/getPartnerPhone',
+  async (partnerId: number, { rejectWithValue }) => {
+    try {
+      const response = await partnerService.getPartnerPhone(partnerId);
+      return { partnerId, phoneNumber: response.phoneNumber };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to get partner phone number.'
+      );
+    }
+  }
+);
+
+/**
+ * Get Partners with Phones Thunk
+ *
+ * Retrieves all partners with their phone numbers for emergency contact.
+ */
+export const getPartnersWithPhones = createAsyncThunk(
+  'invitation/getPartnersWithPhones',
+  async (_, { rejectWithValue }) => {
+    try {
+      const partners = await partnerService.getPartnersWithPhones();
+      return partners;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to get partners with phone numbers.'
+      );
+    }
+  }
+);
+
+/**
+ * Create Invitation Thunk
+ *
+ * Creates a new invitation with optional custom hash.
+ */
+export const createInvitation = createAsyncThunk(
+  'invitation/createInvitation',
+  async (
+    payload: { inviterUserId: string; customHash?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const { data } = await api.post('/invites/invitations', payload);
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to create invitation.'
+      );
+    }
+  }
+);
+
 
 /**
  * Invitation Slice
@@ -522,20 +554,53 @@ const invitationSlice = createSlice({
      * Removes a connected partner.
      */
     removePartner: (state, action: PayloadAction<string>) => {
-      const partnerId = action.payload;
-      state.connectedPartners = state.connectedPartners.filter(
-        (p) => p.partner?.id !== partnerId
-      );
+      state.connectedPartners = state.connectedPartners.filter((p: Partner) => p.partner?.id !== action.payload);
     },
   },
   extraReducers: (builder) => {
-    // Create Invitation Cases
+    // Fetch Invitations Cases
     builder
-      .addCase(createInvitation.pending, (state) => {
+      .addCase(fetchSentInvites.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(createInvitation.rejected, (state, action) => {
+      .addCase(fetchSentInvites.fulfilled, (state, action: PayloadAction<SentInvite[]>) => {
+        state.loading = false;
+        state.sentInvitations = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchSentInvites.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    builder
+      .addCase(fetchReceivedInvites.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchReceivedInvites.fulfilled, (state, action: PayloadAction<ReceivedInvite[]>) => {
+        state.loading = false;
+        state.receivedInvitations = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchReceivedInvites.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+      
+    // Create Invitation After Auth Cases
+    builder
+      .addCase(createInviteAfterAuth.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createInviteAfterAuth.fulfilled, (state, action) => {
+        state.loading = false;
+        // Optionally, you can add the newly saved invitation to the state
+        // For now, we'll rely on the next fetch to get the updated list
+      })
+      .addCase(createInviteAfterAuth.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });
@@ -579,7 +644,7 @@ const invitationSlice = createSlice({
         // Remove from received invitations
         if (acceptedInvite) {
           state.receivedInvitations = state.receivedInvitations.filter(
-            (inv) => inv.hash !== acceptedInvite.hash
+            (inv: ReceivedInvite) => inv.id !== acceptedInvite.id
           );
         }
 
@@ -633,22 +698,6 @@ const invitationSlice = createSlice({
         state.error = action.payload as string;
       });
 
-    // Match Install Cases
-    builder
-      .addCase(matchInstall.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(matchInstall.fulfilled, (state, action) => {
-        state.loading = false;
-        console.log('Match install check completed.', action.payload);
-      })
-      .addCase(matchInstall.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-        console.error('Match install failed:', action.payload);
-      });
-
     // Load Invitation Data Cases
     builder
       .addCase(loadInvitationData.pending, (state) => {
@@ -676,7 +725,7 @@ const invitationSlice = createSlice({
       .addCase(revokeInvite.fulfilled, (state, action) => {
         state.loading = false;
         state.sentInvitations = state.sentInvitations.filter(
-          (inv) => inv.id !== action.payload
+          (inv: SentInvite) => inv.id !== action.payload
         );
         state.error = null;
       })
@@ -685,22 +734,6 @@ const invitationSlice = createSlice({
         state.error = action.payload as string;
       });
       
-    // Create Invitation After Auth Cases
-    builder
-      .addCase(createInviteAfterAuth.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(createInviteAfterAuth.fulfilled, (state, action) => {
-        state.loading = false;
-        // Optionally, you can add the newly saved invitation to the state
-        // For now, we'll rely on the next fetch to get the updated list
-      })
-      .addCase(createInviteAfterAuth.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      });
-
     // Fetch Partners Cases
     builder
       .addCase(fetchPartners.pending, (state) => {
@@ -713,6 +746,104 @@ const invitationSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchPartners.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Fetch Groups Cases
+    builder
+      .addCase(fetchGroups.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchGroups.fulfilled, (state, action: PayloadAction<GroupSummary[]>) => {
+        state.loading = false;
+        state.groups = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchGroups.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Update Partner Phone Cases
+    builder
+      .addCase(updatePartnerPhone.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updatePartnerPhone.fulfilled, (state, action) => {
+        state.loading = false;
+        const { partnerId, phoneNumber } = action.payload;
+        
+        // Update the phone number in connected partners
+        const partnerIndex = state.connectedPartners.findIndex(
+          (p: Partner) => p.id === partnerId.toString() || p.partner?.id === partnerId.toString()
+        );
+        
+        if (partnerIndex !== -1) {
+          state.connectedPartners[partnerIndex].phoneNumber = phoneNumber;
+        }
+        
+        state.error = null;
+      })
+      .addCase(updatePartnerPhone.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Get Partner Phone Cases
+    builder
+      .addCase(getPartnerPhone.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getPartnerPhone.fulfilled, (state, action) => {
+        state.loading = false;
+        const { partnerId, phoneNumber } = action.payload;
+        
+        // Update the phone number in connected partners
+        const partnerIndex = state.connectedPartners.findIndex(
+          (p: Partner) => p.id === partnerId.toString() || p.partner?.id === partnerId.toString()
+        );
+        
+        if (partnerIndex !== -1) {
+          state.connectedPartners[partnerIndex].phoneNumber = phoneNumber;
+        }
+        
+        state.error = null;
+      })
+      .addCase(getPartnerPhone.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Get Partners with Phones Cases
+    builder
+      .addCase(getPartnersWithPhones.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getPartnersWithPhones.fulfilled, (state, action: any) => {
+        state.loading = false;
+        state.partnersWithPhone = action.payload;
+      })
+      .addCase(getPartnersWithPhones.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Create Invitation Cases
+    builder
+      .addCase(createInvitation.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createInvitation.fulfilled, (state, action) => {
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(createInvitation.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

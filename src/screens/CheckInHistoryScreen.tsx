@@ -22,9 +22,18 @@ const CheckInHistoryScreen: React.FC<CheckInHistoryScreenProps> = ({ navigation 
 
   const markedDates = useMemo(() => {
     const acc: Record<string, any> = {};
+    const isValidDate = (d: Date) => !isNaN(d.getTime());
+    const toUTCDay = (d: Date) =>
+      `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
     items.forEach((c) => {
-      const day = new Date(c.createdAt).toISOString().slice(0, 10);
-      acc[day] = { marked: true, dotColor: Colors.primary.main };
+      if (!c?.createdAt) return;
+      const d = new Date(c.createdAt);
+      if (!isValidDate(d)) return;
+      const day = toUTCDay(d);
+      
+      // Set different colors based on check-in status
+      const dotColor = c.status === 'relapse' ? Colors.error.main : Colors.primary.main;
+      acc[day] = { marked: true, dotColor };
     });
     return acc;
   }, [items]);
@@ -65,22 +74,33 @@ const CheckInHistoryScreen: React.FC<CheckInHistoryScreenProps> = ({ navigation 
         }
         data={items}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Surface style={styles.itemCard} elevation={1}>
-            <View style={styles.rowBetween}>
-              <View style={styles.col}>
-                <Text style={styles.dateText}>{new Date(item.createdAt).toLocaleDateString()}</Text>
-                <Text style={styles.noteText}>{item.note || 'No note'}</Text>
+        renderItem={({ item }) => {
+          const d = new Date(item.createdAt);
+          const dateText = isNaN(d.getTime()) ? 'Unknown date' : d.toLocaleDateString();
+          return (
+            <Surface style={styles.itemCard} elevation={1}>
+              <View style={styles.rowBetween}>
+                <View style={styles.col}>
+                  <Text style={styles.dateText}>{dateText}</Text>
+                  <Text style={styles.noteText}>{item.note || 'No note'}</Text>
+                </View>
+                <View style={styles.rightContent}>
+                  <View style={styles.statusBadge}>
+                    <Text style={styles.statusText}>
+                      {item.status === 'relapse' ? '😔 Relapse' : '🏆 Victory'}
+                    </Text>
+                  </View>
+                  <View style={[styles.moodPill, item.status === 'relapse' ? styles.relapseMoodPill : {}]}>
+                    <Text style={styles.moodValue}>{Math.round((item.mood ?? 0) * 100)}%</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.moodPill}> 
-                <Text style={styles.moodValue}>{Math.round((item.mood ?? 0) * 100)}%</Text>
-              </View>
-            </View>
-            <TouchableOpacity onPress={() => navigation?.navigate('CheckInDetail', { checkInId: item.id })} style={{ marginTop: 8 }}>
-              <Text style={{ color: Colors.primary.main, fontWeight: '600' }}>View details</Text>
-            </TouchableOpacity>
-          </Surface>
-        )}
+              <TouchableOpacity onPress={() => navigation?.navigate('CheckInDetail', { checkInId: item.id })} style={{ marginTop: 8 }}>
+                <Text style={{ color: Colors.primary.main, fontWeight: '600' }}>View details</Text>
+              </TouchableOpacity>
+            </Surface>
+          );
+        }}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
@@ -117,8 +137,21 @@ const styles = StyleSheet.create({
   col: { flex: 1, paddingRight: 12 },
   dateText: { color: Colors.text.primary, fontWeight: '600', marginBottom: 4 },
   noteText: { color: Colors.text.secondary },
-  moodPill: { backgroundColor: Colors.primary.main, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  rightContent: { alignItems: 'flex-end' },
+  moodPill: { backgroundColor: Colors.primary.main, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, marginTop: 4 },
+  relapseMoodPill: { backgroundColor: Colors.error.main },
   moodValue: { color: Colors.white, fontWeight: '700' },
+  statusBadge: { 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 12, 
+    backgroundColor: `${Colors.primary.main}20`,
+  },
+  statusText: { 
+    fontSize: 12, 
+    fontWeight: '600', 
+    color: Colors.text.primary 
+  },
 });
 
 export default CheckInHistoryScreen;

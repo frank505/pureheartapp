@@ -27,6 +27,8 @@ import checkinsSlice from './slices/checkinsSlice';
 import prayerRequestSlice from './slices/prayerRequestSlice';
 import victorySlice from './slices/victorySlice';
 import streaksSlice from './slices/streaksSlice';
+import recommendationsSlice from './slices/recommendationsSlice';
+import progressSlice from './slices/progressSlice';
 
 /**
  * Redux Persist Configuration
@@ -40,7 +42,7 @@ const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
   // Whitelist: only persist these reducers
-  whitelist: ['user', 'app', 'onboarding', 'invitation', 'notifications', 'checkins', 'prayerRequests', 'victories', 'streaks'],
+  whitelist: ['user', 'app', 'onboarding', 'invitation', 'notifications', 'checkins', 'prayerRequests', 'victories', 'streaks', 'recommendations'],
   // Blacklist: don't persist these reducers (posts will be fetched fresh)
   blacklist: ['posts'],
   version: 1,
@@ -63,6 +65,8 @@ const rootReducer = combineReducers({
   prayerRequests: prayerRequestSlice,
   victories: victorySlice,
   streaks: streaksSlice,
+  recommendations: recommendationsSlice,
+  progress: progressSlice,
 });
 
 /**

@@ -34,12 +34,12 @@ export const getPublicVictories = createAsyncThunk('victories/getPublic', async 
   return await victoryService.getPublicVictories(page, limit);
 });
 
-export const getVictoriesByUserId = createAsyncThunk('victories/getByUserId', async ({ userId, page, limit }: { userId: number; page?: number; limit?: number }) => {
-  return await victoryService.getVictoriesByUserId(userId, page, limit);
+export const getVictoriesByUserId = createAsyncThunk('victories/getByUserId', async ({ userId, page, limit, search }: { userId: number; page?: number; limit?: number; search?: string }) => {
+  return await victoryService.getVictoriesByUserId(userId, page, limit, search);
 });
 
-export const getSharedVictories = createAsyncThunk('victories/getShared', async ({ page, limit }: { page?: number; limit?: number }) => {
-  return await victoryService.getSharedVictories(page, limit);
+export const getSharedVictories = createAsyncThunk('victories/getShared', async ({ page, limit, search }: { page?: number; limit?: number; search?: string }) => {
+  return await victoryService.getSharedVictories(page, limit, search);
 });
 
 export const getVictoryById = createAsyncThunk('victories/getById', async (id: number) => {

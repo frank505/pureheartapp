@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, TextInput, Button, Chip } from 'react-native-paper';
@@ -10,21 +10,38 @@ import { AppDispatch, RootState } from '../store';
 import { CreatePrayerRequestPayload } from '../services/prayerRequestService';
 import { Colors } from '../constants';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
+import { fetchPartners, fetchGroups, Partner } from '../store/slices/invitationSlice';
+import PartnerGroupSelector from '../components/PartnerGroupSelector';
+import { GroupSummary } from '../services/groupService';
 
 const CreatePrayerRequestScreen = ({ navigation }: any) => {
   const dispatch = useDispatch<AppDispatch>();
   const { loading } = useSelector((state: RootState) => state.prayerRequests);
+  const { connectedPartners, groups } = useSelector((state: RootState) => state.invitation);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [visibility, setVisibility] = useState<CreatePrayerRequestPayload['visibility']>('private');
+  const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const richText = useRef<RichEditor>(null);
+
+  useEffect(() => {
+    dispatch(fetchPartners());
+    dispatch(fetchGroups());
+  }, [dispatch]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
       Alert.alert('Title required', 'Please enter a title for your prayer request.');
       return;
     }
-    const payload: CreatePrayerRequestPayload = { title, body, visibility };
+    const payload: CreatePrayerRequestPayload = {
+      title,
+      body,
+      visibility,
+      partnerIds: selectedPartners.map(Number),
+      groupIds: selectedGroups.map(Number),
+    };
     try {
       await dispatch(createPrayerRequest(payload)).unwrap();
       navigation.goBack();
@@ -88,6 +105,28 @@ const CreatePrayerRequestScreen = ({ navigation }: any) => {
               </Chip>
             ))}
           </View>
+
+          {visibility === 'partner' && (
+            <PartnerGroupSelector
+              partners={connectedPartners}
+              groups={[]}
+              selectedPartners={selectedPartners}
+              selectedGroups={selectedGroups}
+              onPartnerSelectionChange={setSelectedPartners}
+              onGroupSelectionChange={setSelectedGroups}
+            />
+          )}
+          {visibility === 'group' && (
+            <PartnerGroupSelector
+              partners={[]}
+              groups={groups}
+              selectedPartners={selectedPartners}
+              selectedGroups={selectedGroups}
+              onPartnerSelectionChange={setSelectedPartners}
+              onGroupSelectionChange={setSelectedGroups}
+            />
+          )}
+
           <Button mode="contained" onPress={handleSubmit} style={styles.submitButton} buttonColor={Colors.primary.main} loading={loading}>
             Submit
           </Button>

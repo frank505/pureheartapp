@@ -42,6 +42,8 @@ export const getPrayerRequestsByUserId = createAsyncThunk('prayerRequests/getByU
   return await prayerRequestService.getPrayerRequestsByUserId(userId, page, limit);
 });
 
+
+
 export const getPrayerRequestById = createAsyncThunk('prayerRequests/getById', async (id: number) => {
   return await prayerRequestService.getPrayerRequestById(id);
 });

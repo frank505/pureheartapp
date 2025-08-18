@@ -6,14 +6,14 @@
  * Designed to celebrate spiritual victories and track consistent growth.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import {
   Text,
@@ -22,9 +22,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { LineChart } from 'react-native-chart-kit';
-import Icon from '../components/Icon';
-import ProfileDropdown from '../components/ProfileDropdown';
-import { Colors, Icons } from '../constants';
+import { Icon, ProfileDropdown, ScreenHeader } from '../components';
+import { Colors } from '../constants';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchAchievements, fetchAnalytics, fetchCalendar } from '../store/slices/progressSlice';
+import { getStreaks } from '../store/slices/streaksSlice';
+import { format } from 'date-fns';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface ProgressScreenProps {
   navigation?: any;
@@ -32,44 +36,38 @@ interface ProgressScreenProps {
 }
 
 const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
-  const [selectedDate, setSelectedDate] = useState('2024-05-10');
+  const dispatch = useAppDispatch();
+  const { achievements, analytics, calendar, loading, error } = useAppSelector((state) => state.progress);
+  const { streaks } = useAppSelector((state) => state.streaks);
+  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
-  // Current streak data
-  const currentStreak = 10;
-  const nextMilestone = 14;
-  const daysToMilestone = nextMilestone - currentStreak;
+  useEffect(() => {
+    const currentMonth = format(new Date(), 'yyyy-MM');
+    dispatch(fetchAchievements());
+    dispatch(fetchAnalytics('last_4_weeks'));
+    dispatch(fetchCalendar(currentMonth));
+    dispatch(getStreaks());
+  }, [dispatch]);
 
-  // Get screen dimensions for chart
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(getStreaks());
+    }, [dispatch])
+  );
+
   const screenWidth = Dimensions.get('window').width;
 
-  // Victory days for calendar marking
-  const victoryDays = {
-    '2024-05-05': { selected: false, marked: true, dotColor: Colors.primary.main },
-    '2024-05-06': { selected: false, marked: true, dotColor: Colors.primary.main },
-    '2024-05-07': { selected: false, marked: true, dotColor: Colors.primary.main },
-    '2024-05-08': { selected: false, marked: true, dotColor: Colors.primary.main },
-    '2024-05-09': { selected: false, marked: true, dotColor: Colors.primary.main },
-    '2024-05-10': { 
-      selected: true, 
-      marked: true, 
-      selectedColor: '#22c55e',
-      selectedTextColor: Colors.white 
-    },
-  };
-
-  // Chart data for weekly progress
   const chartData = {
-    labels: ['W1', 'W2', 'W3', 'W4'],
+    labels: analytics?.weeklyProgress?.labels || [],
     datasets: [
       {
-        data: [45, 60, 68, 75],
-        color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`, // Primary blue
+        data: analytics?.weeklyProgress?.data || [],
+        color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
         strokeWidth: 3,
       },
     ],
   };
 
-  // Chart configuration
   const chartConfig = {
     backgroundColor: Colors.background.secondary,
     backgroundGradientFrom: Colors.background.secondary,
@@ -89,47 +87,41 @@ const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
     fillShadowGradientOpacity: 0.3,
   };
 
-  // Achievement badges
-  const achievements = [
-    {
-      id: 1,
-      name: '7-Day Streak Badge',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDGjKfvLSzk33qq6scH38wgWeidZ9Ho0g4A6mCNhG5B1pt-FYi9MMfXj6FWOd1PjfJ4RzXbX8SwzndPpFhZQDfh5mDU_tJhD7GI4LXf_GwhAjkzzKiE6CYSB6rnW7849JKQ9Fy2p0Sd6P1coZYrFIAepvvGq5Gto6Kbpma_62RcEyVzozSuHBGnPszR7GBxh77zec9ar5lgGAtg0LvCPxt7WZLVKK75xmWwcmdl_lXssYhAoPscZYrPD8yJIw0GZxxesompu6-GNudZ',
-      unlocked: true,
-    },
-    {
-      id: 2,
-      name: 'First Victory Badge',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBrClQdnwC-onQjPnar1O6b2ZonZ5JjQP9RaypKpg44wrlSJvC_NFTPtRJfx0xvohnL1anzk6si-GjWIv26O1bjPxIrffmn87m_d802xXjLyTk7luU1Irp7-kO5h48PwguNagAC7sqT_cwfllRUZAGiwQ2qXmYcFrdhw3bwAkNyLIhKDDqcjmYnSrxhMY-9SfxzVwoFeqHc8MnzzUglu8DzNoQLenSzvn5eFFW0DofA69PswSoeDG9EoNFjFlNsoPbMIt4T9kGKTf8h',
-      unlocked: true,
-    },
-    {
-      id: 3,
-      name: 'Prayer Warrior Badge',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC2jSnT6Qn3nfo-35YXAZRnycP1owhxL5Qml3fBTdtKWKikTnE-oC-mCQWfL3alg_8I-nIbEMom1r1ZOV8gccNEe2G2ijzsE7ejxDo5B2Y8ZktpYKT4ig_lNFrwWsWWiqyJ_TDzaSMRTUJBB74IPpEJSmYKKitoUITnt7ShlUm5NPaWeNSaGb5Bdp3tdOXW3_bnbbExaSjRRQdLUNPT8lEpD4Thza74V9o3OEQ1jgr2g9x48dB8R0gsbJedqLI2iG2sx8xYOeR5H-m_',
-      unlocked: true,
-    },
-  ];
-
-  // Handle calendar day selection
   const handleDayPress = (day: any) => {
     setSelectedDate(day.dateString);
-    // Here you could add logic to mark/unmark victory days
     console.log('Selected day:', day.dateString);
   };
 
-  // Handle month change
   const handleMonthChange = (month: any) => {
-    console.log('Month changed to:', month);
+    const monthString = `${month.year}-${String(month.month).padStart(2, '0')}`;
+    dispatch(fetchCalendar(monthString));
   };
+
+  if (loading && !analytics) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={Colors.primary.main} />
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <Text style={styles.errorText}>Failed to load progress data.</Text>
+      </SafeAreaView>
+    );
+  }
+
+  const currentStreak = streaks?.currentStreak ?? 0;
+  const nextMilestone = analytics?.nextMilestone ?? 0;
+  const daysToMilestone = Math.max(0, nextMilestone - currentStreak);
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Custom Header */}
       <View style={styles.header}>
-        <View style={styles.headerSpacer} />
-        <Text style={styles.headerTitle}>Progress & Victory</Text>
-        <ProfileDropdown navigation={navigation} />
+        <ScreenHeader title="Progress & Victory" iconName="stats-chart" navigation={navigation} />
       </View>
 
       <ScrollView 
@@ -172,7 +164,15 @@ const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
               current={selectedDate}
               onDayPress={handleDayPress}
               onMonthChange={handleMonthChange}
-              markedDates={victoryDays}
+              markedDates={{
+                ...calendar,
+                [selectedDate]: {
+                  ...calendar[selectedDate],
+                  selected: true,
+                  selectedColor: '#22c55e',
+                  selectedTextColor: Colors.white,
+                }
+              }}
               theme={{
                 backgroundColor: Colors.background.secondary,
                 calendarBackground: Colors.background.secondary,
@@ -228,33 +228,44 @@ const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
           <Text style={styles.sectionTitle}>Growth Analytics</Text>
           <Surface style={styles.analyticsCard} elevation={2}>
             <View style={styles.analyticsHeader}>
-              <View>
+              <View style={styles.analyticsProgress}>
                 <Text style={styles.analyticsLabel}>Weekly Progress</Text>
-                <Text style={styles.analyticsValue}>75%</Text>
+                <Text style={styles.analyticsValue}>{analytics?.weeklyProgress?.data?.slice(-1)[0] ?? 0}%</Text>
               </View>
               <View style={styles.analyticsChange}>
-                <Text style={styles.analyticsChangeValue}>+10%</Text>
-                <Text style={styles.analyticsChangeLabel}>vs Last 4 Weeks</Text>
+                <Text style={styles.analyticsChangeValue}>
+                  {(analytics?.weeklyChange?.value ?? 0) >= 0 ? '+' : ''}
+                  {analytics?.weeklyChange?.value ?? 0}%
+                </Text>
+                <Text style={styles.analyticsChangeLabel}>{analytics?.weeklyChange?.label}</Text>
               </View>
             </View>
             
             {/* Real Growth Chart */}
             <View style={styles.chartContainer}>
-              <LineChart
-                data={chartData}
-                width={screenWidth - 64} // Account for padding
-                height={160}
-                chartConfig={chartConfig}
-                bezier
-                style={styles.chart}
-                withInnerLines={false}
-                withOuterLines={false}
-                withVerticalLines={false}
-                withHorizontalLines={true}
-                withDots={true}
-                withShadow={true}
-                withScrollableDot={false}
-              />
+              {(analytics?.weeklyProgress?.data?.length ?? 0) > 0 ? (
+                <LineChart
+                  data={chartData}
+                  width={screenWidth - 64}
+                  height={160}
+                  chartConfig={chartConfig}
+                  bezier={(analytics?.weeklyProgress?.data?.length ?? 0) > 1}
+                  style={styles.chart}
+                  withInnerLines={false}
+                  withOuterLines={false}
+                  withVerticalLines={false}
+                  withHorizontalLines={true}
+                  withDots={true}
+                  withShadow={true}
+                  withScrollableDot={false}
+                />
+              ) : (
+                <View style={styles.chartPlaceholder}>
+                  <Text style={styles.chartPlaceholderText}>
+                    Not enough data to display chart.
+                  </Text>
+                </View>
+              )}
             </View>
           </Surface>
         </View>
@@ -268,27 +279,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background.primary, // #111827
   },
-  header: {
-    flexDirection: 'row',
+  centered: {
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  },
+  errorText: {
+    color: Colors.error.main,
+    fontSize: 16,
+  },
+  header: {
     backgroundColor: Colors.background.primary,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border.primary,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.text.primary,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 24,
   },
   scrollView: {
     flex: 1,
@@ -449,6 +451,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 16,
   },
+  analyticsProgress: {
+    flex: 1,
+  },
   analyticsLabel: {
     fontSize: 16,
     fontWeight: '500',
@@ -480,6 +485,18 @@ const styles = StyleSheet.create({
   chart: {
     borderRadius: 8,
     marginVertical: 8,
+  },
+  chartPlaceholder: {
+    height: 160,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 8,
+    paddingHorizontal: 20,
+  },
+  chartPlaceholderText: {
+    color: Colors.text.secondary,
+    textAlign: 'center',
   },
 });
 

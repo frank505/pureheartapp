@@ -28,6 +28,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import OnboardingButton from '../../components/OnboardingButton';
 import ProgressIndicator from '../../components/ProgressIndicator';
 import { Colors } from '../../constants';
+import { responsiveFontSizes, responsiveSpacing } from '../../utils/responsive';
 
 interface Onboarding2ScreenProps {
   navigation: any;
@@ -222,11 +223,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   contentContainer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: responsiveSpacing.lg,
     marginBottom: 32,
   },
   mainTitle: {
-    fontSize: 28,
+    fontSize: responsiveFontSizes.mainTitle,
     fontWeight: '700',
     color: Colors.text.primary,
     textAlign: 'center',
@@ -252,30 +253,30 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   iconText: {
-    fontSize: 24,
+    fontSize: responsiveFontSizes.headerTitle,
   },
   benefitContent: {
     flex: 1,
   },
   benefitTitle: {
-    fontSize: 16,
+    fontSize: responsiveFontSizes.body,
     fontWeight: '600',
     color: Colors.text.primary,
     marginBottom: 4,
   },
   benefitDescription: {
-    fontSize: 14,
+    fontSize: responsiveFontSizes.bodySmall,
     color: Colors.text.secondary,
     lineHeight: 20,
   },
   verseCard: {
     backgroundColor: 'rgba(39, 39, 42, 0.5)',
     borderRadius: 12,
-    padding: 24,
+    padding: responsiveSpacing.lg,
     alignItems: 'center',
   },
   verseText: {
-    fontSize: 16,
+    fontSize: responsiveFontSizes.body,
     color: Colors.text.primary,
     textAlign: 'center',
     fontStyle: 'italic',
@@ -283,17 +284,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   verseReference: {
-    fontSize: 14,
+    fontSize: responsiveFontSizes.bodySmall,
     color: Colors.text.secondary,
     textAlign: 'center',
   },
   bottomSection: {
-    paddingHorizontal: 24,
+    paddingHorizontal: responsiveSpacing.lg,
     paddingBottom: 32,
     alignItems: 'center',
   },
   commitmentQuestion: {
-    fontSize: 18,
+    fontSize: responsiveFontSizes.headerSubtitle,
     fontWeight: '600',
     color: Colors.text.primary,
     textAlign: 'center',

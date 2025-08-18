@@ -22,7 +22,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import { Text, Portal, Modal, Button, Divider } from 'react-native-paper';
+import { Text, Portal, Modal, Button, Divider, TextInput, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import OnboardingButton from '../../components/OnboardingButton';
@@ -33,15 +33,8 @@ import { Colors, ColorUtils, Icons } from '../../constants';
 // Redux imports
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { saveAccountabilityPreferences } from '../../store/slices/onboardingSlice';
-import { 
-  createInvitation, 
-  showShareModal,
-  hideShareModal,
-  clearError 
-} from '../../store/slices/invitationSlice';
+import {} from '../../store/slices/invitationSlice';
 
-// Invitation service
-import InvitationService from '../../services/invitationService';
 import { ProgressIndicator } from '../../components';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -70,14 +63,6 @@ interface Onboarding8ScreenProps {
   const storedFaithData = useAppSelector(state => state.onboarding.faithData);
   const existingAccountabilityPrefs = useAppSelector(state => state.onboarding.accountabilityPreferences);
   
-  // Get invitation state
-  const { 
-    loading: invitationLoading, 
-    error: invitationError, 
-    shareModalVisible, 
-    invitationToShare 
-  } = useAppSelector(state => state.invitation);
-  
   const userData = route.params?.userData || storedPersonalInfo;
   const assessmentData = route.params?.assessmentData || storedAssessmentData;
   const faithData = route.params?.faithData || storedFaithData;
@@ -87,49 +72,65 @@ interface Onboarding8ScreenProps {
   const [selectedOption, setSelectedOption] = useState<string | null>(
     existingAccountabilityPrefs.preferredType || null
   );
-  
-  // State for created invitation
-  const [createdInvitation, setCreatedInvitation] = useState<any>(null);
+  const [isInviteModalVisible, setInviteModalVisible] = useState(false);
+  const [emails, setEmails] = useState<string[]>([]);
+  const [currentEmail, setCurrentEmail] = useState('');
+  const [invitationCode, setInvitationCode] = useState('');
 
   const handleInviteTrusted = async () => {
     const optionValue = 'trusted-person';
     setSelectedOption(optionValue);
-    
-    // Save accountability preference
-    dispatch(saveAccountabilityPreferences({ 
-      preferredType: optionValue, 
-      hasSelectedOption: true 
-    }));
-    console.log('Invite Someone Trusted - preference saved');
-
-    // Create invitation for trusted contact
-    try {
-      const invitationData = {
-        inviterName: userName || 'Friend',
-        inviterEmail: userData?.email || storedPersonalInfo.email || 'user@pureheart.app',
-        inviterUserId: 'onboarding_user', // We'll use a temporary ID for onboarding users
-        invitationType: 'trusted_contact' as const,
-        customMessage: `${userName || 'A friend'} would like you to be their trusted accountability partner on PureHeart!`,
-      };
-      
-      const invitation = await dispatch(createInvitation(invitationData)).unwrap();
-      setCreatedInvitation(invitation);
-    
-      // Persist the generated invitation hash into onboarding state so it
-      // is included in accountabilityPreferences sent during social login
-      dispatch(saveAccountabilityPreferences({ invitationHash: invitation.hash }));
-      
-      // Show share modal
-      dispatch(showShareModal(invitation));
-    } catch (error) {
-      console.error('Error creating invitation:', error);
-      Alert.alert(
-        'Invitation Error',
-        'Unable to create invitation link. Please try again.',
-        [{ text: 'OK' }]
-      );
-    }
+    setInviteModalVisible(true);
   };
+
+  const handleSendInvites = () => {
+    if (emails.length === 0) {
+      Alert.alert('No Emails', 'Please add at least one email to send invites.');
+      return;
+    }
+    dispatch(saveAccountabilityPreferences({
+      preferredType: 'trusted-person',
+      hasSelectedOption: true,
+      invitedEmails: emails,
+      invitationCode: invitationCode,
+    }));
+    setInviteModalVisible(false);
+    Alert.alert('Invites Sent', 'Your accountability invites have been saved and will be sent upon completing your setup.');
+  };
+
+  const handleEmailInputSubmit = () => {
+    const newEmails = currentEmail.split(',')
+      .map(email => email.trim())
+      .filter(Boolean);
+
+    if (newEmails.length === 0) return;
+
+    const validEmails: string[] = [];
+    const invalidEmails: string[] = [];
+
+    newEmails.forEach(email => {
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && !emails.includes(email)) {
+        validEmails.push(email);
+      } else {
+        invalidEmails.push(email);
+      }
+    });
+
+    if (validEmails.length > 0) {
+      setEmails(prevEmails => [...prevEmails, ...validEmails]);
+    }
+
+    if (invalidEmails.length > 0) {
+      Alert.alert('Invalid or Duplicate Email', `The following emails could not be added: ${invalidEmails.join(', ')}`);
+    }
+
+    setCurrentEmail('');
+  };
+
+  const removeEmail = (emailToRemove: string) => {
+    setEmails(emails.filter(email => email !== emailToRemove));
+  };
+
 
   const handleStartSolo = () => {
     const optionValue = 'solo';
@@ -155,85 +156,6 @@ interface Onboarding8ScreenProps {
 
   const handleBack = () => {
     navigation.goBack();
-  };
-
-  // Social Media Sharing Options for onboarding
-  const sharingOptions = [
-    {
-      platform: 'whatsapp' as const,
-      label: 'WhatsApp',
-      icon: 'logo-whatsapp',
-      color: '#25D366',
-    },
-    {
-      platform: 'sms' as const,
-      label: 'Text Message',
-      icon: 'chatbubble-outline',
-      color: Colors.primary.main,
-    },
-    {
-      platform: 'email' as const,
-      label: 'Email',
-      icon: 'mail-outline',
-      color: Colors.secondary.main,
-    },
-    {
-      platform: 'twitter' as const,
-      label: 'Twitter',
-      icon: 'logo-twitter',
-      color: '#1DA1F2',
-    },
-    {
-      platform: 'facebook' as const,
-      label: 'Facebook',
-      icon: 'logo-facebook',
-      color: '#4267B2',
-    },
-  ];
-
-  /**
-   * Handle Share Invitation via Platform
-   */
-  const handleShare = async (platform: any) => {
-    if (!invitationToShare) return;
-
-    try {
-      await InvitationService.shareInvitation(invitationToShare, {
-        platform,
-        customMessage: `${userName || 'A friend'} would like you to be their trusted accountability partner on PureHeart!`,
-      });
-      
-      // Close share modal after successful share
-      dispatch(hideShareModal());
-      
-      Alert.alert(
-        'Invitation Sent!',
-        'Your invitation has been shared successfully. You can continue with your setup.',
-        [{ text: 'Continue', onPress: () => handleCompleteSetup() }]
-      );
-    } catch (error) {
-      console.error('Error sharing invitation:', error);
-    }
-  };
-
-  /**
-   * Copy Invitation Link
-   */
-  const handleCopyLink = async () => {
-    if (!invitationToShare) return;
-
-    try {
-      await InvitationService.copyInvitationUrl(invitationToShare);
-      dispatch(hideShareModal());
-      
-      Alert.alert(
-        'Link Copied!',
-        'The invitation link has been copied to your clipboard. You can paste it anywhere to share.',
-        [{ text: 'Continue', onPress: () => handleCompleteSetup() }]
-      );
-    } catch (error) {
-      console.error('Error copying invitation:', error);
-    }
   };
 
   const handleCompleteSetup = () => {
@@ -462,54 +384,55 @@ interface Onboarding8ScreenProps {
       {/* Share Modal for Invitation */}
       <Portal>
         <Modal
-          visible={shareModalVisible}
-          onDismiss={() => dispatch(hideShareModal())}
+          visible={isInviteModalVisible}
+          onDismiss={() => setInviteModalVisible(false)}
           contentContainerStyle={styles.modalContent}
         >
-          <Text style={styles.modalTitle}>Share Invitation</Text>
-          <Text style={styles.modalSubtitle}>
-            Choose how you'd like to invite your trusted partner
-          </Text>
-
-          <View style={styles.shareOptions}>
-            {sharingOptions.map((option) => (
-              <TouchableOpacity
-                key={option.platform}
-                style={styles.shareOption}
-                onPress={() => handleShare(option.platform)}
-              >
-                <View style={[styles.shareIconContainer, { backgroundColor: `${option.color}15` }]}>
-                  <Icon 
-                    name={option.icon} 
-                    color={option.color} 
-                    size="lg" 
-                  />
-                </View>
-                <Text style={styles.shareLabel}>{option.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Divider style={styles.modalDivider} />
-
-          <TouchableOpacity style={styles.copyOption} onPress={handleCopyLink}>
-            <Icon 
-              name="copy-outline" 
-              color={Colors.primary.main} 
-              size="md" 
-            />
-            <Text style={styles.copyLabel}>Copy Link</Text>
-          </TouchableOpacity>
-          
-          <Button
+          <Text style={styles.modalTitle}>Invite Trusted Partners</Text>
+          <Text style={styles.modalSubtitle}>Enter the emails of people you trust.</Text>
+          {emails.length > 0 && (
+            <View style={styles.chipContainer}>
+              {emails.map((email, index) => (
+                <Chip
+                  key={index}
+                  mode="outlined"
+                  onClose={() => removeEmail(email)}
+                  style={styles.chip}
+                  textStyle={styles.chipText}
+                >
+                  {email}
+                </Chip>
+              ))}
+            </View>
+          )}
+          <TextInput
             mode="outlined"
-            onPress={() => {
-              dispatch(hideShareModal());
-              handleCompleteSetup();
-            }}
-            style={styles.skipButton}
-          >
-            Skip for Now
+            label="Add email(s)"
+            placeholder="friend@example.com, partner@work.com"
+            value={currentEmail}
+            onChangeText={setCurrentEmail}
+            onSubmitEditing={handleEmailInputSubmit}
+            onBlur={handleEmailInputSubmit}
+            style={styles.emailInput}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            right={
+              currentEmail.trim() ? (
+                <TextInput.Icon
+                  icon="plus"
+                  onPress={handleEmailInputSubmit}
+                />
+              ) : null
+            }
+          />
+          <TextInput
+            label="Invitation Code (Optional)"
+            value={invitationCode}
+            onChangeText={setInvitationCode}
+            style={styles.codeInput}
+          />
+          <Button mode="contained" onPress={handleSendInvites} style={styles.sendButton}>
+            Send Invites
           </Button>
         </Modal>
       </Portal>
@@ -776,6 +699,29 @@ const styles = StyleSheet.create({
   skipButton: {
     borderColor: Colors.border.primary,
     borderWidth: 1,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  chip: {
+    backgroundColor: `${Colors.primary.main}10`,
+    borderColor: Colors.primary.main,
+  },
+  chipText: {
+    color: Colors.text.primary,
+  },
+  emailInput: {
+    backgroundColor: Colors.background.tertiary,
+    marginBottom: 16,
+  },
+  codeInput: {
+    marginBottom: 16,
+  },
+  sendButton: {
+    marginTop: 8,
   },
 });
 
