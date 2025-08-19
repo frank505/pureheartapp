@@ -41,6 +41,7 @@ export const IconNames = {
     accountability: 'people-outline',
     truth: 'book-outline',
     progress: 'analytics-outline',
+    menu: 'menu-outline',
   },
 
   // User & Profile

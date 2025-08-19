@@ -110,20 +110,21 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
 
   // Handle main emergency button
   const handleEmergencyHelp = () => {
-    Alert.alert(
-      'I Need Help Now',
-      'This will immediately contact your accountability partner and emergency contacts. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Get Help', 
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Help is on the way', 'Your accountability partner and emergency contacts have been notified.');
-          }
-        }
-      ]
-    );
+    setShowPartnerModal(true);
+    // Alert.alert(
+    //   'I Need Help Now',
+    //   'This will immediately contact your accountability partner and emergency contacts. Continue?',
+    //   [
+    //     { text: 'Cancel', style: 'cancel' },
+    //     { 
+    //       text: 'Get Help', 
+    //       style: 'destructive',
+    //       onPress: () => {
+    //         Alert.alert('Help is on the way', 'Your accountability partner and emergency contacts have been notified.');
+    //       }
+    //     }
+    //   ]
+    // );
   };
 
   // Handle immediate actions
@@ -305,7 +306,7 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
       </ScrollView>
 
       {/* Floating Emergency Hotline Button */}
-      <Animated.View 
+      {/* <Animated.View 
         style={[
           styles.floatingButton,
           {
@@ -322,7 +323,7 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
           <Icon name="call" color={Colors.white} size="md" />
           <Text style={styles.floatingButtonText}>24/7 Help</Text>
         </TouchableOpacity>
-      </Animated.View>
+      </Animated.View> */}
 
       {/* Emergency Partner Select Modal */}
       <EmergencyPartnerSelectModal

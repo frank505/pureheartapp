@@ -191,7 +191,6 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
             
             <View style={styles.timeContainer}>
-              <Text style={styles.timeLabel}>Session Time</Text>
               <Text style={styles.timeText}>{formatTime(counter)}</Text>
             </View>
           </View>

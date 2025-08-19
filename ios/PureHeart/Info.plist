@@ -99,5 +99,12 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>tel</string>
+        <string>whatsapp</string>
+        <string>sms</string>
+        <string>mailto</string>
+    </array>
 </dict>
 </plist>

@@ -31,7 +31,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon, ProfileDropdown, ScreenHeader } from '../components';
 import PartnerGroupSelector from '../components/PartnerGroupSelector';
 import { Colors, Icons } from '../constants';
-import groupService, { GroupSummary } from '../services/groupService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
@@ -39,9 +40,9 @@ import {
   createCheckIn,
   resetCheckinStatus,
 } from '../store/slices/checkinsSlice';
-import { fetchPartners, generateInvitationHash, acceptByCode, sendInvitesByEmail, fetchGroups } from '../store/slices/invitationSlice';
+import { fetchPartners, generateInvitationHash, acceptByCode, sendInvitesByEmail } from '../store/slices/invitationSlice';
 import { getStreaks } from '../store/slices/streaksSlice';
-import VictoryStories from '../components/VictoryStories';
+
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { generateDailyRecommendation } from '../services/recommendationService';
 
@@ -66,12 +67,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const streakPulse = useRef(new Animated.Value(1)).current;
-  const quickActionAnimations = useRef(Array(12).fill(0).map(() => new Animated.Value(0))).current;
+
   const cardAnimations = useRef({
     streak: new Animated.Value(0),
     checkin: new Animated.Value(0),
-    quickActions: new Animated.Value(0),
-    community: new Animated.Value(0),
   }).current;
   
   // State for daily check-in mood slider
@@ -132,6 +131,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 visibility: 'private',
                 status: 'relapse'
               })).unwrap();
+
+              // Clear celebrated milestones so future milestones in a new streak can celebrate again
+              try {
+                await AsyncStorage.removeItem('ph_milestones_celebrated');
+              } catch {}
                
               Alert.alert('Streak Reset', 'Your relapse has been recorded and your streak has been reset to 0. Remember, tomorrow is a new day to start fresh!');
               // Refresh streaks data and check-ins
@@ -312,37 +316,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     );
   };
 
-  // Community Groups integration
-  const [myGroups, setMyGroups] = useState<GroupSummary[]>([]);
-  const [loadingGroups, setLoadingGroups] = useState(false);
-  const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
-  const [joinVisible, setJoinVisible] = useState(false);
-  const [joinCode, setJoinCode] = useState('');
 
-  const loadGroups = useCallback(async () => {
-    try {
-      setLoadingGroups(true);
-      const [groups, unread] = await Promise.all([
-        groupService.listMyGroups({ page: 1, pageSize: 5 }),
-        groupService.unreadCounts(),
-      ]);
-      setMyGroups(groups.items);
-      const map: Record<string, number> = {};
-      (unread.items || []).forEach((u: any) => { map[u.groupId] = u.unread; });
-      setUnreadMap(map);
-    } catch (e) {
-      console.error('Failed to load groups', e);
-    } finally {
-      setLoadingGroups(false);
-    }
-  }, []);
 
   useEffect(() => {
-    loadGroups();
     // Load check-ins to compute today's status and partners for selection
     dispatch(fetchCheckIns({ page: 1, limit: 50 }));
     dispatch(fetchPartners());
-    dispatch(fetchGroups());
     dispatch(getStreaks());
     
     // Entrance animations
@@ -384,28 +363,54 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         useNativeDriver: true,
       }).start();
     });
-
-    // Quick action button animations
-    quickActionAnimations.forEach((anim, index) => {
-      Animated.timing(anim, {
-        toValue: 1,
-        duration: 400,
-        delay: 800 + index * 50,
-        useNativeDriver: true,
-      }).start();
-    });
   }, [dispatch]);
 
   useFocusEffect(
     useCallback(() => {
       dispatch(resetCheckinStatus());
-      loadGroups();
       dispatch(fetchCheckIns({ page: 1, limit: 50 }));
       dispatch(fetchPartners());
-      dispatch(fetchGroups());
       dispatch(getStreaks());
     }, [dispatch]) // Removed loadGroups from dependencies to prevent infinite loop
   );
+
+  // Show confetti once when a new milestone is reached (persisted via AsyncStorage)
+  useEffect(() => {
+    const run = async () => {
+      const currentStreak = streaks?.currentStreak ?? 0;
+      if (currentStreak <= 0) return;
+
+      // Define milestone logic: base milestones + yearly multiples beyond 365
+      const baseMilestones = [7, 14, 30, 60, 90, 180, 270, 365];
+      let reached: number | null = null;
+
+      if (baseMilestones.includes(currentStreak)) {
+        reached = currentStreak;
+      } else if (currentStreak > 365 && currentStreak % 365 === 0) {
+        reached = currentStreak; // e.g., 730, 1095, ...
+      }
+
+      if (!reached) return;
+
+      try {
+        const key = 'ph_milestones_celebrated';
+        const raw = await AsyncStorage.getItem(key);
+        const celebrated: number[] = raw ? JSON.parse(raw) : [];
+
+        if (!celebrated.includes(reached)) {
+          // Trigger confetti and persist this milestone as celebrated
+          setShowConfetti(true);
+          const updated = [...celebrated, reached];
+          await AsyncStorage.setItem(key, JSON.stringify(updated));
+        }
+      } catch {
+        // Fail silently; milestone confetti is a non-critical enhancement
+      }
+    };
+
+    run();
+    // Only when streak count changes
+  }, [streaks?.currentStreak]);
 
   const submitCheckIn = async () => {
     try {
@@ -685,231 +690,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </Animated.View>
 
         {/* Enhanced Quick Actions Section */}
-        <Animated.View
-          style={[
-            styles.quickActionsSection,
-            {
-              opacity: cardAnimations.quickActions,
-              transform: [
-                {
-                  translateY: cardAnimations.quickActions.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [50, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <Icon name="flash" color={Colors.primary.main} size="md" />
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
-            </View>
-          </View>
-          <View style={styles.quickActionsGrid}>
-            {[
-              // { 
-              //   icon: 'book-outline', 
-              //   label: 'Daily Dose', 
-              //   onPress: () => navigation.navigate('DailyDose'),
-              //   color: Colors.primary.main
-              // },
-              { 
-                icon: 'person-add-outline', 
-                label: 'Invite Partner', 
-                onPress: () => navigation?.navigate('InvitePartner'),
-                color: Colors.primary.main,
-                special: 'invite'
-              },
-              { 
-                icon: 'people-outline', 
-                label: 'Partners', 
-                onPress: () => navigation?.navigate('PartnersList'),
-                color: Colors.secondary.main
-              },
-              { 
-                icon: Icons.security.key.name, 
-                label: 'Accept Partner Invite Code', 
-                onPress: () => setAcceptVisible(true),
-                color: Colors.primary.dark
-              },
-              { 
-                icon: 'list-outline', 
-                label: 'Prayer Requests', 
-                onPress: () => navigation?.navigate('PrayerRequests'),
-                color: Colors.primary.light
-              },
-              { 
-                icon: 'hand-right-outline', 
-                label: 'Ask for Prayer', 
-                onPress: () => navigation?.navigate('CreatePrayerRequest'),
-                color: Colors.warning.main
-              },
-              { 
-                icon: 'trophy-outline', 
-                label: 'Share Victory', 
-                onPress: handleShareVictory,
-                color: Colors.primary.main
-              },
-              { 
-                icon: 'medal-outline', 
-                label: 'My Victories', 
-                onPress: () => navigation?.navigate('MyVictories'),
-                color: Colors.secondary.main
-              },
-              
-            ].map((action, index) => (
-              <Animated.View
-                key={action.label}
-                style={[
-                  styles.quickActionItemContainer,
-                  {
-                    opacity: quickActionAnimations[index],
-                    transform: [{
-                      scale: quickActionAnimations[index].interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.8, 1],
-                      })
-                    }]
-                  }
-                ]}
-              >
-                <TouchableOpacity 
-                  style={[
-                    styles.quickActionItem,
-                    action.special === 'invite' && styles.inviteActionItem
-                  ]}
-                  onPress={action.onPress}
-                  activeOpacity={0.7}
-                >
-                  {action.special !== 'invite' && <View style={styles.quickActionBorderAccent} />}
-                  <View style={[styles.quickActionIconContainer, { backgroundColor: action.special === 'invite' ? 'rgba(255,255,255,0.2)' : action.color + '20' }]}>
-                    <Icon 
-                      name={action.icon} 
-                      color={action.special === 'invite' ? Colors.white : action.color} 
-                      size="lg" 
-                    />
-                  </View>
-                  <Text style={[
-                    styles.quickActionText,
-                    action.special === 'invite' && styles.inviteActionText
-                  ]}>
-                    {action.label}
-                  </Text>
-                </TouchableOpacity>
-              </Animated.View>
-            ))}
-          </View>
-        </Animated.View>
 
-        {/* Enhanced Community Groups Section */}
-        <Animated.View
-          style={[
-            styles.communitySection,
-            {
-              opacity: cardAnimations.community,
-              transform: [
-                {
-                  translateY: cardAnimations.community.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [50, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <View style={[styles.sectionHeader, isSmall && styles.sectionHeaderSmall]}>
-            <View style={styles.sectionTitleContainer}>
-              <Icon name="people" color={Colors.primary.main} size="md" />
-              <Text style={[styles.sectionTitle, isSmall && styles.sectionTitleSmall]}>Community Groups</Text>
-            </View>
-            <View style={[styles.headerActionsRow, isSmall && styles.headerActionsRowSmall]}>
-              <TouchableOpacity 
-                style={styles.createButton}
-                onPress={() => navigation?.navigate('NewGroup')}
-              >
-                <Icon name="add-outline" color={Colors.white} size="sm" />
-                <Text style={[styles.createButtonText, isSmall && styles.createButtonTextSmall]}>Create</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.createButton}
-                onPress={() => setJoinVisible(true)}
-              >
-                <Icon name={Icons.security.key.name} color={Colors.white} size="sm" />
-                <Text style={[styles.createButtonText, isSmall && styles.createButtonTextSmall]}>Join by Code</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          
-          {loadingGroups ? (
-            <View style={styles.loadingContainer}>
-              <Icon name="refresh" color={Colors.primary.main} size="lg" />
-              <Text style={styles.loadingText}>Loading groups…</Text>
-            </View>
-          ) : myGroups.length === 0 ? (
-            <View style={styles.emptyGroupsContainer}>
-              <View style={styles.emptyIconContainer}>
-                <Icon name="people-outline" color={Colors.text.secondary} size="xl" />
-              </View>
-              <Text style={styles.emptyGroupsTitle}>No Groups Yet</Text>
-              <Text style={styles.emptyGroupsText}>Join or create a community group to connect with others</Text>
-            </View>
-          ) : (
-            <>
-              {myGroups.map((g, index) => (
-                <Animated.View
-                  key={g.id}
-                  style={[
-                    {
-                      opacity: cardAnimations.community,
-                      transform: [
-                        {
-                          translateX: cardAnimations.community.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [30, 0],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
-                >
-                  <TouchableOpacity onPress={() => navigation?.navigate('GroupChat', { groupId: g.id, groupName: g.name, memberCount: g.membersCount })}>
-                    <Surface style={styles.groupCard} elevation={1}>
-                      <View style={styles.groupInfo}>
-                        <View style={styles.groupAvatarContainer}>
-                          <Image source={{ uri: g.iconUrl || 'https://placehold.co/96x96' }} style={styles.groupAvatar} />
-                          <View style={styles.onlineIndicator} />
-                        </View>
-                        <View style={styles.groupDetails}>
-                          <Text style={styles.groupName}>{g.name}</Text>
-                          <Text style={styles.groupMessage} numberOfLines={1}>{g.description || 'Tap to open chat'}</Text>
-                        </View>
-                        <View style={styles.groupMeta}>
-                          {unreadMap[g.id] ? (
-                            <View style={styles.unreadBadge}>
-                              <Text style={styles.unreadCount}>{unreadMap[g.id]}</Text>
-                            </View>
-                          ) : (
-                            <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="sm" />
-                          )}
-                        </View>
-                      </View>
-                    </Surface>
-                  </TouchableOpacity>
-                </Animated.View>
-              ))}
-              <Button 
-                mode="outlined"
-                onPress={() => navigation?.navigate('AllGroups')}
-                style={styles.seeAllButton}
-              >
-                See All Groups
-              </Button>
-            </>
-          )}
-        </Animated.View>
+
+
 
         <Portal>
           {/* Modal: Daily Check-in */}
@@ -1106,38 +889,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               </Button>
             </View>
           </Modal>
-          <Modal visible={joinVisible} onDismiss={() => setJoinVisible(false)} contentContainerStyle={{ backgroundColor: Colors.background.secondary, margin: 16, padding: 16, borderRadius: 12 }}>
-            <Text style={styles.sectionTitle}>Join by Access Code</Text>
-            <Text style={{ color: Colors.text.secondary, marginBottom: 12 }}>Enter the invite/access code you received via email</Text>
-            <TextInput
-              mode="outlined"
-              value={joinCode}
-              onChangeText={setJoinCode}
-              placeholder="Enter code"
-            />
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-              <Button mode="text" onPress={() => { setJoinVisible(false); setJoinCode(''); }}>Cancel</Button>
-              <Button
-                mode="contained"
-                onPress={async () => {
-                  try {
-                    await groupService.joinByCode(joinCode.trim());
-                    setJoinVisible(false);
-                    setJoinCode('');
-                    await loadGroups();
-                  } catch (e: any) {
-                    Alert.alert('Join failed', e?.response?.data?.message || 'Invalid or expired code');
-                  }
-                }}
-              >
-                Join
-            </Button>
-          </View>
-          </Modal>
+
         </Portal>
 
         {/* Victory Stories Section */}
-        <VictoryStories navigation={navigation} />
+
 
         
       </ScrollView>
@@ -1623,137 +1379,9 @@ const styles = StyleSheet.create({
     color: Colors.primary.main,
     fontWeight: '600',
   },
-  
-  // Quick Actions Grid Styles
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  quickActionItemContainer: {
-    width: '48%',
-    marginBottom: 12,
-  },
-  quickActionItem: {
-    height: 100,
-    backgroundColor: Colors.background.secondary,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.black,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  inviteActionItem: {
-    backgroundColor: Colors.primary.main,
-    borderColor: Colors.primary.dark,
-  },
-  quickActionIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  quickActionText: {
-    fontSize: 12,
-    color: Colors.text.primary,
-    textAlign: 'center',
-    fontWeight: '600',
-    lineHeight: 16,
-    maxWidth: '90%',
-  },
-  inviteActionText: {
-    color: Colors.white,
-  },
-  quickActionBorderAccent: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 4,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    backgroundColor: Colors.primary.main,
-  },
-  
-  // Enhanced Community Section Styles
   sectionTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 32,
-  },
-  loadingText: {
-    marginLeft: 12,
-    fontSize: 16,
-    color: Colors.text.secondary,
-  },
-  emptyGroupsContainer: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-  },
-  emptyIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: Colors.background.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: Colors.border.primary,
-  },
-  emptyGroupsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text.primary,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyGroupsText: {
-    fontSize: 14,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  groupMeta: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unreadBadge: {
-    backgroundColor: Colors.primary.main,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    minWidth: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unreadCount: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.white,
   },
 });
 

@@ -199,7 +199,7 @@ const EmergencyPartnerSelectModal: React.FC<EmergencyPartnerSelectModalProps> = 
         <View style={styles.partnerInfo}>
           <Text style={styles.partnerName}>{item.name}</Text>
           <Text style={styles.partnerStatusText}>
-            {isLoading ? 'Retrieving phone number...' : 'Tap to call • Phone number will be retrieved'}
+            {isLoading ? 'Retrieving phone number...' : 'Tap to call '}
           </Text>
         </View>
 

@@ -4,7 +4,7 @@
  * A dedicated screen to display the user's spiritual growth progress,
  * visualized as a growing plant with the number of days of their journey.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -33,6 +33,12 @@ const GrowthTrackerScreen: React.FC = () => {
   
   // Get user data from Redux store
   const user = useAppSelector((state) => state.user.currentUser);
+  
+  // Hide default navigation header to avoid double headers
+  useLayoutEffect(() => {
+    // @ts-ignore - navigation type may not include setOptions in this context
+    navigation.setOptions?.({ headerShown: false });
+  }, [navigation]);
   
   useEffect(() => {
     // Calculate days active since join date

@@ -326,7 +326,11 @@ const TruthScreen: React.FC<TruthScreenProps> = ({ navigation }) => {
           }
         ]}
       >
-        <ScreenHeader title="Lies vs Truth" iconName="shield-checkmark" navigation={navigation} />
+        <ScreenHeader 
+          title="Lies vs Truth" 
+          showBackButton
+          navigation={navigation} 
+        />
       </Animated.View>
 
       {/* Enhanced Search Section */}

@@ -177,7 +177,7 @@ const PartnersListScreen: React.FC<PartnersListScreenProps> = ({ navigation }) =
             
               {/* Connected Partners */}
               <Text style={styles.sectionTitle}>Connected Partners</Text>
-              {!Array.isArray(connectedPartners) || connectedPartners.length === 0 ? (
+              {connectedPartners.length === 0 ? (
                 <Surface style={styles.card} elevation={1}>
                   <Text style={styles.muted}>No partners yet. Send an invite to get started.</Text>
                 </Surface>

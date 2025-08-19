@@ -5,8 +5,19 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 // Import our screen components
 import EmergencyStack from './EmergencyStack';
 import AccountabilityNavigator from './AccountabilityNavigator';
-import TruthNavigator from './TruthNavigator';
+import FastingNavigator from './FastingNavigator';
 import ProgressScreen from '../screens/ProgressScreen';
+import MenuScreen from '../screens/MenuScreen';
+
+// These imports will be removed as they'll be moved to root navigator
+// import InvitePartnerScreen from '../screens/InvitePartnerScreen';
+// import PartnersListScreen from '../screens/PartnersListScreen';
+// import PrayerRequestsScreen from '../screens/PrayerRequestsScreen';
+// import CreatePrayerRequestScreen from '../screens/CreatePrayerRequestScreen';
+// import CreateVictoryScreen from '../screens/CreateVictoryScreen';
+// import MyVictoriesScreen from '../screens/MyVictoriesScreen';
+// import AllGroupsScreen from '../screens/AllGroupsScreen';
+// import VictoryStoriesScreen from '../screens/VictoryStoriesScreen';
 
 // Import centralized colors and icons
 import { ComponentColors, Icons, Colors } from '../constants';
@@ -127,20 +138,20 @@ const TabNavigator: React.FC = () => {
 
       
 
-      {/* Truth Tab */}
+      {/* Fasting Tab */}
       <Tab.Screen
-        name="Truth"
-        component={TruthNavigator}
+        name="Fasting"
+        component={FastingNavigator}
         options={{
           headerShown: false,
           tabBarIcon: ({ focused, color }) => (
             <CustomTabIcon 
-              iconName={Icons.tabs.truth.name} 
+              iconName="hourglass-outline"
               focused={focused} 
               color={color} 
             />
           ),
-          tabBarLabel: 'Truth',
+          tabBarLabel: 'Fasting',
         }}
       />
 
@@ -158,6 +169,23 @@ const TabNavigator: React.FC = () => {
             />
           ),
           tabBarLabel: 'Progress',
+        }}
+      />
+
+      {/* Menu Tab */}
+      <Tab.Screen
+        name="Menu"
+        component={MenuScreen}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ focused, color }) => (
+            <CustomTabIcon 
+              iconName={'menu-outline'} 
+              focused={focused} 
+              color={color} 
+            />
+          ),
+          tabBarLabel: 'Menu',
         }}
       />
     </Tab.Navigator>

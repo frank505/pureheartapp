@@ -1,16 +1,28 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useLayoutEffect, useState } from 'react';
+import { View, StyleSheet, TouchableOpacity} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, SegmentedButtons, Searchbar } from 'react-native-paper';
 import Icon from '../components/Icon';
 import { Colors, Icons } from '../constants';
 import UserVictoriesList from '../components/UserVictoriesList';
 import SharedVictoriesList from '../components/SharedVictoriesList';
+import { useNavigation } from '@react-navigation/native';
+
 
 const MyVictoriesScreen = ({ navigation }: any) => {
   const [activeTab, setActiveTab] = useState<'myVictories' | 'sharedWithMe'>('myVictories');
   const [myVictoriesSearchQuery, setMyVictoriesSearchQuery] = useState('');
   const [sharedVictoriesSearchQuery, setSharedVictoriesSearchQuery] = useState('');
+
+   const navigationUsed = useNavigation();
+    
+   
+    
+    // Hide default navigation header to avoid double headers
+    useLayoutEffect(() => {
+      // @ts-ignore - navigation type may not include setOptions in this context
+      navigation.setOptions?.({ headerShown: false });
+    }, [navigation]);
 
   const getCurrentSearchQuery = () => {
     return activeTab === 'myVictories' ? myVictoriesSearchQuery : sharedVictoriesSearchQuery;

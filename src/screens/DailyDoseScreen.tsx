@@ -4,7 +4,7 @@
  * A dedicated screen to display the daily dose of God's word, including scripture
  * and a recommended video.
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useLayoutEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -42,6 +42,11 @@ const DailyDoseScreen = ({ navigation }: any) => {
   useEffect(() => {
     dispatch(fetchTodaysRecommendation());
   }, [dispatch]);
+
+  // Hide default navigation header to avoid double headers
+  useLayoutEffect(() => {
+    navigation?.setOptions?.({ headerShown: false });
+  }, [navigation]);
 
   const renderHeader = () => (
     <Animated.View style={[styles.floatingHeader, { opacity: headerOpacity }]}>
@@ -131,7 +136,7 @@ const DailyDoseScreen = ({ navigation }: any) => {
             {todaysRecommendation.youtube?.videoId && (
               <View style={styles.videoCard}>
                 <View style={styles.cardHeader}>
-                  <Icon name="video" size="md" color={Colors.primary.main} />
+                  <Icon name="videocam-outline" size="md" color={Colors.primary.main} />
                   <Text style={styles.cardTitle}>Today's Video</Text>
                 </View>
                 <View style={styles.videoContainer}>
@@ -177,7 +182,7 @@ const DailyDoseScreen = ({ navigation }: any) => {
             {Array.isArray(todaysRecommendation.scripturesToPrayWith) && todaysRecommendation.scripturesToPrayWith.length > 0 ? (
               <View style={styles.prayScripturesCard}>
                 <View style={styles.cardHeader}>
-                  <Icon name="book-open" size="md" color={Colors.primary.main} />
+                  <Icon name="book-outline" size="md" color={Colors.primary.main} />
                   <Text style={styles.cardTitle}>Scriptures to Pray With</Text>
                 </View>
                 {todaysRecommendation.scripturesToPrayWith.map((s: { reference: string; text?: string; version?: string; reason?: string }, idx: number) => (

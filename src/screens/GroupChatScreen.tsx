@@ -39,10 +39,6 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
     return me === ownerId;
   }, [currentUser, ownerId]);
 
-  useEffect(() => {
-    navigation?.setOptions?.({ headerShown: false });
-  }, [navigation]);
-
   const loadMessages = useCallback(
     async (reset = false) => {
       if (!groupId) return;
@@ -67,10 +63,6 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
     },
     [groupId, nextCursor]
   );
-
-  useEffect(() => {
-    loadMessages(true);
-  }, [loadMessages]);
 
   const loadMembers = useCallback(async (reset = false) => {
     if (!groupId) return;
@@ -101,6 +93,23 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
   }, [loadMembers]);
 
   const closeMembers = useCallback(() => setMembersVisible(false), []);
+
+  // Initial data loads
+  useEffect(() => {
+    loadMessages(true);
+  }, [loadMessages]);
+
+  // Set up navigation options with members button
+  useEffect(() => {
+    navigation?.setOptions?.({ 
+      title: groupName || 'Group Chat',
+      headerRight: () => (
+        <TouchableOpacity style={styles.headerIconButton} onPress={openMembers}>
+          <Icon name={Icons.tabs.accountability.name} />
+        </TouchableOpacity>
+      )
+    });
+  }, [navigation, groupName, openMembers]);
 
   const handleKick = useCallback(
     async (targetUserId: number) => {
@@ -220,20 +229,7 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
   }, [refreshing, loadMessages]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
-          <Icon name={Icons.navigation.back.name} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{groupName || 'Group Chat'}</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerIconButton} onPress={openMembers}>
-            <Icon name={Icons.tabs.accountability.name} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       {/* Messages List */}
       <FlatList
         data={messages}
@@ -338,18 +334,6 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background.primary },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.primary,
-  },
-  backButton: { padding: 8 },
-  headerTitle: { flex: 1, textAlign: 'center', color: Colors.text.primary, fontWeight: '700', fontSize: 16 },
-  headerActions: { width: 40, alignItems: 'flex-end' },
   headerIconButton: { padding: 6 },
   msgRow: { flexDirection: 'row', marginBottom: 8 },
   msgRowMine: { justifyContent: 'flex-end' },

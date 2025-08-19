@@ -20,25 +20,12 @@ import { Provider as PaperProvider, DefaultTheme, MD3DarkTheme } from 'react-nat
 // Import Redux store and persistor
 import { store, persistor } from './src/store';
 
-// Import our custom tab navigator and screens
-import TabNavigator from './src/navigation/TabNavigator';
+// Import our custom navigators and screens
+import RootNavigator from './src/navigation/RootNavigator';
 import OnboardingNavigator from './src/navigation/OnboardingNavigator';
 import AuthScreen from './src/screens/AuthScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
-import ProfileSettingsScreen from './src/screens/ProfileSettingsScreen';
-import SubscriptionScreen from './src/screens/SubscriptionScreen';
-import NewGroupScreen from './src/screens/NewGroupScreen';
-import AICompanionScreen from './src/screens/AICompanionScreen';
-import GroupChatScreen from './src/screens/GroupChatScreen';
-import PartnersListScreen from './src/screens/PartnersListScreen';
-import CheckInHistoryScreen from './src/screens/CheckInHistoryScreen';
-import PrayerRequestsScreen from './src/screens/PrayerRequestsScreen';
-import NotificationsCenterScreen from './src/screens/NotificationsCenterScreen';
-import ScriptureBrowserScreen from './src/screens/ScriptureBrowserScreen';
-import AIChatScreen from './src/screens/AIChatScreen';
-import GrowthTrackerScreen from './src/screens/GrowthTrackerScreen';
-import EditPartnerPhoneScreen from './src/screens/EditPartnerPhoneScreen';
 import InvitationAcceptModal from './src/components/InvitationAcceptModal';
 import ShareInvitationModal from './src/components/ShareInvitationModal';
 
@@ -213,28 +200,7 @@ const AppContent: React.FC = () => {
           animation: 'slide_from_right',
         }}
       >
-        <Stack.Screen name="TabNavigator" component={TabNavigator} />
-        <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
-        <Stack.Screen name="Subscription" component={SubscriptionScreen} />
-        <Stack.Screen name="NewGroup" component={NewGroupScreen} />
-        <Stack.Screen name="AICompanion" component={AICompanionScreen} />
-        <Stack.Screen name="GroupChat" component={GroupChatScreen} />
-        <Stack.Screen name="PartnersList" component={PartnersListScreen} />
-        <Stack.Screen name="CheckInHistory" component={CheckInHistoryScreen} />
-        <Stack.Screen name="PrayerRequests" component={PrayerRequestsScreen} />
-        <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} />
-        <Stack.Screen name="ScriptureBrowser" component={ScriptureBrowserScreen} />
-        <Stack.Screen name="AIChat" component={AIChatScreen} />
-        <Stack.Screen 
-          name="GrowthTracker" 
-          component={GrowthTrackerScreen} 
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="EditPartnerPhone" 
-          component={EditPartnerPhoneScreen}
-          options={{ headerShown: false }}
-        />
+        <Stack.Screen name="Root" component={RootNavigator} />
       </Stack.Navigator>
     );
   };
