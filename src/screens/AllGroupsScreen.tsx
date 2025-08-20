@@ -21,6 +21,7 @@ import { RootStackParamList } from '../navigation/types';
 type AllGroupsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const AllGroupsScreen = () => {
+
   const [activeTab, setActiveTab] = useState<'my' | 'public'>('my');
   const [myGroups, setMyGroups] = useState<GroupSummary[]>([]);
   const [publicGroups, setPublicGroups] = useState<GroupSummary[]>([]);
@@ -33,7 +34,7 @@ const AllGroupsScreen = () => {
   const [myHasMore, setMyHasMore] = useState(true);
   const [publicHasMore, setPublicHasMore] = useState(true);
   const navigation = useNavigation<AllGroupsScreenNavigationProp>();
-  
+   
   // Use refs to track loading states to prevent infinite loops
   const myLoadingRef = useRef(false);
   const publicLoadingRef = useRef(false);
@@ -41,6 +42,10 @@ const AllGroupsScreen = () => {
   const publicCurrentPageRef = useRef(1);
   const myHasMoreRef = useRef(true);
   const publicHasMoreRef = useRef(true);
+
+
+  
+
 
   // Update refs when state changes
   useEffect(() => {

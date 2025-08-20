@@ -48,5 +48,10 @@ export type RootStackParamList = {
     fastType: 'daily' | 'nightly' | 'weekly' | 'custom' | 'breakthrough';
   };
   LearnFasting: undefined;
+  PrayerRequestDetail: { requestId: string };
+  EditPrayerRequest: { requestId: string };
+  VictoryDetail: { victoryId: string };
+  EditVictory: { victoryId: string };
+  CheckInDetail: { checkInId: string };
   AddictionSupport: undefined;
 };

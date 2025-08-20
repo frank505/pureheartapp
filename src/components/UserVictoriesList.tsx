@@ -36,24 +36,32 @@ const UserVictoriesList = ({ navigation, searchQuery = '' }: UserVictoriesListPr
     }
   };
 
-  const renderItem = ({ item }: { item: Victory }) => (
-    <TouchableOpacity onPress={() => navigation.navigate('VictoryDetail', { victoryId: item.id })}>
-      <Surface style={styles.card} elevation={2}>
-        <View style={styles.rowBetween}>
-          <View style={styles.col}>
-            <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-            {!!item.body && <Text style={styles.body} numberOfLines={2}>{item.body}</Text>}
-            <View style={styles.metaRow}>
-              <Text style={styles.metaText}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+  const renderItem = ({ item }: { item: Victory }) => {
+    if (!item?.id || !item?.title) {
+      return null; // Skip rendering invalid items
+    }
+    
+    return (
+      <TouchableOpacity onPress={() => navigation.navigate('VictoryDetail', { victoryId: item.id })}>
+        <Surface style={styles.card} elevation={2}>
+          <View style={styles.rowBetween}>
+            <View style={styles.col}>
+              <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+              {!!item.body && <Text style={styles.body} numberOfLines={2}>{item.body}</Text>}
+              <View style={styles.metaRow}>
+                <Text style={styles.metaText}>
+                  {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Date not available'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.rightMeta}>
+              <Icon name={Icons.status.success.name} color={Colors.text.secondary} size="md" />
             </View>
           </View>
-          <View style={styles.rightMeta}>
-            <Icon name={Icons.status.success.name} color={Colors.text.secondary} size="md" />
-          </View>
-        </View>
-      </Surface>
-    </TouchableOpacity>
-  );
+        </Surface>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -71,8 +79,8 @@ const UserVictoriesList = ({ navigation, searchQuery = '' }: UserVictoriesListPr
       )}
 
       <FlatList
-        data={victories.items}
-        keyExtractor={(item) => item.id.toString()}
+        data={victories.items?.filter(item => item && item.id)}
+        keyExtractor={(item) => item?.id?.toString() || Math.random().toString()}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         onEndReachedThreshold={0.5}

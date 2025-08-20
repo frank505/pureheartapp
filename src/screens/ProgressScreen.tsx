@@ -13,8 +13,11 @@ import {
   ScrollView,
   Image,
   Dimensions,
-  ActivityIndicator,
+  Pressable,
+  Linking,
+  Alert,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import {
   Text,
   Surface,
@@ -23,12 +26,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { LineChart } from 'react-native-chart-kit';
 import { Icon, ProfileDropdown, ScreenHeader } from '../components';
-import { Colors } from '../constants';
+import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
+import { Colors, ColorUtils } from '../constants';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { fetchAchievements, fetchAnalytics, fetchCalendar } from '../store/slices/progressSlice';
+import { fetchAchievements, fetchAnalytics, fetchCalendar, fetchFeaturesAndBadges } from '../store/slices/progressSlice';
 import { getStreaks } from '../store/slices/streaksSlice';
 import { format } from 'date-fns';
 import { useFocusEffect } from '@react-navigation/native';
+import { SvgUri } from 'react-native-svg';
 
 interface ProgressScreenProps {
   navigation?: any;
@@ -37,15 +42,19 @@ interface ProgressScreenProps {
 
 const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
-  const { achievements, analytics, calendar, loading, error } = useAppSelector((state) => state.progress);
+  const { achievements, analytics, calendar, features, badges, loading, error } = useAppSelector((state) => state.progress);
   const { streaks } = useAppSelector((state) => state.streaks);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
+
+
+ 
   useEffect(() => {
     const currentMonth = format(new Date(), 'yyyy-MM');
     dispatch(fetchAchievements());
     dispatch(fetchAnalytics('last_4_weeks'));
     dispatch(fetchCalendar(currentMonth));
+    dispatch(fetchFeaturesAndBadges());
     dispatch(getStreaks());
   }, [dispatch]);
 
@@ -56,6 +65,41 @@ const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
   );
 
   const screenWidth = Dimensions.get('window').width;
+
+  // Deterministic color palette for cards (bright vs faded per unlocked state)
+  const PALETTE = [
+    Colors.primary.main,
+    Colors.secondary.main,
+    Colors.warning.main,
+    Colors.error.main,
+    Colors.social.facebook,
+    Colors.social.twitter,
+    Colors.primary.light,
+  ];
+
+  const hashStringToIndex = (str: string, modulo: number) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    }
+    return hash % modulo;
+  };
+
+  const getCardColors = (seed: string, unlocked: boolean) => {
+    const base = PALETTE[hashStringToIndex(seed, PALETTE.length)];
+    return {
+      backgroundColor: ColorUtils.withOpacity(base, unlocked ? 0.28 : 0.12),
+      borderColor: ColorUtils.withOpacity(base, unlocked ? 0.9 : 0.4),
+    } as const;
+  };
+
+  // Gradient helper to keep colors valid and consistent
+  const getGradientColors = (seed: string, unlocked: boolean) => {
+    const base = PALETTE[hashStringToIndex(seed, PALETTE.length)];
+    return unlocked
+      ? [ColorUtils.withOpacity(base, 0.9), ColorUtils.withOpacity(base, 0.6), ColorUtils.withOpacity(base, 0)]
+      : [ColorUtils.withOpacity(base, 0.4), ColorUtils.withOpacity(base, 0.12), ColorUtils.withOpacity(base, 0)];
+  };
 
   const chartData = {
     labels: analytics?.weeklyProgress?.labels || [],
@@ -99,8 +143,37 @@ const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
 
   if (loading && !analytics) {
     return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={Colors.primary.main} />
+      <SafeAreaView style={[styles.container]}>
+        <View style={{ padding: 16 }}>
+          <SkeletonPlaceholder
+            backgroundColor={Colors.background.secondary}
+            highlightColor={Colors.background.tertiary}
+          >
+            <View>
+              {/* Header title skeleton */}
+              <View style={{ width: '60%', height: 24, borderRadius: 6, marginBottom: 20 }} />
+
+              {/* Features grid skeleton (2x2) */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <View key={i} style={{ width: '47%', aspectRatio: 1, borderRadius: 12, marginBottom: 16 }}>
+                    <View style={{ flex: 1, borderRadius: 12 }} />
+                  </View>
+                ))}
+              </View>
+
+              {/* Badges grid skeleton (2x2) */}
+              <View style={{ width: '50%', height: 20, borderRadius: 6, marginTop: 8, marginBottom: 20 }} />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <View key={`b-${i}`} style={{ width: '47%', aspectRatio: 1, borderRadius: 12, marginBottom: 16 }}>
+                    <View style={{ flex: 1, borderRadius: 12 }} />
+                  </View>
+                ))}
+              </View>
+            </View>
+          </SkeletonPlaceholder>
+        </View>
       </SafeAreaView>
     );
   }
@@ -121,7 +194,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       {/* Custom Header */}
       <View style={styles.header}>
-        <ScreenHeader title="Progress & Victory" iconName="stats-chart" navigation={navigation} />
+        <ScreenHeader title="Quest Progress" iconName="stats-chart" navigation={navigation} />
       </View>
 
       <ScrollView 
@@ -129,146 +202,102 @@ const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Section - Current Streak */}
-        <View style={styles.heroSection}>
-          <View style={styles.streakCircle}>
-            <Text style={styles.streakNumber}>{currentStreak}</Text>
-            <View style={styles.streakBadge}>
-              <Text style={styles.streakBadgeText}>days</Text>
-            </View>
-          </View>
-          <Text style={styles.heroTitle}>Keep going, you're on a roll!</Text>
-          <Text style={styles.heroSubtitle}>Next milestone in {daysToMilestone} days.</Text>
-        </View>
+        
 
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          <Surface style={styles.statCard} elevation={2}>
-            <Text style={styles.statLabel}>Current Streak</Text>
-            <Text style={styles.statValue}>{currentStreak}</Text>
-            <Text style={styles.statUnit}>days</Text>
-          </Surface>
-          
-          <Surface style={styles.statCard} elevation={2}>
-            <Text style={styles.statLabel}>Next Milestone</Text>
-            <Text style={styles.statValue}>{nextMilestone}</Text>
-            <Text style={styles.statUnit}>days</Text>
-          </Surface>
-        </View>
+       
 
-        {/* Daily Victories Calendar */}
+        {/* Journey Milestones */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Daily Victories</Text>
-          <Surface style={styles.calendarCard} elevation={2}>
-            <Calendar
-              current={selectedDate}
-              onDayPress={handleDayPress}
-              onMonthChange={handleMonthChange}
-              markedDates={{
-                ...calendar,
-                [selectedDate]: {
-                  ...calendar[selectedDate],
-                  selected: true,
-                  selectedColor: '#22c55e',
-                  selectedTextColor: Colors.white,
-                }
-              }}
-              theme={{
-                backgroundColor: Colors.background.secondary,
-                calendarBackground: Colors.background.secondary,
-                textSectionTitleColor: Colors.text.secondary,
-                selectedDayBackgroundColor: '#22c55e',
-                selectedDayTextColor: Colors.white,
-                todayTextColor: Colors.primary.main,
-                dayTextColor: Colors.text.primary,
-                textDisabledColor: Colors.text.secondary,
-                dotColor: Colors.primary.main,
-                selectedDotColor: Colors.white,
-                arrowColor: Colors.text.primary,
-                disabledArrowColor: Colors.text.secondary,
-                monthTextColor: Colors.text.primary,
-                textMonthFontWeight: '700',
-                textDayFontSize: 16,
-                textMonthFontSize: 18,
-                textDayHeaderFontSize: 14,
-                textDayHeaderFontWeight: '700',
-              }}
-              style={styles.calendar}
-            />
-          </Surface>
-        </View>
-
-        {/* Achievements */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Achievements Unlocked</Text>
-          <View style={styles.achievementsGrid}>
-            {achievements.map((achievement) => (
-              <Surface key={achievement.id} style={styles.achievementCard} elevation={2}>
-                <Image 
-                  source={{ uri: achievement.image }}
-                  style={styles.achievementImage}
-                  resizeMode="contain"
+          <Text style={styles.sectionTitle}>✨ Journey Milestones</Text>
+          <View style={styles.featuresGrid}>
+            {features.map((feature) => {
+              const dynamic = getCardColors(feature.key, feature.unlocked);
+              return (
+              <Surface key={feature.key} style={[styles.featureCard, feature.unlocked && styles.featureUnlocked, dynamic]} elevation={2}>
+                <LinearGradient
+                  colors={getGradientColors(feature.key, feature.unlocked)}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradientBackground}
                 />
-              </Surface>
-            ))}
-            
-            {/* Placeholder for next achievement */}
-            <Surface style={styles.achievementPlaceholder} elevation={1}>
-              <Icon 
-                name="add-outline" 
-                color={Colors.text.secondary} 
-                size="lg" 
-              />
-            </Surface>
-          </View>
-        </View>
-
-        {/* Growth Analytics */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Growth Analytics</Text>
-          <Surface style={styles.analyticsCard} elevation={2}>
-            <View style={styles.analyticsHeader}>
-              <View style={styles.analyticsProgress}>
-                <Text style={styles.analyticsLabel}>Weekly Progress</Text>
-                <Text style={styles.analyticsValue}>{analytics?.weeklyProgress?.data?.slice(-1)[0] ?? 0}%</Text>
-              </View>
-              <View style={styles.analyticsChange}>
-                <Text style={styles.analyticsChangeValue}>
-                  {(analytics?.weeklyChange?.value ?? 0) >= 0 ? '+' : ''}
-                  {analytics?.weeklyChange?.value ?? 0}%
-                </Text>
-                <Text style={styles.analyticsChangeLabel}>{analytics?.weeklyChange?.label}</Text>
-              </View>
-            </View>
-            
-            {/* Real Growth Chart */}
-            <View style={styles.chartContainer}>
-              {(analytics?.weeklyProgress?.data?.length ?? 0) > 0 ? (
-                <LineChart
-                  data={chartData}
-                  width={screenWidth - 64}
-                  height={160}
-                  chartConfig={chartConfig}
-                  bezier={(analytics?.weeklyProgress?.data?.length ?? 0) > 1}
-                  style={styles.chart}
-                  withInnerLines={false}
-                  withOuterLines={false}
-                  withVerticalLines={false}
-                  withHorizontalLines={true}
-                  withDots={true}
-                  withShadow={true}
-                  withScrollableDot={false}
-                />
-              ) : (
-                <View style={styles.chartPlaceholder}>
-                  <Text style={styles.chartPlaceholderText}>
-                    Not enough data to display chart.
+                <View style={styles.featureContent}>
+                  <View style={styles.featureIconContainer}>
+                    <Icon 
+                      name={feature.unlocked ? "checkmark-circle" : "lock-closed"} 
+                      color={feature.unlocked ? "#22c55e" : Colors.text.secondary} 
+                      size="xl" 
+                    />
+                  </View>
+                  <Text style={styles.featureTitle}>
+                    {feature.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </Text>
+                  <View style={styles.featureProgress}>
+                    <Text style={styles.featureProgressText}>
+                      {feature.unlocked 
+                        ? "✅ Unlocked!" 
+                        : `${feature.remainingDays} days left`
+                      }
+                    </Text>
+                    <Text style={styles.featureThreshold}>
+                      {feature.thresholdDays} day streak
+                    </Text>
+                  </View>
+                  {feature.unlocked && (
+                    <View style={styles.unlockedFeatureBadge}>
+                      <Text style={styles.unlockedFeatureText}>Active</Text>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-          </Surface>
+              </Surface>
+            );})}
+          </View>
         </View>
+
+        {/* Badges */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🏆 Badges Collection</Text>
+          <View style={styles.achievementsGrid}>
+            {badges.map((badge) => {
+              const dynamic = getCardColors(`${badge.id}-${badge.code || badge.title}`, badge.unlocked);
+              return (
+              <Surface key={badge.id} style={[styles.achievementCard, badge.unlocked && styles.badgeUnlocked, dynamic]} elevation={2}>
+                <LinearGradient
+                  colors={getGradientColors(`${badge.id}-${badge.code || badge.title}`, badge.unlocked)}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradientBackground}
+                />
+                <View style={styles.badgeContent}>
+                  {/https?:\/\//.test(badge.icon) ? (
+                    <Pressable onPress={() => Linking.openURL(badge.icon)} accessibilityRole="link" accessibilityLabel={`Open ${badge.title} link`}>
+                      {/\.svg(\?|$)/.test(badge.icon) ? (
+                        <SvgUri uri={badge.icon} width={56} height={56} />
+                      ) : (
+                        <Image source={{ uri: badge.icon }} style={styles.badgeImage} resizeMode="contain" />
+                      )}
+                    </Pressable>
+                  ) : (
+                    <Text style={styles.badgeIcon}>{badge.icon}</Text>
+                  )}
+                  <Text style={styles.badgeTitle}>{badge.title}</Text>
+                  <Text style={styles.badgeDescription}>{badge.description}</Text>
+                  {badge.unlocked ? (
+                    <View style={styles.unlockedBadge}>
+                      <Text style={styles.unlockedText}>✓</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.lockedBadge}>
+                      <Icon name="lock-closed" color={Colors.text.secondary} size="sm" />
+                    </View>
+                  )}
+                </View>
+              </Surface>
+            );})}
+            
+          </View>
+        </View>
+
+       
       </ScrollView>
     </SafeAreaView>
   );
@@ -391,10 +420,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: Colors.text.primary,
-    marginBottom: 16,
+    marginBottom: 20,
+    textAlign: 'left',
   },
 
   // Calendar
@@ -415,28 +445,170 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   achievementCard: {
-    width: 80,
-    height: 80,
+    width: '47%',  // slightly less than 50% to account for gap
+    aspectRatio: 1,
     backgroundColor: Colors.background.secondary,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border.primary,
+    overflow: 'hidden',
+    position: 'relative',
   },
   achievementImage: {
     width: '100%',
     height: '100%',
   },
-  achievementPlaceholder: {
-    width: 80,
-    height: 80,
-    backgroundColor: `${Colors.background.tertiary}80`, // 50% opacity
-    borderRadius: 8,
-    justifyContent: 'center',
+  
+
+  // Features
+  featuresContainer: {
+    gap: 12,
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  featureCard: {
+    width: '47%',  // slightly less than 50% to account for gap
+    aspectRatio: 1,
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border.primary,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  gradientBackground: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  featureContent: {
+    flex: 1,
+    padding: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  featureUnlocked: {
+    borderColor: '#22c55e',
+    backgroundColor: `${Colors.background.secondary}`,
     borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: `${Colors.text.secondary}80`, // 50% opacity
+  },
+  featureIconContainer: {
+    marginBottom: 12,
+  },
+  featureHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  featureTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    textAlign: 'center',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  featureProgress: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  featureProgressText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: Colors.text.secondary,
+    textAlign: 'center',
+  },
+  featureThreshold: {
+    fontSize: 10,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+  },
+  unlockedFeatureBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#22c55e',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  unlockedFeatureText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.white,
+  },
+
+  // Badges
+  badgeUnlocked: {
+    borderColor: '#22c55e',
+    borderWidth: 2,
+  },
+  badgeContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    padding: 12,
+    position: 'relative',
+  },
+  badgeIcon: {
+    fontSize: 28,
+    marginBottom: 8,
+  },
+  badgeImage: {
+    width: 56,
+    height: 56,
+    marginBottom: 8,
+  },
+  badgeTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    textAlign: 'center',
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  badgeDescription: {
+    fontSize: 9,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: 8,
+    lineHeight: 12,
+  },
+  unlockedBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: '#22c55e',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  lockedBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: Colors.background.tertiary,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  unlockedText: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: Colors.white,
   },
 
   // Analytics

@@ -1,10 +1,12 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { progressService, Achievement, AnalyticsSummary, CalendarData } from '../../services/progressService';
+import { progressService, Achievement, AnalyticsSummary, CalendarData, FeaturesAndBadgesData, Feature, Badge } from '../../services/progressService';
 
 interface ProgressState {
   achievements: Achievement[];
   analytics: AnalyticsSummary | null;
   calendar: CalendarData;
+  features: Feature[];
+  badges: Badge[];
   loading: boolean;
   error: string | null;
 }
@@ -13,6 +15,8 @@ const initialState: ProgressState = {
   achievements: [],
   analytics: null,
   calendar: {},
+  features: [],
+  badges: [],
   loading: false,
   error: null,
 };
@@ -50,6 +54,18 @@ export const fetchCalendar = createAsyncThunk<CalendarData, string, { rejectValu
       return calendar;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch calendar');
+    }
+  }
+);
+
+export const fetchFeaturesAndBadges = createAsyncThunk<FeaturesAndBadgesData, void, { rejectValue: string }>(
+  'progress/fetchFeaturesAndBadges',
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await progressService.getFeaturesAndBadges();
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch features and badges');
     }
   }
 );
@@ -96,6 +112,20 @@ const progressSlice = createSlice({
         state.calendar = action.payload;
       })
       .addCase(fetchCalendar.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'An unknown error occurred';
+      })
+      // Features and Badges
+      .addCase(fetchFeaturesAndBadges.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchFeaturesAndBadges.fulfilled, (state, action: PayloadAction<FeaturesAndBadgesData>) => {
+        state.loading = false;
+        state.features = action.payload.features;
+        state.badges = action.payload.badges;
+      })
+      .addCase(fetchFeaturesAndBadges.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || 'An unknown error occurred';
       });

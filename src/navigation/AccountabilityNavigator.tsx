@@ -28,7 +28,7 @@ const AccountabilityNavigator = () => {
       <Stack.Screen name="CreatePrayerRequest" component={CreatePrayerRequestScreen} options={{ headerShown: false }} />
       <Stack.Screen name="PrayerRequestDetail" component={PrayerRequestDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="EditPrayerRequest" component={EditPrayerRequestScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Victories" component={VictoriesScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Victories" component={VictoriesScreen} options={{ headerShown: false }} /> 
       <Stack.Screen name="PublicVictories" component={PublicVictoriesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CreateVictory" component={CreateVictoryScreen} options={{ headerShown: false }} />
       <Stack.Screen name="VictoryDetail" component={VictoryDetailScreen} options={{ headerShown: false }} />

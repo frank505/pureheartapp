@@ -505,12 +505,35 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             {(() => {
               const currentStreak = streaks?.currentStreak ?? 0;
               const { next } = calculateNextMilestone(currentStreak);
+              
+              let scripture = '';
+              if (currentStreak === 0) {
+                scripture = '"No temptation has overtaken you except what is common to mankind. And God is faithful; he will not let you be tempted beyond what you can bear. But when you are tempted, he will also provide a way out." - 1 Corinthians 10:13';
+              } else if (currentStreak <= 7) {
+                scripture = '"Submit yourselves, then, to God. Resist the devil, and he will flee from you." - James 4:7';
+              } else if (currentStreak <= 30) {
+                scripture = '"It is for freedom that Christ has set us free. Stand firm, then, and do not let yourselves be burdened again by a yoke of slavery." - Galatians 5:1';
+              } else if (currentStreak <= 90) {
+                scripture = '"I have been crucified with Christ and I no longer live, but Christ lives in me. The life I now live in the body, I live by faith in the Son of God." - Galatians 2:20';
+              } else if (currentStreak <= 180) {
+                scripture = '"Therefore, if anyone is in Christ, the new creation has come: The old has gone, the new is here!" - 2 Corinthians 5:17';
+              } else if (currentStreak <= 365) {
+                scripture = '"You, dear children, are from God and have overcome them, because the one who is in you is greater than the one who is in the world." - 1 John 4:4';
+              } else {
+                scripture = '"Then you will know the truth, and the truth will set you free... So if the Son sets you free, you will be free indeed." - John 8:32,36';
+              }
+              
               return (
-                <View style={styles.streakMilestoneContainer}>
-                  <Text style={styles.streakMilestoneProgress}>
-                    <Text style={styles.streakMilestoneHighlight}>{currentStreak}</Text> of <Text style={styles.streakMilestoneHighlight}>{next}</Text> days
-                  </Text>
-                </View>
+                <>
+                  <View style={styles.streakMilestoneContainer}>
+                    <Text style={styles.streakMilestoneProgress}>
+                      <Text style={styles.streakMilestoneHighlight}>{currentStreak}</Text> of <Text style={styles.streakMilestoneHighlight}>{next}</Text> days
+                    </Text>
+                  </View>
+                  <View style={styles.scriptureContainer}>
+                    <Text style={styles.scriptureText}>{scripture}</Text>
+                  </View>
+                </>
               );
             })()}
             
@@ -578,6 +601,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             </View>
           </Surface>
         </Animated.View>
+
 
         {/* Enhanced Daily Check-In Section */}
         <Animated.View
@@ -1382,6 +1406,22 @@ const styles = StyleSheet.create({
   sectionTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  scriptureContainer: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Colors.primary.light + '15',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary.main,
+  },
+  scriptureText: {
+    fontSize: 12,
+    color: Colors.primary.main,
+    fontWeight: '500',
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 });
 

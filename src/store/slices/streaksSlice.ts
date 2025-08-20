@@ -20,7 +20,13 @@ export const getStreaks = createAsyncThunk('streaks/get', async () => {
 const streaksSlice = createSlice({
   name: 'streaks',
   initialState,
-  reducers: {},
+  reducers: {
+    setCurrentStreak: (state, action) => {
+      if (state.streaks) {
+        state.streaks.currentStreak = action.payload;
+      }
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(getStreaks.pending, (state) => {
@@ -38,5 +44,6 @@ const streaksSlice = createSlice({
   },
 });
 
+export const { setCurrentStreak } = streaksSlice.actions;
 export default streaksSlice.reducer;
 

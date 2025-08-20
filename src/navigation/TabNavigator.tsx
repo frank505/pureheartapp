@@ -119,6 +119,23 @@ const TabNavigator: React.FC = () => {
           tabBarLabel: 'Home',
         }}
       />
+
+       {/* Fasting Tab */}
+      <Tab.Screen
+        name="Fasting"
+        component={FastingNavigator}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ focused, color }) => (
+            <CustomTabIcon 
+              iconName="hourglass-outline"
+              focused={focused} 
+              color={color} 
+            />
+          ),
+          tabBarLabel: 'Fasting',
+        }}
+      />
       {/* Emergency Tab */}
       <Tab.Screen
         name="Emergency"
@@ -138,22 +155,7 @@ const TabNavigator: React.FC = () => {
 
       
 
-      {/* Fasting Tab */}
-      <Tab.Screen
-        name="Fasting"
-        component={FastingNavigator}
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ focused, color }) => (
-            <CustomTabIcon 
-              iconName="hourglass-outline"
-              focused={focused} 
-              color={color} 
-            />
-          ),
-          tabBarLabel: 'Fasting',
-        }}
-      />
+     
 
       {/* Progress Tab */}
       <Tab.Screen

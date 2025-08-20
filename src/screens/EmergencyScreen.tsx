@@ -111,20 +111,7 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
   // Handle main emergency button
   const handleEmergencyHelp = () => {
     setShowPartnerModal(true);
-    // Alert.alert(
-    //   'I Need Help Now',
-    //   'This will immediately contact your accountability partner and emergency contacts. Continue?',
-    //   [
-    //     { text: 'Cancel', style: 'cancel' },
-    //     { 
-    //       text: 'Get Help', 
-    //       style: 'destructive',
-    //       onPress: () => {
-    //         Alert.alert('Help is on the way', 'Your accountability partner and emergency contacts have been notified.');
-    //       }
-    //     }
-    //   ]
-    // );
+   
   };
 
   // Handle immediate actions

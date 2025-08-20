@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import checkinService, { CheckInDTO } from '../../services/checkinService';
+import { getStreaks } from './streaksSlice';
 
 export interface CheckInsState {
   items: CheckInDTO[];
@@ -42,10 +43,12 @@ export const createCheckIn = createAsyncThunk(
       groupIds?: string[];
       status?: 'victory' | 'relapse';
     },
-    { rejectWithValue }
+    { rejectWithValue, dispatch }
   ) => {
     try {
       const data = await checkinService.create(input);
+      // Refresh streaks after a successful check-in creation
+      dispatch(getStreaks());
       return data;
     } catch (err: any) {
       return rejectWithValue(err?.response?.data?.message ?? err?.message ?? 'Failed to create check-in');

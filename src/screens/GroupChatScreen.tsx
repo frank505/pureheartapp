@@ -38,7 +38,7 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
     const me = Number(currentUser.id);
     return me === ownerId;
   }, [currentUser, ownerId]);
-
+ 
   const loadMessages = useCallback(
     async (reset = false) => {
       if (!groupId) return;
@@ -99,17 +99,7 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
     loadMessages(true);
   }, [loadMessages]);
 
-  // Set up navigation options with members button
-  useEffect(() => {
-    navigation?.setOptions?.({ 
-      title: groupName || 'Group Chat',
-      headerRight: () => (
-        <TouchableOpacity style={styles.headerIconButton} onPress={openMembers}>
-          <Icon name={Icons.tabs.accountability.name} />
-        </TouchableOpacity>
-      )
-    });
-  }, [navigation, groupName, openMembers]);
+  // Remove navigation.setOptions, use custom header below
 
   const handleKick = useCallback(
     async (targetUserId: number) => {
@@ -229,7 +219,18 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
   }, [refreshing, loadMessages]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+      {/* Custom Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backButton}>
+          <Icon name={Icons.navigation.back.name} color={Colors.text.primary} size="md" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{groupName || 'Group Chat'}</Text>
+        <TouchableOpacity style={styles.headerIconButton} onPress={openMembers}>
+          <Icon name={Icons.tabs.accountability.name} />
+        </TouchableOpacity>
+      </View>
+
       {/* Messages List */}
       <FlatList
         data={messages}
@@ -334,6 +335,28 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background.primary },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border.primary,
+    backgroundColor: Colors.background.primary,
+    // Add paddingTop for iPhone notch safety (SafeAreaView edges top, but for Android fallback)
+    paddingTop: 0,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text.primary,
+    textAlign: 'center',
+    flex: 1,
+  },
   headerIconButton: { padding: 6 },
   msgRow: { flexDirection: 'row', marginBottom: 8 },
   msgRowMine: { justifyContent: 'flex-end' },

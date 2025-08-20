@@ -16,6 +16,22 @@ import DailyDoseScreen from '../screens/DailyDoseScreen';
 import GrowthTrackerScreen from '../screens/GrowthTrackerScreen';
 import NotificationsCenterScreen from '../screens/NotificationsCenterScreen';
 import GroupChatScreen from '../screens/GroupChatScreen';
+
+
+import VictoriesScreen from '../screens/VictoriesScreen';
+import PrayerRequestDetailScreen from '../screens/PrayerRequestDetailScreen';
+
+import VictoryDetailScreen from '../screens/VictoryDetailScreen';
+import EditVictoryScreen from '../screens/EditVictoryScreen';
+import PublicVictoriesScreen from '../screens/PublicVictoriesScreen';
+import CheckInHistoryScreen from '../screens/CheckInHistoryScreen';
+import CheckInDetailScreen from '../screens/CheckInDetailScreen';
+
+import EditPrayerRequestScreen from '../screens/EditPrayerRequestScreen';
+
+
+
+
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -34,10 +50,10 @@ const RootNavigator = () => {
       {/* Menu Screens */}
       <Stack.Screen name="InvitePartner" component={InvitePartnerScreen} options={{ headerShown: false }} />
       <Stack.Screen name="PartnersList" component={PartnersListScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="PrayerRequests" component={PrayerRequestsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CreatePrayerRequest" component={CreatePrayerRequestScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CreateVictory" component={CreateVictoryScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="MyVictories" component={MyVictoriesScreen} options={{ headerShown: false }} />
+   
+
       <Stack.Screen name="AllGroups" component={AllGroupsScreen} options={{ headerShown: false }} />
 
       {/* Profile Dropdown Screens */}
@@ -46,11 +62,26 @@ const RootNavigator = () => {
       <Stack.Screen name="DailyDose" component={DailyDoseScreen} options={{ headerShown: true }} />
       <Stack.Screen name="GrowthTracker" component={GrowthTrackerScreen} options={{ headerShown: true }} />
       <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} options={{ headerShown: true }} />
+
+      {/* Prayer and Victory Screens */}
+      <Stack.Screen name="PrayerRequests" component={PrayerRequestsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="PrayerRequestDetail" component={PrayerRequestDetailScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="EditPrayerRequest" component={EditPrayerRequestScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="MyVictories" component={MyVictoriesScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="PublicVictories" component={PublicVictoriesScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="VictoryDetail" component={VictoryDetailScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="EditVictory" component={EditVictoryScreen} options={{ headerShown: false }} />
+
+      {/* Check-in Screens */}
+      <Stack.Screen name="CheckInHistory" component={CheckInHistoryScreen} options={{ headerShown: true }} />
+      <Stack.Screen name="CheckInDetail" component={CheckInDetailScreen} options={{ headerShown: true }} />
+
+    
       <Stack.Screen 
         name="GroupChat" 
         component={GroupChatScreen} 
         options={{ 
-          headerShown: true,
+          headerShown: false,
           animation: 'slide_from_right'
         }} 
       />
