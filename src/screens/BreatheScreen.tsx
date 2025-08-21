@@ -10,6 +10,10 @@ import { Colors } from '../constants';
 import LinearGradient from 'react-native-linear-gradient';
 import { responsiveFontSizes, responsiveSpacing, scaleFontSize } from '../utils/responsive';
 
+interface BreatheScreenParams {
+  feelingText?: string;
+}
+
 type BreatheScreenProps = NativeStackScreenProps<EmergencyStackParamList, 'BreatheScreen'>;
 
 const { width, height } = Dimensions.get('window');
@@ -20,10 +24,23 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [counter, setCounter] = useState(0);
   const [currentPhase, setCurrentPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
+  const [currentScripture, setCurrentScripture] = useState<number>(0);
   const scaleAnim = useRef(new Animated.Value(0.7)).current;
   const opacityAnim = useRef(new Animated.Value(0.3)).current;
   const rippleAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
+  const scriptureOpacity = useRef(new Animated.Value(0)).current;
+  const scriptureTranslateY = useRef(new Animated.Value(50)).current;
+  
+  const scriptures = [
+    "Jesus still loves you and is passionate about you",
+    "Be still, and know that I am God. - Psalm 46:10",
+    "When you pass through the waters, I will be with you. - Isaiah 43:2",
+    "He is so loving and compassionate towards you",
+    "I can do all things through Christ who strengthens me. - Philippians 4:13",
+    "The Lord is my shepherd; I shall not want. - Psalm 23:1",
+    "Cast your burden on the Lord, and he will sustain you. - Psalm 55:22"
+  ];
   // Add JS-driven progress value for width
   const progressAnim = useRef(new Animated.Value(0)).current;
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -92,6 +109,32 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
 
   const startBreathingCycle = () => {
     let currentPatternIndex = 0;
+    
+    const animateScripture = () => {
+      setCurrentScripture(current => (current + 1) % scriptures.length);
+      
+      // Reset position and opacity
+      scriptureTranslateY.setValue(50);
+      scriptureOpacity.setValue(0);
+      
+      // Animate in
+      Animated.parallel([
+        Animated.timing(scriptureOpacity, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scriptureTranslateY, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        })
+      ]).start();
+    };
+
+    // Start scripture animation cycle
+    animateScripture();
+    setInterval(animateScripture, 12000); // Change scripture every 12 seconds
     
     const runPhase = () => {
       const pattern = breathingPattern[currentPatternIndex];
@@ -254,11 +297,64 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
                         }
                       ]}
                     />
+                    <View style={styles.crossContainer}>
+                      <Animated.View 
+                        style={[
+                          styles.crossVertical,
+                          {
+                            opacity: glowAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0.5, 0.8],
+                            }),
+                            transform: [{
+                              scale: glowAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0.98, 1.02],
+                              })
+                            }]
+                          }
+                        ]} 
+                      />
+                      <Animated.View 
+                        style={[
+                          styles.crossHorizontal,
+                          {
+                            opacity: glowAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0.5, 0.8],
+                            }),
+                            transform: [{
+                              scale: glowAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0.98, 1.02],
+                              })
+                            }]
+                          }
+                        ]} 
+                      />
+                    </View>
                     <Text style={styles.breatheText}>BREATHE</Text>
                   </View>
                 </LinearGradient>
               </Animated.View>
             </View>
+
+            {/* Scripture overlay */}
+            {isAnimating && (
+              <Animated.View
+                style={[
+                  styles.scriptureContainer,
+                  {
+                    opacity: scriptureOpacity,
+                    transform: [{ translateY: scriptureTranslateY }]
+                  }
+                ]}
+              >
+                <Text style={styles.scriptureText}>
+                  {scriptures[currentScripture]}
+                </Text>
+              </Animated.View>
+            )}
 
             {/* Progress indicator */}
             {isAnimating && (
@@ -452,6 +548,39 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     letterSpacing: 4,
     textAlign: 'center',
+    zIndex: 2, // Ensure text is above the cross
+  },
+  crossContainer: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1, // Place cross behind text
+  },
+  crossVertical: {
+    position: 'absolute',
+    width: 12,
+    height: 180,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 6,
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 15,
+    shadowOpacity: 0.6,
+    elevation: 8,
+  },
+  crossHorizontal: {
+    position: 'absolute',
+    width: 120,
+    height: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 6,
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 15,
+    shadowOpacity: 0.6,
+    elevation: 8,
   },
   progressContainer: {
     marginTop: 20,
@@ -510,6 +639,26 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.3)',
     borderRadius: 100,
     marginTop: 15,
+  },
+  scriptureContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 15,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 15,
+    marginTop: 20,
+  },
+  scriptureText: {
+    color: 'white',
+    fontSize: responsiveFontSizes.body,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    lineHeight: 24,
+    letterSpacing: 0.5,
   },
 });
 

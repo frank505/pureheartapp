@@ -107,9 +107,29 @@ const GrowthTrackerScreen: React.FC = () => {
               }
             ]}
           >
-            <Text style={styles.title}>Your Growth Journey</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { fontSize: 34, color: Colors.secondary.main, textShadowColor: '#000', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6, letterSpacing: 1.2 }]}>🌱 Your Growth Journey 🌱</Text>
+            <Text style={[styles.subtitle, { fontSize: 22, fontWeight: '700', color: Colors.primary.main, marginBottom: 10 }]}> 
               {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'} of Growth
+            </Text>
+            {/* Scripture for each day */}
+            <Text style={{ fontSize: 16, color: Colors.text.secondary, fontStyle: 'italic', textAlign: 'center', marginBottom: 20 }}>
+              {(() => {
+                // Example scripture mapping, can be expanded
+                const scriptures = [
+                  'Philippians 4:13 - I can do all things through Christ who strengthens me.',
+                  'Joshua 1:9 - Be strong and courageous. Do not be afraid; do not be discouraged.',
+                  'Psalm 1:3 - He is like a tree planted by streams of water, which yields its fruit in season.',
+                  'Isaiah 40:31 - Those who hope in the Lord will renew their strength.',
+                  'Proverbs 3:5 - Trust in the Lord with all your heart and lean not on your own understanding.',
+                  'Matthew 19:26 - With God all things are possible.',
+                  'Romans 12:2 - Be transformed by the renewing of your mind.',
+                  'Galatians 6:9 - Let us not become weary in doing good.',
+                  'Psalm 23:1 - The Lord is my shepherd; I shall not want.',
+                  'Jeremiah 29:11 - For I know the plans I have for you, declares the Lord.'
+                ];
+                // Pick scripture based on currentStreak, cycle if more than available
+                return scriptures[(currentStreak - 1) % scriptures.length];
+              })()}
             </Text>
           </Animated.View>
           <View style={styles.decorativeLine} />

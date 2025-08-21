@@ -8,6 +8,8 @@
  * @format
  */
 
+// speech to text key....
+
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -50,6 +52,25 @@ const Stack = createNativeStackNavigator();
 // App Theme Configuration using centralized colors
 const appTheme = {
   ...MD3DarkTheme,
+  fonts: {
+    ...MD3DarkTheme.fonts,
+    regular: {
+      fontFamily: 'Poppins-Regular',
+      fontWeight: '400',
+    },
+    medium: {
+      fontFamily: 'Poppins-Medium',
+      fontWeight: '500',
+    },
+    light: {
+      fontFamily: 'Poppins-Light',
+      fontWeight: '300',
+    },
+    thin: {
+      fontFamily: 'Poppins-Thin',
+      fontWeight: '100',
+    },
+  },
   colors: {
     ...MD3DarkTheme.colors,
     primary: Theme.primary,

@@ -17,6 +17,9 @@ import {
   TextInput,
   Animated,
   Dimensions,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {
   Text,
@@ -38,6 +41,7 @@ interface EmergencyScreenProps {
 const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
   const [feelingText, setFeelingText] = useState('');
   const [showPartnerModal, setShowPartnerModal] = useState(false);
+  const [showFeelingModal, setShowFeelingModal] = useState(false);
   const dispatch = useAppDispatch();
   const { today: todaysRecommendation } = useAppSelector((state) => state.recommendations);
   
@@ -116,7 +120,7 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
 
   // Handle immediate actions
   const handleBreatheWithJesus = () => {
-    navigation?.navigate('BreatheScreen');
+  setShowFeelingModal(true);
   };
 
   const handleSpeakTruth = () => {
@@ -129,6 +133,17 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
 
   const handleWorshipRedirect = () => {
     navigation?.navigate('WorshipScreen');
+  };
+
+  // Feeling modal actions
+  const handleFeelingCancel = () => {
+    setShowFeelingModal(false);
+  };
+
+  const handleFeelingContinue = () => {
+    setShowFeelingModal(false);
+    // Optionally persist feelingText here if needed
+    navigation?.navigate('BreatheScreen');
   };
 
   // Handle emergency contacts
@@ -208,7 +223,7 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
             <View style={styles.actionGrid}>
               {[
                 { 
-                  title: 'Breathe with Jesus', 
+                  title: '', 
                   icon: 'heart-outline', 
                   onPress: handleBreatheWithJesus,
                   color: Colors.primary.main,
@@ -318,6 +333,41 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
         onDismiss={() => setShowPartnerModal(false)}
         navigation={navigation}
       />
+
+      {/* Feeling Check-In Modal */}
+      <Modal
+        visible={showFeelingModal}
+        animationType="fade"
+        transparent
+        onRequestClose={handleFeelingCancel}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>How are you feeling?</Text>
+            <Text style={styles.modalSubtitle}>Share a few words to center your session.</Text>
+            <TextInput
+              style={[styles.feelingInput, { minHeight: 90 }]}
+              placeholder="Write a few words..."
+              placeholderTextColor={Colors.text.secondary}
+              value={feelingText}
+              onChangeText={setFeelingText}
+              multiline
+              autoFocus
+            />
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity onPress={handleFeelingCancel} style={[styles.modalButton, styles.modalCancelButton]}>
+                <Text style={[styles.modalButtonText, styles.modalCancelText]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleFeelingContinue} style={[styles.modalButton, styles.modalPrimaryButton]}>
+                <Text style={styles.modalButtonText}>Begin Breathing</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -644,6 +694,68 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     minHeight: 100,
     textAlignVertical: 'top',
+  },
+
+  // Feeling Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 520,
+    backgroundColor: Colors.background.primary,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: Colors.background.tertiary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.text.primary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    opacity: 0.9,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 16,
+  },
+  modalButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  modalCancelButton: {
+    backgroundColor: Colors.background.tertiary,
+  },
+  modalPrimaryButton: {
+    backgroundColor: Colors.primary.main,
+  },
+  modalButtonText: {
+    color: Colors.white,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  modalCancelText: {
+    color: Colors.text.primary,
   },
 });
 
