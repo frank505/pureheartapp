@@ -22,11 +22,11 @@ const FastingScreen = () => {
           navigation={navigation} 
         />
         <ScrollView>
-          <Text style={styles.mainTitle}>
+          <Text variant="headlineMedium" style={styles.mainTitle}>
             Fasting is a powerful spiritual discipline that can bring you closer to God.
           </Text>
           
-          <Text style={styles.description}>
+          <Text variant="bodyLarge" style={styles.description}>
             Fasting is a spiritual discipline that involves abstaining from food for a specific period to focus on prayer and seeking God's presence. It's a way to humble ourselves, seek guidance, and align our hearts with His will.
           </Text>
 
@@ -38,8 +38,10 @@ const FastingScreen = () => {
             >
               <View style={styles.testimonialContent}>
                 <View style={styles.testimonialTextContainer}>
-                  <Text style={styles.testimonialTitle}>From Chains to Freedom</Text>
-                  <Text style={styles.testimonialDescription}>
+                  <Text variant="headlineSmall" style={styles.testimonialTitle}>
+                    From Chains to Freedom
+                  </Text>
+                  <Text variant="bodyMedium" style={styles.testimonialDescription}>
                     I overcame a 10-year addiction through fasting and prayer. God's grace is real.
                   </Text>
                 </View>
@@ -55,14 +57,14 @@ const FastingScreen = () => {
             </ImageBackground>
           </View>
 
-          <Text style={styles.sectionTitle}>Recommended Prayers</Text>
-          <Text style={styles.sectionDescription}>
+          <Text variant="titleLarge" style={styles.sectionTitle}>
+            Recommended Prayers
+          </Text>
+          <Text variant="bodyLarge" style={styles.sectionDescription}>
             During your fast, focus on prayers for strength and guidance. Prayer is essential in overcoming addiction and finding peace.
           </Text>
 
           <View style={styles.buttonContainer}>
-           
-
             <Button
               mode="contained"
               style={styles.startButton}
@@ -71,13 +73,9 @@ const FastingScreen = () => {
             >
               Start Fasting
             </Button>
-
-            
           </View>
         </ScrollView>
       </View>
-
-     
     </SafeAreaView>
   );
 };
@@ -92,20 +90,15 @@ const styles = StyleSheet.create({
   },
   mainTitle: {
     color: Colors.white,
-    fontSize: 24,
-    fontWeight: 'bold',
-    lineHeight: 32,
-    paddingHorizontal: 16,
     textAlign: 'center',
+    paddingHorizontal: 16,
     paddingBottom: 8,
     paddingTop: 20,
   },
   description: {
     color: Colors.white,
-    fontSize: 16,
-    lineHeight: 24,
-    paddingHorizontal: 16,
     textAlign: 'center',
+    paddingHorizontal: 16,
     paddingBottom: 12,
     paddingTop: 4,
   },
@@ -134,13 +127,10 @@ const styles = StyleSheet.create({
   },
   testimonialTitle: {
     color: Colors.white,
-    fontSize: 24,
-    fontWeight: 'bold',
     marginBottom: 4,
   },
   testimonialDescription: {
     color: Colors.white,
-    fontSize: 16,
     fontWeight: '500',
   },
   readMoreButton: {
@@ -155,16 +145,12 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: Colors.white,
-    fontSize: 18,
-    fontWeight: 'bold',
     paddingHorizontal: 16,
     paddingBottom: 8,
     paddingTop: 16,
   },
   sectionDescription: {
     color: Colors.white,
-    fontSize: 16,
-    lineHeight: 24,
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
@@ -173,31 +159,14 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 12,
   },
-  prayerButton: {
-    backgroundColor: Colors.background.tertiary,
-    borderRadius: 8,
-    height: 40,
-  },
   startButton: {
     backgroundColor: Colors.primary.main,
     borderRadius: 8,
     height: 48,
   },
-  supportButton: {
-    backgroundColor: 'transparent',
-    borderRadius: 8,
-    height: 40,
-  },
   startButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  supportButtonText: {
-    color: Colors.white,
   },
   bottomNav: {
     flexDirection: 'row',

@@ -143,7 +143,7 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
   const handleFeelingContinue = () => {
     setShowFeelingModal(false);
     // Optionally persist feelingText here if needed
-    navigation?.navigate('BreatheScreen');
+    navigation?.navigate('BreatheScreen', { initialText: feelingText?.trim() || undefined });
   };
 
   // Handle emergency contacts
@@ -223,7 +223,7 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
             <View style={styles.actionGrid}>
               {[
                 { 
-                  title: '', 
+                  title: 'Breadth With Jesus', 
                   icon: 'heart-outline', 
                   onPress: handleBreatheWithJesus,
                   color: Colors.primary.main,

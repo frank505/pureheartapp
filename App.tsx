@@ -18,6 +18,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as StoreProvider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { Provider as PaperProvider, DefaultTheme, MD3DarkTheme } from 'react-native-paper';
+import deviceTokenService from './src/services/deviceTokenService';
+import type { DevicePlatform } from './src/types/device';
 
 // Import Redux store and persistor
 import { store, persistor } from './src/store';
@@ -112,16 +114,33 @@ const AppContent: React.FC = () => {
 
   // iOS push notification handling: navigate to group chat when tapped
   useEffect(() => {
+    const getDevicePlatform = (): DevicePlatform | null => {
+      if (Platform.OS === 'ios') return 'ios';
+      if (Platform.OS === 'android') return 'android';
+      return null;
+    };
+
     // Request permission on iOS
     if (Platform.OS === 'ios') {
       messaging().requestPermission().catch(() => undefined);
       messaging().getToken().then((token: string) => {
         if (token) {
-          // Store or send to backend later
+          // Register token with backend
+          deviceTokenService.register(token, 'ios').catch(() => undefined);
           AsyncStorage.setItem('fcm_token', token).catch(() => undefined);
         }
       });
     }
+
+    // Handle token refresh
+    const unsubscribeTokenRefresh = messaging().onTokenRefresh((token) => {
+      // Register new token with backend
+      const p = getDevicePlatform();
+      if (p) {
+        deviceTokenService.register(token, p).catch(() => undefined);
+      }
+      AsyncStorage.setItem('fcm_token', token).catch(() => undefined);
+    });
 
     // Foreground message handler (optional preview)
     const unsubscribeOnMessage = messaging().onMessage(async () => {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../components';
@@ -67,6 +67,11 @@ const StartFastScreen = () => {
 
   const [selectedFastType, setSelectedFastType] = useState<FastType | null>(null);
 
+  // Enhanced back button handler with multiple fallback options
+  const goBack = () => {
+    navigation.goBack();
+  };
+
   const handleNext = () => {
     if (selectedFastType) {
       navigation.navigate('NewFast', { fastType: selectedFastType });
@@ -76,7 +81,12 @@ const StartFastScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
+        <TouchableOpacity 
+          onPress={goBack} 
+          style={styles.closeButton}
+          activeOpacity={0.7}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+        >
           <Icon name="close" size={24} color={Colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Start a Fast</Text>
@@ -94,6 +104,7 @@ const StartFastScreen = () => {
               selectedFastType === option.id && styles.selectedOption
             ]}
             onPress={() => setSelectedFastType(option.id)}
+            activeOpacity={0.7}
           >
             <View style={[
               styles.iconContainer,
@@ -125,6 +136,7 @@ const StartFastScreen = () => {
           ]} 
           onPress={handleNext}
           disabled={!selectedFastType}
+          activeOpacity={0.8}
         >
           <Text style={[
             styles.nextButtonText,
@@ -154,6 +166,12 @@ const styles = StyleSheet.create({
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
+    // Add some visual feedback and ensure it's touchable
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Subtle background to see the button area
+    // Remove any potential blocking styles
+    zIndex: 1000,
+    elevation: 1000, // For Android
   },
   headerTitle: {
     flex: 1,

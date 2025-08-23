@@ -7,6 +7,8 @@ import { Colors } from '../constants';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import fastingService from '../services/fastingService';
+import { Alert } from 'react-native';
 
 type NewFastScreenRouteProp = RouteProp<RootStackParamList, 'NewFast'>;
 
@@ -19,23 +21,125 @@ const NewFastScreen = () => {
   const [prayerTimes, setPrayerTimes] = useState('');
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [widgetEnabled, setWidgetEnabled] = useState(false);
+  const [inviteAllPartners, setInviteAllPartners] = useState(true);
 
   // Multi-step slideshow state
   const steps = [
     'Goal',
     'SMART Goal',
     'Prayer Commitment',
-    'Suggested Prayers',
     'Accountability Partner',
   ] as const;
   const [step, setStep] = useState<number>(0);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Extract readable error messages from different API error shapes
+  const getErrorMessage = (err: any): string => {
+    const status = err?.response?.status;
+    const statusText = err?.response?.statusText;
+    const data = err?.response?.data;
+    if (!data) {
+      return err?.message || (status ? `${status} ${statusText || ''}`.trim() : 'Something went wrong');
+    }
+    if (typeof data === 'string') return data;
+    // Common NestJS/Joi shapes: { message: string | string[], error: string, statusCode: number }
+    if (Array.isArray(data?.message)) return data.message.join('\n');
+    if (typeof data?.message === 'string') return data.message;
+    if (Array.isArray(data?.errors)) {
+      return data.errors.map((e: any) => e?.message || JSON.stringify(e)).join('\n');
+    }
+    if (Array.isArray(data?.details)) {
+      return data.details.map((d: any) => d?.message || JSON.stringify(d)).join('\n');
+    }
+    if (data?.error) return `${data.error}${data.description ? `: ${data.description}` : ''}`;
+    return err?.message || 'Something went wrong';
+  };
+
+  // Convert a variety of time inputs (e.g., "6 AM", "6:30pm", "18:00") to HH:mm; return null if invalid
+  const parseTimeTo24h = (input: string): string | null => {
+    const s = (input || '').trim().toLowerCase();
+    if (!s) return null;
+    // Match: H[:MM][ ](am|pm)?
+    const m = s.match(/^(\d{1,2})(?::(\d{1,2}))?\s*(am|pm)?$/i);
+    if (!m) return null;
+    let hours = parseInt(m[1], 10);
+    let minutes = m[2] ? parseInt(m[2], 10) : 0;
+    const meridiem = m[3];
+
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+    if (minutes < 0 || minutes > 59) return null;
+
+    if (meridiem) {
+      if (hours < 1 || hours > 12) return null;
+      if (meridiem === 'am') {
+        hours = hours === 12 ? 0 : hours;
+      } else if (meridiem === 'pm') {
+        hours = hours === 12 ? 12 : hours + 12;
+      }
+    } else {
+      if (hours < 0 || hours > 23) return null;
+    }
+
+    const hh = hours.toString().padStart(2, '0');
+    const mm = minutes.toString().padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
+  const submitCreateFast = async () => {
+    try {
+      // Validate and normalize prayer times to HH:mm expected by backend
+      const rawTimes = prayerTimes
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const normalizedTimes: string[] = [];
+      const invalid: string[] = [];
+      for (const t of rawTimes) {
+        const parsed = parseTimeTo24h(t);
+        if (parsed) normalizedTimes.push(parsed);
+        else invalid.push(t);
+      }
+      if (invalid.length) {
+        Alert.alert(
+          'Invalid prayer time(s)',
+          `Please use times like 06:00, 12:00, 18:00 or 6 AM, 6:30pm. Invalid: ${invalid.join(', ')}`
+        );
+        return;
+      }
+
+      setSubmitting(true);
+      const now = new Date();
+      const end = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const payload = {
+        type: _route.params?.fastType ?? 'custom',
+        goal: goal?.trim() || undefined,
+        smartGoal: smartGoal?.trim() || undefined,
+        prayerTimes: normalizedTimes,
+        verse: undefined,
+        prayerFocus: undefined,
+        reminderEnabled,
+        widgetEnabled,
+        startTime: now.toISOString(),
+        endTime: end.toISOString(),
+        addAccountabilityPartners: inviteAllPartners,
+      } as const;
+
+      await fastingService.create(payload);
+      Alert.alert('Fast created', 'Your fast has been created.');
+  // Redirect into the Fasting flow entry so it can refetch and route appropriately
+  (navigation as any).navigate('FastingEntry');
+    } catch (e: any) {
+      Alert.alert('Error', getErrorMessage(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleNext = () => {
     if (step < steps.length - 1) {
       setStep((s) => s + 1);
     } else {
-      // Finish flow for now
-      navigation.goBack();
+      submitCreateFast();
     }
   };
 
@@ -114,7 +218,7 @@ const NewFastScreen = () => {
               <TextInput
                 value={prayerTimes}
                 onChangeText={setPrayerTimes}
-                placeholder="Prayer Times (e.g., 6 AM, 12 PM, 6 PM)"
+                placeholder="Prayer Times (e.g., 06:00, 12:30, 18:00 or 6 AM, 12 PM, 6:30pm)"
                 style={styles.input}
                 placeholderTextColor="#93acc8"
                 selectionColor={Colors.primary.main}
@@ -162,33 +266,7 @@ const NewFastScreen = () => {
             </View>
           </>
         );
-      case 3:
-        return (
-          <>
-            <Text style={styles.sectionTitle}>Suggested Prayers</Text>
-            <Text style={styles.description}>
-              Since your goal is breaking addiction, consider incorporating prayers for 
-              deliverance and spiritual warfare into your routine.
-            </Text>
-
-            <TouchableOpacity style={styles.prayerItem}>
-              <View style={styles.prayerIcon}>
-                <Icon name="book" size={24} color={Colors.white} />
-              </View>
-              <Text style={styles.prayerText}>Prayers for Deliverance</Text>
-              <Icon name="chevron-right" size={24} color={Colors.white} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.prayerItem}>
-              <View style={styles.prayerIcon}>
-                <Icon name="shield" size={24} color={Colors.white} />
-              </View>
-              <Text style={styles.prayerText}>Prayers for Spiritual Warfare</Text>
-              <Icon name="chevron-right" size={24} color={Colors.white} />
-            </TouchableOpacity>
-          </>
-        );
-      case 4:
+  case 3:
         return (
           <>
             <Text style={styles.sectionTitle}>Accountability Partner</Text>
@@ -197,9 +275,24 @@ const NewFastScreen = () => {
               They provide support, encouragement, and help you stay on track.
             </Text>
 
-            <TouchableOpacity style={styles.inviteButton}>
-              <Text style={styles.inviteButtonText}>Invite Accountability Partner</Text>
-            </TouchableOpacity>
+            <View style={styles.reminderContainer}>
+              <View style={styles.reminderIcon}>
+                <Icon name="people" size={24} color={Colors.white} />
+              </View>
+              <View style={styles.reminderText}>
+                <Text style={styles.reminderTitle}>Invite All Partners</Text>
+                <Text style={styles.reminderDescription}>
+                  Automatically invite all accountability partners to track your fast.
+                </Text>
+              </View>
+              <Switch
+                value={inviteAllPartners}
+                onValueChange={setInviteAllPartners}
+                trackColor={{ false: '#243447', true: '#1979e6' }}
+                thumbColor={Colors.white}
+                ios_backgroundColor="#243447"
+              />
+            </View>
           </>
         );
       default:
@@ -229,8 +322,8 @@ const NewFastScreen = () => {
             <TouchableOpacity style={[styles.backButton]} onPress={handleBack}>
               <Text style={styles.backButtonText}>{step === 0 ? 'Close' : 'Back'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-              <Text style={styles.nextButtonText}>{step === steps.length - 1 ? 'Finish' : 'Next'}</Text>
+            <TouchableOpacity style={[styles.nextButton, submitting && styles.nextButtonDisabled]} onPress={handleNext} disabled={submitting}>
+              <Text style={[styles.nextButtonText, submitting && styles.nextButtonTextDisabled]}>{step === steps.length - 1 ? (submitting ? 'Saving…' : 'Finish') : 'Next'}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.bottomSpacer} />
@@ -366,21 +459,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 16,
   },
-  inviteButton: {
-    height: 40,
-    paddingHorizontal: 16,
-    backgroundColor: '#243447',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginVertical: 12,
-  },
-  inviteButtonText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
+
   footer: {
     padding: 12,
   },
@@ -413,6 +492,12 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  nextButtonDisabled: {
+    opacity: 0.6,
+  },
+  nextButtonTextDisabled: {
+    color: Colors.text.secondary,
   },
   bottomSpacer: {
     height: 20,

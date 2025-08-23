@@ -77,6 +77,24 @@ declare module 'react-native-vector-icons/AntDesign' {
   export default AntDesign;
 }
 
+// Minimal ambient module for react-native-video to satisfy TS
+declare module 'react-native-video' {
+  import type { ComponentType } from 'react';
+  import type { ViewProps } from 'react-native';
+  interface VideoProps extends ViewProps {
+    source: { uri: string } | number;
+    audioOnly?: boolean;
+    repeat?: boolean;
+    paused?: boolean;
+    playInBackground?: boolean;
+    ignoreSilentSwitch?: 'ignore' | 'obey';
+    volume?: number; // 0.0 - 1.0
+    onError?: (e: { error: { errorString?: string } }) => void;
+  }
+  const Video: ComponentType<VideoProps>;
+  export default Video;
+}
+
 // Ambient module declaration for slider (to satisfy TS until @types are resolved)
 declare module '@react-native-community/slider' {
   import type { ComponentType } from 'react';
