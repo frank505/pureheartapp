@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, StatusBar, ActivityIndicator, Alert, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { EmergencyStackParamList } from '../navigation/EmergencyStack';
@@ -9,30 +9,29 @@ import { IconNames } from '../constants/Icons';
 import { Colors } from '../constants';
 import LinearGradient from 'react-native-linear-gradient';
 import { responsiveFontSizes, responsiveSpacing, scaleFontSize } from '../utils/responsive';
-
-interface BreatheScreenParams {
-  feelingText?: string;
-}
+import Video from 'react-native-video';
+import { analyzeBreathe, BreatheAnalysisResult } from '../services/breatheService';
 
 type BreatheScreenProps = NativeStackScreenProps<EmergencyStackParamList, 'BreatheScreen'>;
 
 const { width, height } = Dimensions.get('window');
 
-const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
-  // Add safe area insets
+const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets?.() ?? { top: 0, bottom: 0 } as any;
+  
+  // Core state
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [counter, setCounter] = useState(0);
   const [currentPhase, setCurrentPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
   const [currentScripture, setCurrentScripture] = useState<number>(0);
-  const scaleAnim = useRef(new Animated.Value(0.7)).current;
-  const opacityAnim = useRef(new Animated.Value(0.3)).current;
-  const rippleAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  const scriptureOpacity = useRef(new Animated.Value(0)).current;
-  const scriptureTranslateY = useRef(new Animated.Value(50)).current;
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [analysis, setAnalysis] = useState<BreatheAnalysisResult | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
   
-  const scriptures = [
+  // Scripture texts
+  const [scriptures, setScriptures] = useState<string[]>([
     "Jesus still loves you and is passionate about you",
     "Be still, and know that I am God. - Psalm 46:10",
     "When you pass through the waters, I will be with you. - Isaiah 43:2",
@@ -40,110 +39,126 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
     "I can do all things through Christ who strengthens me. - Philippians 4:13",
     "The Lord is my shepherd; I shall not want. - Psalm 23:1",
     "Cast your burden on the Lord, and he will sustain you. - Psalm 55:22"
-  ];
-  // Add JS-driven progress value for width
+  ]);
+  
+  // Audio state
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioLoaded, setAudioLoaded] = useState(false);
+  
+  // Animation refs
+  const scaleAnim = useRef(new Animated.Value(0.7)).current;
+  const opacityAnim = useRef(new Animated.Value(0.3)).current;
+  const rippleAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+  const scriptureOpacity = useRef(new Animated.Value(0)).current;
+  const scriptureTranslateY = useRef(new Animated.Value(50)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
+  
+  // Refs for cleanup
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const phaseIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const scriptureIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const initialTextRef = useRef<string | undefined>(route?.params?.initialText);
 
+  // Breathing pattern configuration
   const breathingPattern = [
     { phase: 'inhale', duration: 4000, instruction: 'Inhale slowly...' },
     { phase: 'hold', duration: 2000, instruction: 'Hold your breath...' },
     { phase: 'exhale', duration: 6000, instruction: 'Exhale gently...' },
   ];
 
-  useEffect(() => {
-    if (isAnimating) {
-      // Start counter
-      intervalRef.current = setInterval(() => {
-        setCounter(prev => prev + 1);
-      }, 1000);
-
-      // Start breathing animation cycle
-      startBreathingCycle();
-      
-      // Start glow animation
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: false,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0,
-            duration: 2000,
-            useNativeDriver: false,
-          }),
-        ])
-      ).start();
-    } else {
-      // Cleanup intervals
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      if (phaseIntervalRef.current) {
-        clearInterval(phaseIntervalRef.current);
-      }
-      
-      // Reset animations
-      scaleAnim.setValue(0.7);
-      opacityAnim.setValue(0.3);
-      rippleAnim.setValue(0);
-      glowAnim.setValue(0);
-      // Reset progress when stopping
-      progressAnim.setValue(0);
-      setCounter(0);
-      setCurrentPhase('inhale');
+  // Cleanup function
+  const cleanupAnimations = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
+    if (phaseIntervalRef.current) {
+      clearInterval(phaseIntervalRef.current);
+      phaseIntervalRef.current = null;
+    }
+    if (scriptureIntervalRef.current) {
+      clearInterval(scriptureIntervalRef.current);
+      scriptureIntervalRef.current = null;
+    }
+  };
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      if (phaseIntervalRef.current) {
-        clearInterval(phaseIntervalRef.current);
-      }
-    };
-  }, [isAnimating]);
+  // Reset animations to initial state
+  const resetAnimations = () => {
+    scaleAnim.setValue(0.7);
+    opacityAnim.setValue(0.3);
+    rippleAnim.setValue(0);
+    glowAnim.setValue(0);
+    progressAnim.setValue(0);
+    scriptureOpacity.setValue(0);
+    scriptureTranslateY.setValue(50);
+    setCounter(0);
+    setCurrentPhase('inhale');
+  };
 
+  // Scripture animation handler
+  const animateScripture = () => {
+    setCurrentScripture(current => (current + 1) % scriptures.length);
+    
+    // Reset and animate in new scripture
+    scriptureTranslateY.setValue(50);
+    scriptureOpacity.setValue(0);
+    
+    Animated.parallel([
+      Animated.timing(scriptureOpacity, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scriptureTranslateY, {
+        toValue: 0,
+        duration: 1000,
+        useNativeDriver: true,
+      })
+    ]).start();
+  };
+
+  // Start breathing cycle with proper phases
   const startBreathingCycle = () => {
     let currentPatternIndex = 0;
     
-    const animateScripture = () => {
-      setCurrentScripture(current => (current + 1) % scriptures.length);
-      
-      // Reset position and opacity
-      scriptureTranslateY.setValue(50);
-      scriptureOpacity.setValue(0);
-      
-      // Animate in
-      Animated.parallel([
-        Animated.timing(scriptureOpacity, {
+    // Initialize scripture animation only if not paused
+    if (!isPaused) {
+      animateScripture();
+    }
+    
+    // Start or resume scripture cycling
+    if (scriptureIntervalRef.current) clearInterval(scriptureIntervalRef.current);
+    if (!isPaused) {
+      scriptureIntervalRef.current = setInterval(animateScripture, 12000);
+    }
+    
+    // Start glow effect
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
           toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
+          duration: 2000,
+          useNativeDriver: false,
         }),
-        Animated.timing(scriptureTranslateY, {
+        Animated.timing(glowAnim, {
           toValue: 0,
-          duration: 1000,
-          useNativeDriver: true,
-        })
-      ]).start();
-    };
-
-    // Start scripture animation cycle
-    animateScripture();
-    setInterval(animateScripture, 12000); // Change scripture every 12 seconds
+          duration: 2000,
+          useNativeDriver: false,
+        }),
+      ])
+    ).start();
     
     const runPhase = () => {
       const pattern = breathingPattern[currentPatternIndex];
       setCurrentPhase(pattern.phase as any);
       
-      // Scale animation based on phase
-      const targetScale = pattern.phase === 'exhale' ? 0.5 : pattern.phase === 'inhale' ? 1.3 : 1.1;
+      // Calculate animation targets based on phase
+      const targetScale = pattern.phase === 'exhale' ? 0.5 : 
+                          pattern.phase === 'inhale' ? 1.3 : 1.1;
       const targetOpacity = pattern.phase === 'exhale' ? 0.4 : 0.9;
       
+      // Animate breathing circle
       Animated.parallel([
         Animated.timing(scaleAnim, {
           toValue: targetScale,
@@ -164,7 +179,7 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
         rippleAnim.setValue(0);
       });
 
-      // Animate progress bar for this phase using JS driver
+      // Animate progress bar
       progressAnim.setValue(0);
       Animated.timing(progressAnim, {
         toValue: 1,
@@ -175,23 +190,229 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
       currentPatternIndex = (currentPatternIndex + 1) % breathingPattern.length;
     };
     
-    runPhase(); // Start first phase immediately
-    phaseIntervalRef.current = setInterval(runPhase, 4000); // Cycle every 4 seconds average
+    // Start first phase immediately
+    runPhase();
+    
+    // Set up phase cycling
+    if (phaseIntervalRef.current) clearInterval(phaseIntervalRef.current);
+    phaseIntervalRef.current = setInterval(() => {
+      runPhase();
+    }, 4000);
   };
 
+  // Get current breathing instruction
   const getCurrentInstruction = () => {
     const pattern = breathingPattern.find(p => p.phase === currentPhase);
     return pattern ? pattern.instruction : 'Breathe naturally...';
   };
 
-  const handleStartStop = () => {
-    setIsAnimating(!isAnimating);
-  };
-
+  // Format time display
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Validate audio URL
+  const isValidAudioUrl = (url: string) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Handle pause/resume breathing session
+  const handlePauseResume = () => {
+    if (isPaused) {
+      // Resuming - restart scripture cycling from current position
+      setIsPaused(false);
+    } else {
+      // Pausing - stop scripture cycling but keep current text visible
+      setIsPaused(true);
+      if (scriptureIntervalRef.current) {
+        clearInterval(scriptureIntervalRef.current);
+        scriptureIntervalRef.current = null;
+      }
+    }
+  };
+
+  // Handle complete reset - clear analysis and start fresh
+  const handleReset = async () => {
+    try {
+      setIsResetting(true);
+      
+      // Stop current session
+      setIsAnimating(false);
+      setIsPaused(false);
+      cleanupAnimations();
+      resetAnimations();
+      
+      // Clear previous analysis and audio
+      setAnalysis(null);
+      setAudioUrl(null);
+      setAudioError(null);
+      
+      // Reset scriptures to default
+      setScriptures([
+        "Jesus still loves you and is passionate about you",
+        "Be still, and know that I am God. - Psalm 46:10",
+        "When you pass through the waters, I will be with you. - Isaiah 43:2",
+        "He is so loving and compassionate towards you",
+        "I can do all things through Christ who strengthens me. - Philippians 4:13",
+        "The Lord is my shepherd; I shall not want. - Psalm 23:1",
+        "Cast your burden on the Lord, and he will sustain you. - Psalm 55:22"
+      ]);
+      
+      // Start fresh session with new API call
+      console.log('Resetting and fetching new breath analysis...');
+      const payload = {
+        text: initialTextRef.current || 'I want to slow down and breathe with Jesus.',
+        cycles: 3,
+      };
+      
+      const result = await analyzeBreathe(payload);
+      console.log('New analysis result:', result);
+      
+      setAnalysis(result);
+      
+      // Update scriptures if available
+      if (result?.textAndScriptures?.length) {
+        const validScriptures = result.textAndScriptures.filter(Boolean);
+        if (validScriptures.length > 0) {
+          setScriptures(validScriptures);
+        }
+      }
+      
+      // Set audio URL if available
+      if (result?.asmrAudioUrl && isValidAudioUrl(result.asmrAudioUrl)) {
+        console.log('Setting new audio URL:', result.asmrAudioUrl);
+        setAudioUrl(result.asmrAudioUrl);
+      }
+      
+      // Auto-start the new session
+      setIsAnimating(true);
+    } catch (error) {
+      console.error('Error resetting breathing session:', error);
+      Alert.alert('Reset Error', 'Could not load new session data. Starting with default content.');
+      setIsAnimating(true);
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  // Handle start/stop breathing session
+  const handleStartStop = async () => {
+    if (isAnimating) {
+      // If animating, this becomes a pause/resume button
+      handlePauseResume();
+      return;
+    }
+    
+    // Start session
+    try {
+      setIsPreparing(true);
+      setAudioError(null);
+      setIsPaused(false);
+      
+      // Get analysis if not already available
+      if (!analysis) {
+        console.log('Fetching breath analysis...');
+        const payload = {
+          text: initialTextRef.current || 'I want to slow down and breathe with Jesus.',
+          cycles: 3,
+        };
+        
+        const result = await analyzeBreathe(payload);
+        console.log('Analysis result:', result);
+        
+        setAnalysis(result);
+        
+        // Update scriptures if available
+        if (result?.textAndScriptures?.length) {
+          const validScriptures = result.textAndScriptures.filter(Boolean);
+          if (validScriptures.length > 0) {
+            setScriptures(validScriptures);
+          }
+        }
+        
+        // Set audio URL if available
+        if (result?.asmrAudioUrl && isValidAudioUrl(result.asmrAudioUrl)) {
+          console.log('Setting audio URL:', result.asmrAudioUrl);
+          setAudioUrl(result.asmrAudioUrl);
+        } else {
+          console.log('No valid audio URL provided');
+        }
+      } else {
+        // Use existing analysis
+        if (analysis.asmrAudioUrl && isValidAudioUrl(analysis.asmrAudioUrl)) {
+          console.log('Using existing audio URL:', analysis.asmrAudioUrl);
+          setAudioUrl(analysis.asmrAudioUrl);
+        }
+      }
+      
+      // Start breathing session
+      setIsAnimating(true);
+    } catch (error) {
+      console.error('Error starting breathing session:', error);
+      Alert.alert('Session Error', 'Could not load breathing session data. Starting with default content.');
+      setIsAnimating(true);
+    } finally {
+      setIsPreparing(false);
+    }
+  };
+
+  // Handle stop session
+  const handleStop = () => {
+    setIsAnimating(false);
+    setIsPaused(false);
+    cleanupAnimations();
+    resetAnimations();
+  };
+
+  // Main animation effect
+  useEffect(() => {
+    if (isAnimating && !isPaused) {
+      console.log('Starting/Resuming breathing session with audio:', !!audioUrl);
+      
+      // Start/Resume timer
+      intervalRef.current = setInterval(() => {
+        setCounter(prev => prev + 1);
+      }, 1000);
+      
+      // Start breathing cycle
+      startBreathingCycle();
+    } else if (isPaused) {
+      console.log('Pausing breathing session');
+      // Pause: stop timer and animations but keep session active
+      cleanupAnimations();
+    } else {
+      console.log('Stopping breathing session');
+      cleanupAnimations();
+      resetAnimations();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      cleanupAnimations();
+    };
+  }, [isAnimating, isPaused]);
+
+  // Audio event handlers
+  const handleAudioError = (error: any) => {
+    console.error('Audio playback error:', error);
+    const errorMsg = error?.error?.errorString || error?.error || 'Audio playback failed';
+    setAudioError(errorMsg);
+    
+    // Show user-friendly error message
+    if (isAnimating) {
+      Alert.alert(
+        'Audio Notice', 
+        'Background audio could not be played. The breathing session will continue with visual guidance only.',
+        [{ text: 'Continue', style: 'default' }]
+      );
+    }
   };
 
   return (
@@ -201,7 +422,22 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
         colors={['#0f0c29', '#24243e', '#302b63']}
         style={styles.container}
       >
-        {/* Background particles/stars effect (ignore touches) */}
+        {/* Audio Player - Fixed Implementation */}
+        {audioUrl && !audioError && (
+          <Video
+            source={{ uri: audioUrl }}
+            audioOnly={true}
+            repeat={true}
+            paused={!isAnimating || isPaused} // Pause when not animating or when paused
+            playInBackground={true}
+            ignoreSilentSwitch="ignore"
+            volume={1.0}
+            onError={handleAudioError}
+            style={styles.hiddenVideo}
+          />
+        )}
+
+        {/* Background Stars Effect */}
         <View pointerEvents="none" style={styles.starsContainer}>
           {[...Array(20)].map((_, i) => (
             <Animated.View
@@ -222,7 +458,7 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
         </View>
 
         <SafeAreaView style={styles.safeAreaContent}>
-          {/* Header with safe area top padding */}
+          {/* Header */}
           <View style={[styles.header, { paddingTop: Math.max(10, (insets?.top ?? 0) + 4) }]}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
               <LinearGradient
@@ -236,20 +472,39 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
             <View style={styles.timeContainer}>
               <Text style={styles.timeText}>{formatTime(counter)}</Text>
             </View>
+
+            {/* Reset button in header */}
+            <TouchableOpacity 
+              style={styles.resetButton} 
+              onPress={handleReset}
+              activeOpacity={0.8}
+              disabled={isResetting}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
+                style={styles.resetButtonGradient}
+              >
+                {isResetting ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Icon name="refresh" size={responsiveFontSizes.iconMedium} color="white" />
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
 
-          {/* Main breathing area */}
+          {/* Main Content */}
           <View style={styles.mainContent}>
             <View style={styles.instructionContainer}>
               <Text style={styles.phaseText}>{currentPhase.toUpperCase()}</Text>
               <Text style={styles.instructionText}>
-                {isAnimating ? getCurrentInstruction() : 'Tap start to begin your breathing session'}
+                {isAnimating ? (isPaused ? 'Session paused - tap play to continue' : getCurrentInstruction()) : 'Tap start to begin your breathing session'}
               </Text>
             </View>
 
-            {/* Breathing circle with ripple effects */}
+            {/* Breathing Circle with Ripples */}
             <View style={styles.breathingContainer}>
-              {/* Outer ripple rings */}
+              {/* Ripple Rings */}
               {[0, 1, 2].map((index) => (
                 <Animated.View
                   key={index}
@@ -271,7 +526,7 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
                 />
               ))}
               
-              {/* Main breathing circle */}
+              {/* Main Breathing Circle */}
               <Animated.View
                 style={[
                   styles.breathingCircle,
@@ -339,7 +594,7 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
               </Animated.View>
             </View>
 
-            {/* Scripture overlay */}
+            {/* Scripture Display */}
             {isAnimating && (
               <Animated.View
                 style={[
@@ -353,11 +608,16 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
                 <Text style={styles.scriptureText}>
                   {scriptures[currentScripture]}
                 </Text>
+                {isPaused && (
+                  <Text style={styles.pausedIndicator}>
+                    (Paused)
+                  </Text>
+                )}
               </Animated.View>
             )}
 
-            {/* Progress indicator */}
-            {isAnimating && (
+            {/* Progress Bar */}
+            {isAnimating && !isPaused && (
               <View style={styles.progressContainer}>
                 <View style={styles.progressBar}>
                   <Animated.View
@@ -377,34 +637,55 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation }) => {
             )}
           </View>
 
-          {/* Bottom controls with safe area bottom padding */}
+          {/* Bottom Controls - Fixed Centering */}
           <View style={[styles.bottomContainer, { 
             paddingBottom: Math.max(20, (insets?.bottom ?? 0) + 12),
-            }]}>
-            <TouchableOpacity 
-              style={styles.controlButton} 
-              onPress={handleStartStop}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={isAnimating ? ['#ff6b6b', '#ee5a52'] : ['#4facfe', '#00f2fe']}
-                style={styles.buttonGradient}
+          }]}>
+            <View style={styles.controlsRow}>
+              {/* Start/Pause Button */}
+              <TouchableOpacity 
+                style={styles.controlButton} 
+                onPress={handleStartStop}
+                activeOpacity={0.8}
+                disabled={isPreparing}
               >
-                <Icon 
-                  name={isAnimating ? "pause" : "play"} 
-                  size={24} 
-                  color="white" 
-                  style={styles.buttonIcon} 
-                />
-                <Text style={styles.buttonText}>
-                  {isAnimating ? 'Pause Session' : 'Start Breathing'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            
-           
+                <LinearGradient
+                  colors={isAnimating ? (isPaused ? ['#4facfe', '#00f2fe'] : ['#ff9500', '#ff5722']) : ['#4facfe', '#00f2fe']}
+                  style={styles.buttonGradient}
+                >
+                  {isPreparing ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Icon 
+                      name={isAnimating ? (isPaused ? "play" : "pause") : "play"} 
+                      size={24} 
+                      color="white" 
+                    />
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              {/* Stop Button - Only show when session is active */}
+              {(isAnimating || isPaused) && (
+                <TouchableOpacity 
+                  style={styles.controlButton} 
+                  onPress={handleStop}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#ff6b6b', '#ee5a52']}
+                    style={styles.buttonGradient}
+                  >
+                    <Icon 
+                      name="square" 
+                      size={20} 
+                      color="white" 
+                    />
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-          
         </SafeAreaView>
       </LinearGradient>
     </View>
@@ -421,6 +702,13 @@ const styles = StyleSheet.create({
   },
   safeAreaContent: {
     flex: 1,
+  },
+  hiddenVideo: {
+    width: 0,
+    height: 0,
+    position: 'absolute',
+    top: -1000,
+    left: -1000,
   },
   starsContainer: {
     position: 'absolute',
@@ -455,21 +743,34 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    width: 50,
+    height: 50,
+  },
+  resetButton: {
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  resetButtonGradient: {
+    padding: 0,
+    borderRadius: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 50,
+    height: 50,
   },
   timeContainer: {
     alignItems: 'center',
-  },
-  timeLabel: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: responsiveFontSizes.caption,
-    fontWeight: '500',
-    marginBottom: 2,
   },
   timeText: {
     color: 'white',
     fontSize: responsiveFontSizes.timeText,
     fontWeight: '300',
     fontFamily: 'System',
+  },
+  audioIndicator: {
+    color: '#4facfe',
+    fontSize: 18,
+    marginLeft: 8,
   },
   mainContent: {
     flex: 1,
@@ -548,7 +849,7 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     letterSpacing: 4,
     textAlign: 'center',
-    zIndex: 2, // Ensure text is above the cross
+    zIndex: 2,
   },
   crossContainer: {
     position: 'absolute',
@@ -556,7 +857,7 @@ const styles = StyleSheet.create({
     height: 180,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1, // Place cross behind text
+    zIndex: 1,
   },
   crossVertical: {
     position: 'absolute',
@@ -600,49 +901,51 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   bottomContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 100,
-    zIndex: 10,
-    // borderColor:"red",
-    // backgroundColor:"red"
+    zIndex: 1000,
+    elevation: 30,
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
   },
   controlButton: {
-    borderRadius: 25,
-    height:50,
+    borderRadius: 30,
+    width: 60,
+    height: 60,
     overflow: 'hidden',
-    elevation: 8,
+    elevation: 50,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    marginBottom: 0,
-    marginTop:30
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
+    zIndex: 1001,
   },
   buttonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 50,
+    width: 60,
+    height: 60,
   },
   buttonIcon: {
-    marginRight: 12,
+    marginRight: 8,
   },
   buttonText: {
     color: 'white',
     fontSize: 18,
     fontWeight: '600',
   },
-  homeIndicator: {
-    alignSelf: 'center',
-    width: 134,
-    height: 5,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 100,
-    marginTop: 15,
+  buttonTextSmaller: {
+    fontSize: 16,
   },
   scriptureContainer: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 200,
     left: 20,
     right: 20,
     alignItems: 'center',
@@ -651,6 +954,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: 15,
     marginTop: 20,
+    zIndex: 1,
   },
   scriptureText: {
     color: 'white',
@@ -659,6 +963,13 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 24,
     letterSpacing: 0.5,
+  },
+  pausedIndicator: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+    fontStyle: 'italic',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
 
