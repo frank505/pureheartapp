@@ -8,7 +8,7 @@ import AIChatScreen from '../screens/AIChatScreen';
 
 export type EmergencyStackParamList = {
   EmergencyMain: undefined;
-  BreatheScreen: undefined;
+  BreatheScreen: { initialText?: string } | undefined;
   WorshipScreen: undefined;
   AISessions: undefined;
   AIChat: { sessionId?: number; title?: string } | undefined;

@@ -15,7 +15,13 @@ import { useNavigation } from '@react-navigation/native';
 
 const PAGE_SIZE = 20;
 
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
+
+type AllGroupsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 const AllGroupsScreen = () => {
+
   const [activeTab, setActiveTab] = useState<'my' | 'public'>('my');
   const [myGroups, setMyGroups] = useState<GroupSummary[]>([]);
   const [publicGroups, setPublicGroups] = useState<GroupSummary[]>([]);
@@ -27,8 +33,8 @@ const AllGroupsScreen = () => {
   const [publicCurrentPage, setPublicCurrentPage] = useState(1);
   const [myHasMore, setMyHasMore] = useState(true);
   const [publicHasMore, setPublicHasMore] = useState(true);
-  const navigation = useNavigation();
-  
+  const navigation = useNavigation<AllGroupsScreenNavigationProp>();
+   
   // Use refs to track loading states to prevent infinite loops
   const myLoadingRef = useRef(false);
   const publicLoadingRef = useRef(false);
@@ -36,6 +42,10 @@ const AllGroupsScreen = () => {
   const publicCurrentPageRef = useRef(1);
   const myHasMoreRef = useRef(true);
   const publicHasMoreRef = useRef(true);
+
+
+  
+
 
   // Update refs when state changes
   useEffect(() => {
@@ -156,7 +166,14 @@ const AllGroupsScreen = () => {
   }, [loadMyGroups, loadPublicGroups]); // Include dependencies
 
   const renderGroup = ({ item }: { item: GroupSummary }) => (
-    <View style={styles.groupItem}>
+    <TouchableOpacity 
+      onPress={() => navigation.navigate('GroupChat', { 
+        groupId: item.id,
+        groupName: item.name,
+        memberCount: item.membersCount
+      })}
+      style={styles.groupItem}
+    >
       <Text variant="titleMedium">{item.name}</Text>
       {item.description && (
         <Text variant="bodyMedium" style={styles.description}>
@@ -166,7 +183,7 @@ const AllGroupsScreen = () => {
       <Text variant="bodySmall" style={styles.members}>
         {item.membersCount} members • {item.privacy}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderFooter = () => {

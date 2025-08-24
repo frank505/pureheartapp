@@ -93,6 +93,7 @@ export const Colors = {
   transparent: 'transparent',        // Transparent backgrounds
   white: '#ffffff',                  // Pure white
   black: '#000000',                  // Pure black
+  inactiveTab: '#93acc8',           // Inactive tab color
 } as const;
 
 /**

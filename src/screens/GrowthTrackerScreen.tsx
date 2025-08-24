@@ -4,7 +4,7 @@
  * A dedicated screen to display the user's spiritual growth progress,
  * visualized as a growing plant with the number of days of their journey.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -17,52 +17,46 @@ import {
   TouchableOpacity
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAppSelector } from '../store/hooks';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { setCurrentStreak } from '../store/slices/streaksSlice';
 import { Colors } from '../constants';
 import Icon from '../components/Icon';
+import FractalTree from '../components/FractalTree';
 import { useNavigation } from '@react-navigation/native';
 
 // Get screen dimensions
 const { width, height } = Dimensions.get('window');
 
 const GrowthTrackerScreen: React.FC = () => {
-  // Mock data for demonstration - in a real app, this would come from user's data
-  const [daysActive, setDaysActive] = useState(0);
   const animatedValue = useRef(new Animated.Value(0)).current;
   const navigation = useNavigation();
+  const dispatch = useAppDispatch();
   
-  // Get user data from Redux store
+  // Get user data and streaks from Redux store
   const user = useAppSelector((state) => state.user.currentUser);
+  const { streaks } = useAppSelector((state) => state.streaks);
+  const currentStreak = streaks?.currentStreak ?? 0;
+  
+  // Hide default navigation header to avoid double headers
+  useLayoutEffect(() => {
+    // @ts-ignore - navigation type may not include setOptions in this context
+    navigation.setOptions?.({ headerShown: false });
+  }, [navigation]);
   
   useEffect(() => {
-    // Calculate days active since join date
-    if (user?.joinDate) {
-      const joinDate = new Date(user.joinDate);
-      const today = new Date();
-      const diffTime = Math.abs(today.getTime() - joinDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      setDaysActive(diffDays);
-    } else if (user?.stats?.daysActive) {
-      // If we have stats already calculated
-      setDaysActive(user.stats.daysActive);
-    } else {
-      // Fallback for demo purposes
-      setDaysActive(30);
-    }
-    
-    // Animate the plant growth
+    // Animate the plant growth whenever streak changes
     Animated.timing(animatedValue, {
       toValue: 1,
       duration: 1500,
       useNativeDriver: true,
     }).start();
-  }, [user]);
+  }, [currentStreak]);
   
-  // Calculate plant growth stage (simplified for demo)
+  // Calculate plant growth stage based on streak
   const getPlantStage = () => {
-    if (daysActive < 7) return 'seed';
-    if (daysActive < 30) return 'sprout';
-    if (daysActive < 90) return 'plant';
+    if (currentStreak < 7) return 'seed';
+    if (currentStreak < 30) return 'sprout';
+    if (currentStreak < 90) return 'plant';
     return 'tree';
   };
   
@@ -98,10 +92,48 @@ const GrowthTrackerScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Your Growth Journey</Text>
-        <Text style={styles.subtitle}>
-          {daysActive} {daysActive === 1 ? 'Day' : 'Days'} of Growth
-        </Text>
+        <View style={styles.titleContainer}>
+          <Animated.View 
+            style={[
+              styles.titleContent,
+              {
+                opacity: animatedValue,
+                transform: [{
+                  translateY: animatedValue.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [20, 0]
+                  })
+                }]
+              }
+            ]}
+          >
+            <Text style={[styles.title, { fontSize: 34, color: Colors.secondary.main, textShadowColor: '#000', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 6, letterSpacing: 1.2 }]}>🌱 Your Growth Journey 🌱</Text>
+            <Text style={[styles.subtitle, { fontSize: 22, fontWeight: '700', color: Colors.primary.main, marginBottom: 10 }]}> 
+              {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'} of Growth
+            </Text>
+            {/* Scripture for each day */}
+            <Text style={{ fontSize: 16, color: Colors.text.secondary, fontStyle: 'italic', textAlign: 'center', marginBottom: 20 }}>
+              {(() => {
+                // Example scripture mapping, can be expanded
+                const scriptures = [
+                  'Philippians 4:13 - I can do all things through Christ who strengthens me.',
+                  'Joshua 1:9 - Be strong and courageous. Do not be afraid; do not be discouraged.',
+                  'Psalm 1:3 - He is like a tree planted by streams of water, which yields its fruit in season.',
+                  'Isaiah 40:31 - Those who hope in the Lord will renew their strength.',
+                  'Proverbs 3:5 - Trust in the Lord with all your heart and lean not on your own understanding.',
+                  'Matthew 19:26 - With God all things are possible.',
+                  'Romans 12:2 - Be transformed by the renewing of your mind.',
+                  'Galatians 6:9 - Let us not become weary in doing good.',
+                  'Psalm 23:1 - The Lord is my shepherd; I shall not want.',
+                  'Jeremiah 29:11 - For I know the plans I have for you, declares the Lord.'
+                ];
+                // Pick scripture based on currentStreak, cycle if more than available
+                return scriptures[(currentStreak - 1) % scriptures.length];
+              })()}
+            </Text>
+          </Animated.View>
+          <View style={styles.decorativeLine} />
+        </View>
         
         <View style={styles.plantContainer}>
           <View style={styles.soil} />
@@ -114,92 +146,133 @@ const GrowthTrackerScreen: React.FC = () => {
               }
             ]}
           >
-            {plantStage === 'seed' && (
-              <View style={styles.seedContainer}>
-                <View style={styles.seed}>
-                  <View style={styles.seedInner} />
-                </View>
-                <View style={styles.soilMound} />
-              </View>
-            )}
-            
-            {plantStage === 'sprout' && (
-              <View style={styles.sproutContainer}>
-                <View style={styles.stem} />
-                <View style={[styles.leaf, styles.leafLeft]} />
-                <View style={[styles.leaf, styles.leafRight]} />
-                <View style={styles.soilMound} />
-              </View>
-            )}
-            
-            {plantStage === 'plant' && (
-              <View style={styles.plantFullContainer}>
-                <View style={styles.tallStem} />
-                <View style={[styles.leaf, styles.leafLeft, styles.leafBottom]} />
-                <View style={[styles.leaf, styles.leafRight, styles.leafBottom]} />
-                <View style={[styles.leaf, styles.leafLeft, styles.leafMiddle]} />
-                <View style={[styles.leaf, styles.leafRight, styles.leafMiddle]} />
-                <View style={[styles.leaf, styles.leafTop]} />
-                <View style={styles.flower} />
-                <View style={styles.soilMound} />
-              </View>
-            )}
-            
-            {plantStage === 'tree' && (
-              <View style={styles.treeContainer}>
-                <View style={styles.trunk} />
-                <View style={styles.treeBranch1} />
-                <View style={styles.treeBranch2} />
-                <View style={styles.treeBranch3} />
-                <View style={styles.treeCrown1} />
-                <View style={styles.treeCrown2} />
-                <View style={styles.treeCrown3} />
-                <View style={styles.treeCrown4} />
-                <View style={styles.soilMound} />
-              </View>
-            )}
+            <FractalTree 
+              level={Math.min(currentStreak, 90) / 10} 
+              maxLevel={9} 
+            />
           </Animated.View>
+          <View style={styles.controlsContainer}>
+           
+          </View>
         </View>
         
         <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{daysActive}</Text>
-            <Text style={styles.statLabel}>Days</Text>
+          <View style={styles.statCard}>
+            <View style={styles.statIconContainer}>
+              <Icon name="calendar-outline" size="md" color={Colors.primary.main} />
+            </View>
+            <View style={styles.statContent}>
+              <Text style={styles.statValue}>{currentStreak}</Text>
+              <Text style={styles.statLabel}>Days</Text>
+            </View>
           </View>
           
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{plantStage}</Text>
-            <Text style={styles.statLabel}>Growth Stage</Text>
+          <View style={styles.statCard}>
+            <View style={styles.statIconContainer}>
+              <Icon name="leaf-outline" size="md" color={Colors.primary.main} />
+            </View>
+            <View style={styles.statContent}>
+              <Text style={styles.statValue}>{plantStage}</Text>
+              <Text style={styles.statLabel}>Stage</Text>
+            </View>
           </View>
           
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{Math.min(100, Math.round(daysActive / 90 * 100))}%</Text>
-            <Text style={styles.statLabel}>Progress</Text>
+          <View style={styles.statCard}>
+            <View style={styles.statIconContainer}>
+              <Icon name="trending-up-outline" size="md" color={Colors.primary.main} />
+            </View>
+            <View style={styles.statContent}>
+              <Text style={styles.statValue}>{Math.min(100, Math.round(currentStreak / 90 * 100))}%</Text>
+              <Text style={styles.statLabel}>Progress</Text>
+            </View>
           </View>
         </View>
         
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>Growth Milestones</Text>
-          <View style={styles.milestone}>
-            <View style={[styles.milestoneIcon, { backgroundColor: daysActive >= 7 ? Colors.secondary.main : Colors.background.secondary }]} />
-            <View style={styles.milestoneContent}>
-              <Text style={styles.milestoneName}>Sprouting</Text>
-              <Text style={styles.milestoneDesc}>7 days of consistent growth</Text>
+          <View style={styles.milestoneProgress}>
+            <View style={styles.progressLine}>
+              <View style={[styles.progressFill, { width: `${Math.min(100, (currentStreak / 90) * 100)}%` }]} />
             </View>
           </View>
-          <View style={styles.milestone}>
-            <View style={[styles.milestoneIcon, { backgroundColor: daysActive >= 30 ? Colors.secondary.main : Colors.background.secondary }]} />
-            <View style={styles.milestoneContent}>
-              <Text style={styles.milestoneName}>Taking Root</Text>
-              <Text style={styles.milestoneDesc}>30 days of consistent growth</Text>
+          
+          <View style={styles.milestonesContainer}>
+
+              <View style={[styles.milestone, currentStreak >= 7 && styles.achievedMilestone]}>
+              <View style={styles.milestoneIconContainer}>
+                <View style={[styles.milestoneIcon, { backgroundColor: currentStreak >= 7 ? Colors.secondary.main : Colors.background.secondary }]} />
+                <Icon name="radio-button-on-outline" size="xs" color={currentStreak >= 7 ? Colors.white : Colors.text.secondary} />
+              </View>
+              <View style={styles.milestoneContent}>
+                <Text style={[styles.milestoneName, currentStreak >= 7 && styles.achievedMilestoneName]}>First Sprout</Text>
+                <Text style={styles.milestoneDesc}>7 days - Beginning of your journey</Text>
+                {currentStreak >= 7 && <Text style={styles.achievementDate}>Achieved!</Text>}
+              </View>
             </View>
-          </View>
-          <View style={styles.milestone}>
-            <View style={[styles.milestoneIcon, { backgroundColor: daysActive >= 90 ? Colors.secondary.main : Colors.background.secondary }]} />
-            <View style={styles.milestoneContent}>
-              <Text style={styles.milestoneName}>Flourishing</Text>
-              <Text style={styles.milestoneDesc}>90 days of consistent growth</Text>
+
+            <View style={[styles.milestone, currentStreak >= 21 && styles.achievedMilestone]}>
+              <View style={styles.milestoneIconContainer}>
+                <View style={[styles.milestoneIcon, { backgroundColor: currentStreak >= 21 ? Colors.secondary.main : Colors.background.secondary }]} />
+                <Icon name="leaf" size="sm" color={currentStreak >= 21 ? Colors.white : Colors.text.secondary} />
+              </View>
+              <View style={styles.milestoneContent}>
+                <Text style={[styles.milestoneName, currentStreak >= 21 && styles.achievedMilestoneName]}>Growing Leaves</Text>
+                <Text style={styles.milestoneDesc}>21 days - Developing healthy habits</Text>
+                {currentStreak >= 21 && <Text style={styles.achievementDate}>Achieved!</Text>}
+              </View>
             </View>
+
+                      
+
+            <View style={[styles.milestone, currentStreak >= 21 && styles.achievedMilestone]}>
+              <View style={styles.milestoneIconContainer}>
+                <View style={[styles.milestoneIcon, { backgroundColor: currentStreak >= 21 ? Colors.secondary.main : Colors.background.secondary }]} />
+                <Icon name="leaf-outline" size="xs" color={currentStreak >= 21 ? Colors.white : Colors.text.secondary} />
+              </View>
+              <View style={styles.milestoneContent}>
+                <Text style={[styles.milestoneName, currentStreak >= 21 && styles.achievedMilestoneName]}>Growing Leaves</Text>
+                <Text style={styles.milestoneDesc}>21 days - Developing healthy habits</Text>
+                {currentStreak >= 21 && <Text style={styles.achievementDate}>Achieved!</Text>}
+              </View>
+            </View>
+
+            <View style={[styles.milestone, currentStreak >= 30 && styles.achievedMilestone]}>
+              <View style={styles.milestoneIconContainer}>
+                <View style={[styles.milestoneIcon, { backgroundColor: currentStreak >= 30 ? Colors.secondary.main : Colors.background.secondary }]} />
+                <Icon name="git-branch-outline" size="xs" color={currentStreak >= 30 ? Colors.white : Colors.text.secondary} />
+              </View>
+              <View style={styles.milestoneContent}>
+                <Text style={[styles.milestoneName, currentStreak >= 30 && styles.achievedMilestoneName]}>Deep Roots</Text>
+                <Text style={styles.milestoneDesc}>30 days - Strong foundation formed</Text>
+                {currentStreak >= 30 && <Text style={styles.achievementDate}>Achieved!</Text>}
+              </View>
+            </View>
+
+            <View style={[styles.milestone, currentStreak >= 60 && styles.achievedMilestone]}>
+              <View style={styles.milestoneIconContainer}>
+                <View style={[styles.milestoneIcon, { backgroundColor: currentStreak >= 60 ? Colors.secondary.main : Colors.background.secondary }]} />
+                <Icon name="resize-outline" size="xs" color={currentStreak >= 60 ? Colors.white : Colors.text.secondary} />
+              </View>
+              <View style={styles.milestoneContent}>
+                <Text style={[styles.milestoneName, currentStreak >= 60 && styles.achievedMilestoneName]}>Branching Out</Text>
+                <Text style={styles.milestoneDesc}>60 days - Expanding your growth</Text>
+                {currentStreak >= 60 && <Text style={styles.achievementDate}>Achieved!</Text>}
+              </View>
+            </View>
+
+            <View style={[styles.milestone, currentStreak >= 90 && styles.achievedMilestone]}>
+              <View style={styles.milestoneIconContainer}>
+                <View style={[styles.milestoneIcon, { backgroundColor: currentStreak >= 90 ? Colors.secondary.main : Colors.background.secondary }]} />
+                <Icon name="flower-outline" size="xs" color={currentStreak >= 90 ? Colors.white : Colors.text.secondary} />
+              </View>
+              <View style={styles.milestoneContent}>
+                <Text style={[styles.milestoneName, currentStreak >= 90 && styles.achievedMilestoneName]}>Flourishing Tree</Text>
+                <Text style={styles.milestoneDesc}>90 days - Full spiritual maturity</Text>
+                {currentStreak >= 90 && <Text style={styles.achievementDate}>Achieved!</Text>}
+              </View>
+            </View>
+
+        
           </View>
         </View>
       </ScrollView>
@@ -211,6 +284,90 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background.primary,
+  },
+  milestoneProgress: {
+    height: 4,
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 2,
+    marginBottom: 25,
+    overflow: 'hidden',
+  },
+  progressLine: {
+    height: '100%',
+    backgroundColor: Colors.background.secondary,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: Colors.secondary.main,
+    borderRadius: 2,
+  },
+  milestonesContainer: {
+    gap: 20,
+  },
+  achievedMilestone: {
+    backgroundColor: Colors.background.tertiary,
+    borderRadius: 12,
+    padding: 15,
+  },
+  milestoneIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.background.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+    position: 'relative',
+  },
+  achievedMilestoneName: {
+    color: Colors.secondary.main,
+  },
+  achievementDate: {
+    fontSize: 12,
+    color: Colors.secondary.main,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  statCard: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 16,
+    padding: 16,
+    width: 100,
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  statIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.background.tertiary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statContent: {
+    alignItems: 'center',
+  },
+  titleContainer: {
+    alignItems: 'center',
+    marginBottom: 30,
+    position: 'relative',
+  },
+  titleContent: {
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  decorativeLine: {
+    width: 60,
+    height: 3,
+    backgroundColor: Colors.secondary.main,
+    borderRadius: 1.5,
   },
   header: {
     flexDirection: 'row',
@@ -254,11 +411,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   plantContainer: {
-    width: width * 0.7,
-    height: width * 0.7,
+    width: width * 0.9,
+    height: width * 0.9,
     alignItems: 'center',
     justifyContent: 'flex-end',
     marginBottom: 40,
+    position: 'relative',
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   soil: {
     width: width * 0.5,
@@ -268,14 +434,15 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 100,
     position: 'absolute',
     bottom: 0,
+    zIndex: 2, // Ensure soil appears above tree base
   },
   plantImageContainer: {
-    width: width * 0.4,
-    height: width * 0.4,
+    width: width * 0.7, // Increased width to match container
+    height: width * 0.75, // Increased height for better proportions
     alignItems: 'center',
     justifyContent: 'flex-end',
     position: 'absolute',
-    bottom: 15,
+    bottom: 10, // Adjusted to connect with soil
   },
   seedContainer: {
     width: 40,
@@ -463,21 +630,24 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     width: '100%',
     marginBottom: 30,
+    paddingHorizontal: 10,
   },
   statItem: {
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: Colors.primary.main,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 10,
     color: Colors.text.secondary,
+    textAlign: 'center',
   },
   infoCard: {
     backgroundColor: Colors.background.secondary,
@@ -498,9 +668,9 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   milestoneIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     marginRight: 15,
   },
   milestoneContent: {
@@ -515,6 +685,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.text.secondary,
   },
+  controlsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    position: 'absolute',
+    bottom: -50,
+    left: 0,
+    right: 0,
+    gap: 20,
+  },
+  controlButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary.main,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  controlButtonText: {
+    color: Colors.white,
+    fontSize: 24,
+    fontWeight: 'bold',
+  }
 });
 
 export default GrowthTrackerScreen;

@@ -38,11 +38,7 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
     const me = Number(currentUser.id);
     return me === ownerId;
   }, [currentUser, ownerId]);
-
-  useEffect(() => {
-    navigation?.setOptions?.({ headerShown: false });
-  }, [navigation]);
-
+ 
   const loadMessages = useCallback(
     async (reset = false) => {
       if (!groupId) return;
@@ -67,10 +63,6 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
     },
     [groupId, nextCursor]
   );
-
-  useEffect(() => {
-    loadMessages(true);
-  }, [loadMessages]);
 
   const loadMembers = useCallback(async (reset = false) => {
     if (!groupId) return;
@@ -101,6 +93,13 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
   }, [loadMembers]);
 
   const closeMembers = useCallback(() => setMembersVisible(false), []);
+
+  // Initial data loads
+  useEffect(() => {
+    loadMessages(true);
+  }, [loadMessages]);
+
+  // Remove navigation.setOptions, use custom header below
 
   const handleKick = useCallback(
     async (targetUserId: number) => {
@@ -220,18 +219,16 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
   }, [refreshing, loadMessages]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+      {/* Custom Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
-          <Icon name={Icons.navigation.back.name} />
+        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backButton}>
+          <Icon name={Icons.navigation.back.name} color={Colors.text.primary} size="md" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{groupName || 'Group Chat'}</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerIconButton} onPress={openMembers}>
-            <Icon name={Icons.tabs.accountability.name} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.headerIconButton} onPress={openMembers}>
+          <Icon name={Icons.tabs.accountability.name} />
+        </TouchableOpacity>
       </View>
 
       {/* Messages List */}
@@ -346,10 +343,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border.primary,
+    backgroundColor: Colors.background.primary,
+    // Add paddingTop for iPhone notch safety (SafeAreaView edges top, but for Android fallback)
+    paddingTop: 0,
   },
-  backButton: { padding: 8 },
-  headerTitle: { flex: 1, textAlign: 'center', color: Colors.text.primary, fontWeight: '700', fontSize: 16 },
-  headerActions: { width: 40, alignItems: 'flex-end' },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text.primary,
+    textAlign: 'center',
+    flex: 1,
+  },
   headerIconButton: { padding: 6 },
   msgRow: { flexDirection: 'row', marginBottom: 8 },
   msgRowMine: { justifyContent: 'flex-end' },

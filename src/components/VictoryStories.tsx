@@ -15,9 +15,12 @@ const VictoryStories = ({ navigation }: any) => {
   }, [dispatch]);
 
   const renderStory = ({ item }: { item: Victory }) => (
-    <View style={[styles.storyCard, { backgroundColor: getRandomColor() }]}>
+    <TouchableOpacity 
+      onPress={() => navigation.navigate('VictoryDetails', { victoryId: item.id })}
+      style={[styles.storyCard, { backgroundColor: getRandomColor() }]}
+    >
       <Text style={styles.storyText}>{item.title}</Text>
-    </View>
+    </TouchableOpacity>
   );
 
   const getRandomColor = () => {

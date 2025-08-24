@@ -13,8 +13,9 @@
  */
 
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import deviceTokenService from '../../services/deviceTokenService';
 
 /**
  * User Interface
@@ -114,6 +115,12 @@ export const loginUser = createAsyncThunk(
       // Save the access token to AsyncStorage
       await AsyncStorage.setItem('userToken', tokens.accessToken);
 
+      // Register FCM token if available
+      const fcmToken = await AsyncStorage.getItem('fcm_token');
+      if (fcmToken) {
+        await deviceTokenService.register(fcmToken, Platform.OS);
+      }
+
       return user;
     } catch (error: any) {
       if (error.response) {
@@ -149,6 +156,12 @@ export const loginUserWithApple = createAsyncThunk(
 
       // Save the access token to AsyncStorage
       await AsyncStorage.setItem('userToken', tokens.accessToken);
+
+      // Register FCM token if available
+      const fcmToken = await AsyncStorage.getItem('fcm_token');
+      if (fcmToken) {
+        await deviceTokenService.register(fcmToken, Platform.OS);
+      }
 
       return user;
     } catch (error: any) {
@@ -221,6 +234,16 @@ const userSlice = createSlice({
      * This is a synchronous action.
      */
     logout: (state) => {
+      // Deactivate device token if it exists
+      AsyncStorage.getItem('fcm_token').then((token) => {
+        if (token) {
+          deviceTokenService.deactivate(token).catch(() => undefined);
+        }
+      });
+
+      // Clear FCM token from AsyncStorage
+      AsyncStorage.removeItem('fcm_token').catch(() => undefined);
+
       state.currentUser = null;
       state.isAuthenticated = false;
       state.error = null;

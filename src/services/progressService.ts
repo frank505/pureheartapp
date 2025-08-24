@@ -41,6 +41,31 @@ export interface CalendarData {
   };
 }
 
+export interface Feature {
+  key: string;
+  thresholdDays: number;
+  unlocked: boolean;
+  currentCheckInStreak: number;
+  longestCheckInStreak: number;
+  remainingDays: number;
+}
+
+export interface Badge {
+  id: number;
+  code: string;
+  title: string;
+  description: string;
+  icon: string;
+  tier: string;
+  unlocked: boolean;
+  unlockedAt: string | null;
+}
+
+export interface FeaturesAndBadgesData {
+  features: Feature[];
+  badges: Badge[];
+}
+
 const getAchievements = async (): Promise<Achievement[]> => {
   const response = await api.get<IAPIResponse<{ items: Achievement[] }>>('/progress/achievements');
   if (response.data.success) {
@@ -65,8 +90,17 @@ const getCalendar = async (month: string): Promise<CalendarData> => {
   throw new Error(response.data.message);
 };
 
+const getFeaturesAndBadges = async (): Promise<FeaturesAndBadgesData> => {
+  const response = await api.get<IAPIResponse<FeaturesAndBadgesData>>('/progress/features-and-badges');
+  if (response.data.success) {
+    return response.data.data;
+  }
+  throw new Error(response.data.message);
+};
+
 export const progressService = {
   getAchievements,
   getAnalytics,
   getCalendar,
+  getFeaturesAndBadges,
 };

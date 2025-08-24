@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Colors } from '../constants';
 import Icon from './Icon';
@@ -14,22 +14,39 @@ import ProfileDropdown from './ProfileDropdown';
 
 interface ScreenHeaderProps {
   title: string;
-  iconName: string;
+  iconName?: string;
   iconColor?: string;
   navigation?: any;
+  showBackButton?: boolean;
 }
 
 const ScreenHeader: React.FC<ScreenHeaderProps> = ({ 
   title, 
   iconName, 
   iconColor = Colors.primary.main,
-  navigation 
+  navigation,
+  showBackButton = false
 }) => {
   return (
     <View style={styles.headerContent}>
-      <View style={styles.headerIconContainer}>
-        <Icon name={iconName} color={iconColor} size="sm" />
-      </View>
+      <TouchableOpacity
+        style={styles.headerIconContainer}
+        onPress={() => {
+          if (showBackButton) {
+            navigation?.goBack();
+          } else if (navigation?.toggleDrawer) {
+            navigation.toggleDrawer();
+          } else if (navigation?.openDrawer) {
+            navigation.openDrawer();
+          }
+        }}
+      >
+        <Icon 
+          name={showBackButton ? "arrow-back" : iconName || ""} 
+          color={iconColor} 
+          size="sm" 
+        />
+      </TouchableOpacity>
       <Text style={styles.headerTitle}>{title}</Text>
       <ProfileDropdown navigation={navigation} />
     </View>

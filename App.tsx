@@ -8,6 +8,8 @@
  * @format
  */
 
+// speech to text key....
+
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -16,29 +18,18 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as StoreProvider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { Provider as PaperProvider, DefaultTheme, MD3DarkTheme } from 'react-native-paper';
+import deviceTokenService from './src/services/deviceTokenService';
+import type { DevicePlatform } from './src/types/device';
 
 // Import Redux store and persistor
 import { store, persistor } from './src/store';
 
-// Import our custom tab navigator and screens
-import TabNavigator from './src/navigation/TabNavigator';
+// Import our custom navigators and screens
+import RootNavigator from './src/navigation/RootNavigator';
 import OnboardingNavigator from './src/navigation/OnboardingNavigator';
 import AuthScreen from './src/screens/AuthScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
-import ProfileSettingsScreen from './src/screens/ProfileSettingsScreen';
-import SubscriptionScreen from './src/screens/SubscriptionScreen';
-import NewGroupScreen from './src/screens/NewGroupScreen';
-import AICompanionScreen from './src/screens/AICompanionScreen';
-import GroupChatScreen from './src/screens/GroupChatScreen';
-import PartnersListScreen from './src/screens/PartnersListScreen';
-import CheckInHistoryScreen from './src/screens/CheckInHistoryScreen';
-import PrayerRequestsScreen from './src/screens/PrayerRequestsScreen';
-import NotificationsCenterScreen from './src/screens/NotificationsCenterScreen';
-import ScriptureBrowserScreen from './src/screens/ScriptureBrowserScreen';
-import AIChatScreen from './src/screens/AIChatScreen';
-import GrowthTrackerScreen from './src/screens/GrowthTrackerScreen';
-import EditPartnerPhoneScreen from './src/screens/EditPartnerPhoneScreen';
 import InvitationAcceptModal from './src/components/InvitationAcceptModal';
 import ShareInvitationModal from './src/components/ShareInvitationModal';
 
@@ -63,6 +54,25 @@ const Stack = createNativeStackNavigator();
 // App Theme Configuration using centralized colors
 const appTheme = {
   ...MD3DarkTheme,
+  fonts: {
+    ...MD3DarkTheme.fonts,
+    regular: {
+      fontFamily: 'Poppins-Regular',
+      fontWeight: '400',
+    },
+    medium: {
+      fontFamily: 'Poppins-Medium',
+      fontWeight: '500',
+    },
+    light: {
+      fontFamily: 'Poppins-Light',
+      fontWeight: '300',
+    },
+    thin: {
+      fontFamily: 'Poppins-Thin',
+      fontWeight: '100',
+    },
+  },
   colors: {
     ...MD3DarkTheme.colors,
     primary: Theme.primary,
@@ -104,16 +114,33 @@ const AppContent: React.FC = () => {
 
   // iOS push notification handling: navigate to group chat when tapped
   useEffect(() => {
+    const getDevicePlatform = (): DevicePlatform | null => {
+      if (Platform.OS === 'ios') return 'ios';
+      if (Platform.OS === 'android') return 'android';
+      return null;
+    };
+
     // Request permission on iOS
     if (Platform.OS === 'ios') {
       messaging().requestPermission().catch(() => undefined);
       messaging().getToken().then((token: string) => {
         if (token) {
-          // Store or send to backend later
+          // Register token with backend
+          deviceTokenService.register(token, 'ios').catch(() => undefined);
           AsyncStorage.setItem('fcm_token', token).catch(() => undefined);
         }
       });
     }
+
+    // Handle token refresh
+    const unsubscribeTokenRefresh = messaging().onTokenRefresh((token) => {
+      // Register new token with backend
+      const p = getDevicePlatform();
+      if (p) {
+        deviceTokenService.register(token, p).catch(() => undefined);
+      }
+      AsyncStorage.setItem('fcm_token', token).catch(() => undefined);
+    });
 
     // Foreground message handler (optional preview)
     const unsubscribeOnMessage = messaging().onMessage(async () => {
@@ -213,28 +240,7 @@ const AppContent: React.FC = () => {
           animation: 'slide_from_right',
         }}
       >
-        <Stack.Screen name="TabNavigator" component={TabNavigator} />
-        <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
-        <Stack.Screen name="Subscription" component={SubscriptionScreen} />
-        <Stack.Screen name="NewGroup" component={NewGroupScreen} />
-        <Stack.Screen name="AICompanion" component={AICompanionScreen} />
-        <Stack.Screen name="GroupChat" component={GroupChatScreen} />
-        <Stack.Screen name="PartnersList" component={PartnersListScreen} />
-        <Stack.Screen name="CheckInHistory" component={CheckInHistoryScreen} />
-        <Stack.Screen name="PrayerRequests" component={PrayerRequestsScreen} />
-        <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} />
-        <Stack.Screen name="ScriptureBrowser" component={ScriptureBrowserScreen} />
-        <Stack.Screen name="AIChat" component={AIChatScreen} />
-        <Stack.Screen 
-          name="GrowthTracker" 
-          component={GrowthTrackerScreen} 
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="EditPartnerPhone" 
-          component={EditPartnerPhoneScreen}
-          options={{ headerShown: false }}
-        />
+        <Stack.Screen name="Root" component={RootNavigator} />
       </Stack.Navigator>
     );
   };

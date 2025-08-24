@@ -40,22 +40,44 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      // Check if user is still authenticated before dispatching logout
-      const { user } = store.getState();
-      if (user.isAuthenticated) {
-        // Dispatch logout action
-        store.dispatch(logout());
+    
+    if (error.response) {
+      // Handle 401 (Unauthorized) errors
+      if (error.response.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+        // Check if user is still authenticated before dispatching logout
+        const { user } = store.getState();
+        if (user.isAuthenticated) {
+          // Dispatch logout action
+          store.dispatch(logout());
+          
+          // Show alert to user
+          Alert.alert(
+            'Session Expired',
+            'Your session has expired. Please log in again.',
+            [{ text: 'OK' }]
+          );
+          
+          await AsyncStorage.removeItem('userToken');
+        }
+      }
+      
+      // Handle 403 (Forbidden) errors
+      if (error.response.status === 403) {
+        const message = error.response.data?.message;
+        // Modify the error message to be more user-friendly
+        const modifiedError = new Error();
+        modifiedError.message = message || 'You do not have permission to perform this action.';
         
         // Show alert to user
         Alert.alert(
-          'Session Expired',
-          'Your session has expired. Please log in again.',
+          'Access Denied',
+          modifiedError.message,
           [{ text: 'OK' }]
         );
         
-        await AsyncStorage.removeItem('userToken');
+        // Replace the default axios error message
+        error.message = modifiedError.message;
       }
     }
     
