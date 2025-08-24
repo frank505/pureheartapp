@@ -44,8 +44,15 @@ export type RootStackParamList = {
   NewGroup: undefined;
   PublicVictories: undefined;
   StartFast: undefined;
+  ConfigureFast: { 
+    fastType: 'daily' | 'nightly' | 'weekly' | 'custom' | 'breakthrough';
+  };
   NewFast: { 
     fastType: 'daily' | 'nightly' | 'weekly' | 'custom' | 'breakthrough';
+    startTime?: string;
+    endTime?: string;
+    selectedDays?: string[];
+  frequency?: 'daily' | 'weekly';
   };
   LearnFasting: undefined;
   PrayerRequestDetail: { requestId: string };

@@ -6,6 +6,10 @@ import FastingScreen from '../screens/FastingScreen';
 import PastFastsScreen from '../screens/PastFastsScreen';
 import FastDetailScreen from '../screens/FastDetailScreen';
 import ActivelyFastingScreen from '../screens/ActivelyFastingScreen';
+import FastJournalsListScreen from '../screens/FastJournalsListScreen';
+import FastJournalDetailScreen from '../screens/FastJournalDetailScreen';
+import PartnerFastingHubScreen from '../screens/PartnerFastingHubScreen';
+import PartnerUserJournalsScreen from '../screens/PartnerUserJournalsScreen';
 import { View, ActivityIndicator } from 'react-native';
 import { Colors } from '../constants';
 import fastingService from '../services/fastingService';
@@ -13,16 +17,28 @@ import StartFastScreen from '../screens/StartFastScreen';
 import NewFastScreen from '../screens/NewFastScreen';
 import FastMonitorScreen from '../screens/FastMonitorScreen';
 import {Alert} from 'react-native';
+import ConfigureFastScreen from '../screens/ConfigureFastScreen';
 
 export type FastingStackParamList = {
   FastingEntry: undefined;
   FastingList: undefined;
   PastFasts: undefined;
   ActivelyFasting: undefined;
+  FastJournalsList: { fastId: number };
+  FastJournalDetail: { fastId: number; journalId: number };
+  PartnerFastingHub: undefined;
+  PartnerJournalsForUser: { userId: number };
   StartFast: undefined;
+  ConfigureFast: {
+    fastType: 'daily' | 'nightly' | 'weekly' | 'custom' | 'breakthrough';
+  };
   NewFast: {
-    fastType: string;
+    fastType: 'daily' | 'nightly' | 'weekly' | 'custom' | 'breakthrough';
     duration?: number;
+    startTime?: string;
+    endTime?: string;
+    selectedDays?: string[];
+  frequency?: 'daily' | 'weekly';
   };
   FastMonitor: {
     startDate: Date;
@@ -120,7 +136,12 @@ const FastingNavigator = () => {
       <Stack.Screen name="FastingList" component={FastingScreen} />
   <Stack.Screen name="PastFasts" component={PastFastsScreen} />
   <Stack.Screen name="ActivelyFasting" component={ActivelyFastingScreen} />
+  <Stack.Screen name="FastJournalsList" component={FastJournalsListScreen} />
+  <Stack.Screen name="FastJournalDetail" component={FastJournalDetailScreen} />
+  <Stack.Screen name="PartnerFastingHub" component={PartnerFastingHubScreen} />
+  <Stack.Screen name="PartnerJournalsForUser" component={PartnerUserJournalsScreen} />
       <Stack.Screen name="StartFast" component={StartFastScreen} />
+      <Stack.Screen name="ConfigureFast" component={ConfigureFastScreen} />
       <Stack.Screen name="NewFast" component={NewFastScreen} />
       <Stack.Screen name="FastMonitor" component={FastMonitorScreen} />
   <Stack.Screen name="FastDetail" component={FastDetailScreen} />

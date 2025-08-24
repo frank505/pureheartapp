@@ -6,7 +6,7 @@ import { Icon } from '../components';
 import { Colors } from '../constants';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
+import { FastingStackParamList } from '../navigation/FastingNavigator';
 
 type FastType = 'daily' | 'nightly' | 'weekly' | 'custom' | 'breakthrough';
 
@@ -24,46 +24,46 @@ const fastOptions: FastOption[] = [
     id: 'daily',
     title: 'Daily Fast',
     icon: 'sunny',
-    description: 'A fast from sunrise to sunset.',
-    prayerFocus: 'Gratitude for daily blessings',
-    verse: 'Give thanks in all circumstances; for this is God\'s will for you in Christ Jesus. - 1 Thessalonians 5:18'
+  description: 'Set a daily fasting window (e.g., 9 AM–3 PM) and build consistency every day.',
+  prayerFocus: 'Gratitude and daily obedience',
+  verse: '“Give thanks in all circumstances.” — 1 Thessalonians 5:18'
   },
   {
     id: 'nightly',
     title: 'Nightly Fast',
     icon: 'moon',
-    description: 'A fast from sunset to sunset.',
-    prayerFocus: 'Reflection and repentance',
-    verse: 'Search me, God, and know my heart; test me and know my anxious thoughts. - Psalm 139:23'
+  description: 'Fast overnight by default (6 PM–6 AM) to reset and refocus.',
+  prayerFocus: 'Reflection and renewal',
+  verse: '“Search me, God, and know my heart.” — Psalm 139:23'
   },
   {
     id: 'weekly',
     title: 'Weekly Fast',
     icon: 'calendar',
-    description: 'A fast from sunrise to sunset.',
-    prayerFocus: 'Community and intercession',
-    verse: 'Therefore confess your sins to each other and pray for each other so that you may be healed. - James 5:16'
+  description: 'Choose specific days (e.g., Mon/Wed/Fri) and a time window to fast each week.',
+  prayerFocus: 'Intercession and community',
+  verse: '“Pray for each other so that you may be healed.” — James 5:16'
   },
   {
     id: 'custom',
     title: 'Custom Fast',
     icon: 'time',
-    description: 'A fast from sunrise to sunset.',
-    prayerFocus: 'Personal growth and discernment',
-    verse: 'If any of you lacks wisdom, you should ask God, who gives generously to all without finding fault, and it will be given to you. - James 1:5'
+  description: 'Create a fixed (one-time) fast like 12h/24h/3d, or set a recurring schedule.',
+  prayerFocus: 'Personal growth and discernment',
+  verse: '“If any of you lacks wisdom, ask God.” — James 1:5'
   },
   {
     id: 'breakthrough',
     title: 'Breakthrough: 24-Hour Fast',
-    icon: 'link-broken',
-    description: 'A 24-hour fast, effective for seeking freedom from addictions.',
-    prayerFocus: 'Breaking chains of addiction',
-    verse: 'So if the Son sets you free, you will be free indeed. - John 8:36'
+    icon: 'rocket',
+  description: 'A focused 24-hour fast seeking freedom from strongholds and addictions.',
+  prayerFocus: 'Freedom and deliverance',
+  verse: '“If the Son sets you free, you will be free indeed.” — John 8:36'
   }
 ];
 
 const StartFastScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<FastingStackParamList>>();
 
   const [selectedFastType, setSelectedFastType] = useState<FastType | null>(null);
 
@@ -74,7 +74,7 @@ const StartFastScreen = () => {
 
   const handleNext = () => {
     if (selectedFastType) {
-      navigation.navigate('NewFast', { fastType: selectedFastType });
+      navigation.navigate('ConfigureFast', { fastType: selectedFastType });
     }
   };
 
@@ -89,7 +89,7 @@ const StartFastScreen = () => {
         >
           <Icon name="close" size={24} color={Colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Start a Fast</Text>
+        <Text style={styles.headerTitle}>Select a Fast Type</Text>
         <View style={styles.headerSpacer} />
       </View>
 

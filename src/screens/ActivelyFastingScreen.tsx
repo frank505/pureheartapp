@@ -11,7 +11,6 @@ const pad = (n: number) => String(Math.max(0, Math.floor(n))).padStart(2, '0');
 const ActivelyFastingScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
-  const [paused, setPaused] = useState(false);
   const [start, setStart] = useState<Date | null>(null);
   const [end, setEnd] = useState<Date | null>(null);
   const [goal, setGoal] = useState<string | undefined>(undefined);
@@ -67,8 +66,9 @@ const ActivelyFastingScreen: React.FC = () => {
     return { pct, elapsedH: Math.round((elapsed / 3600000) * 10) / 10, totalH: Math.round((total / 3600000) * 10) / 10 };
   }, [start, end, now]);
 
-  const handlePause = () => {
-    setPaused((p) => !p);
+  const goToJournals = () => {
+    if (!fastId) return;
+    navigation.navigate('FastJournalsList', { fastId });
   };
 
   const handleEnd = async () => {
@@ -82,16 +82,7 @@ const ActivelyFastingScreen: React.FC = () => {
     }
   };
 
-  const handleSaveJournal = () => {
-    const text = journal.trim();
-    if (!text) {
-      Alert.alert('Empty journal', 'Please write something before saving.');
-      return;
-    }
-    // Future: send to backend once endpoint is available
-    Alert.alert('Journal saved', 'Your entry has been saved locally.');
-    setJournal('');
-  };
+  
 
   const dateLabel = useMemo(() => {
     const d = now;
@@ -136,8 +127,8 @@ const ActivelyFastingScreen: React.FC = () => {
       )}
 
       <View style={styles.actionsRow}>
-        <TouchableOpacity style={[styles.btn, styles.btnMuted]} onPress={handlePause}>
-          <Text style={styles.btnText}>{paused ? 'Resume' : 'Pause'}</Text>
+        <TouchableOpacity style={[styles.btn, styles.btnMuted]} onPress={goToJournals}>
+          <Text style={styles.btnText}>Journals</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.btn, styles.btnPrimary]} onPress={handleEnd}>
           <Text style={styles.btnText}>End Fasting</Text>
@@ -169,26 +160,7 @@ const ActivelyFastingScreen: React.FC = () => {
         </View>
       </View>
 
-      <View style={styles.journalWrap}>
-        <Text style={styles.sectionTitle}>Journal</Text>
-        <TextInput
-          value={journal}
-          onChangeText={setJournal}
-          placeholder="Write your reflections, prayers, or progress..."
-          multiline
-          numberOfLines={5}
-          style={styles.journalInput}
-          placeholderTextColor="#93acc8"
-          selectionColor={Colors.primary.main}
-          underlineStyle={{ display: 'none' }}
-          theme={{ colors: { text: Colors.white } }}
-        />
-        <View style={styles.singleActionWrap}>
-          <TouchableOpacity style={[styles.singleAction]} onPress={handleSaveJournal}>
-            <Text style={styles.singleActionText}>Save Journal</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+     
     </SafeAreaView>
   );
 };

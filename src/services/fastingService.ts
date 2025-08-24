@@ -1,5 +1,17 @@
 import api from './api';
-import type { CreateFastPayload, ListFastsResponse, PrayerLogPayload, ProgressLogPayload, UpdateFastPayload, Fast } from '../types/fasting';
+import type {
+  CreateFastPayload,
+  ListFastsResponse,
+  PrayerLogPayload,
+  ProgressLogPayload,
+  UpdateFastPayload,
+  Fast,
+  FastJournal,
+  CreateJournalPayload,
+  JournalComment,
+  CreateCommentPayload,
+  PartnerActiveFasterItem,
+} from '../types/fasting';
 
 const fastingService = {
   async create(payload: CreateFastPayload): Promise<Fast> {
@@ -53,6 +65,48 @@ const fastingService = {
   async addProgress(fastId: number, payload: ProgressLogPayload) {
     const { data } = await api.post(`/fasts/${fastId}/progress`, payload);
     return data.data;
+  },
+
+  // Journals
+  async createJournal(fastId: number, payload: CreateJournalPayload): Promise<FastJournal> {
+    const { data } = await api.post(`/fasts/${fastId}/journals`, payload);
+    return data.data;
+  },
+
+  async listJournals(fastId: number): Promise<FastJournal[]> {
+    const { data } = await api.get(`/fasts/${fastId}/journals`);
+    return data.data?.items ?? data.data ?? data.items ?? data;
+  },
+
+  async getJournal(fastId: number, journalId: number): Promise<FastJournal> {
+    const { data } = await api.get(`/fasts/${fastId}/journals/${journalId}`);
+    return data.data;
+  },
+
+  async deleteJournal(fastId: number, journalId: number): Promise<void> {
+    await api.delete(`/fasts/${fastId}/journals/${journalId}`);
+  },
+
+  // Journal comments
+  async addJournalComment(fastId: number, journalId: number, payload: CreateCommentPayload): Promise<JournalComment> {
+    const { data } = await api.post(`/fasts/${fastId}/journals/${journalId}/comments`, payload);
+    return data.data;
+  },
+
+  async listJournalComments(fastId: number, journalId: number): Promise<JournalComment[]> {
+    const { data } = await api.get(`/fasts/${fastId}/journals/${journalId}/comments`);
+    return data.data?.items ?? data.data ?? data.items ?? data;
+  },
+
+  // Partner views
+  async listActiveFastersForPartner(params?: { page?: number; limit?: number }): Promise<{ items: PartnerActiveFasterItem[]; total: number; page: number; limit: number }> {
+    const { data } = await api.get('/fasts/partners/active', { params });
+    return data.data ?? data;
+  },
+
+  async listPartnerJournalsForUser(userId: number, params?: { page?: number; limit?: number }): Promise<{ items: FastJournal[]; total: number; page: number; limit: number }> {
+    const { data } = await api.get(`/fasts/partners/${userId}/journals`, { params });
+    return data.data ?? data;
   },
 };
 

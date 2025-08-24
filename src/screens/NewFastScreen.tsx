@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,14 +7,20 @@ import { Colors } from '../constants';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { FastingStackParamList } from '../navigation/FastingNavigator';
 import fastingService from '../services/fastingService';
 import { Alert } from 'react-native';
 
 type NewFastScreenRouteProp = RouteProp<RootStackParamList, 'NewFast'>;
 
 const NewFastScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<FastingStackParamList>>();
   const _route = useRoute<NewFastScreenRouteProp>();
+
+  const configuredStartISO = _route.params?.startTime;
+  const configuredEndISO = _route.params?.endTime;
+  const configuredDays = _route.params?.selectedDays ?? [];
+  const configuredFrequency = _route.params?.frequency;
 
   const [goal, setGoal] = useState('');
   const [smartGoal, setSmartGoal] = useState('');
@@ -22,6 +28,59 @@ const NewFastScreen = () => {
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [widgetEnabled, setWidgetEnabled] = useState(false);
   const [inviteAllPartners, setInviteAllPartners] = useState(true);
+
+  const [invalidTimes, setInvalidTimes] = useState<string[]>([]);
+  const [outsideWindowTimes, setOutsideWindowTimes] = useState<string[]>([]);
+
+  const fastWindow = useMemo(() => {
+    if (!configuredStartISO || !configuredEndISO) return null;
+    const start = new Date(configuredStartISO);
+    const end = new Date(configuredEndISO);
+    return { start, end } as const;
+  }, [configuredStartISO, configuredEndISO]);
+
+  const isTimeWithinWindow = (hh: number, mm: number, start: Date, end: Date) => {
+    const t = new Date(start);
+    t.setHours(hh, mm, 0, 0);
+    const sameDayWindow = end.getTime() >= start.getTime();
+    if (sameDayWindow) {
+      return t >= start && t <= end;
+    }
+    // Wraps past midnight: allowed if after start OR before end
+    const endSameDay = new Date(start);
+    endSameDay.setHours(end.getHours(), end.getMinutes(), 0, 0);
+    return t >= start || t <= endSameDay;
+  };
+
+  const validatePrayerTimes = (input: string) => {
+    const raw = input.split(',').map((t) => t.trim()).filter(Boolean);
+    const normalized: string[] = [];
+    const invalid: string[] = [];
+    const outOfWindow: string[] = [];
+    for (const t of raw) {
+      const parsed = parseTimeTo24h(t);
+      if (!parsed) {
+        invalid.push(t);
+        continue;
+      }
+      if (fastWindow) {
+        const [hh, mm] = parsed.split(':').map(Number);
+        if (!isTimeWithinWindow(hh, mm, fastWindow.start, fastWindow.end)) {
+          outOfWindow.push(t);
+          continue;
+        }
+      }
+      normalized.push(parsed);
+    }
+    return { normalized, invalid, outOfWindow } as const;
+  };
+
+  const onPrayerTimesChange = (text: string) => {
+    setPrayerTimes(text);
+    const v = validatePrayerTimes(text);
+    setInvalidTimes(v.invalid);
+    setOutsideWindowTimes(v.outOfWindow);
+  };
 
   // Multi-step slideshow state
   const steps = [
@@ -87,18 +146,7 @@ const NewFastScreen = () => {
 
   const submitCreateFast = async () => {
     try {
-      // Validate and normalize prayer times to HH:mm expected by backend
-      const rawTimes = prayerTimes
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
-      const normalizedTimes: string[] = [];
-      const invalid: string[] = [];
-      for (const t of rawTimes) {
-        const parsed = parseTimeTo24h(t);
-        if (parsed) normalizedTimes.push(parsed);
-        else invalid.push(t);
-      }
+      const { normalized, invalid, outOfWindow } = validatePrayerTimes(prayerTimes);
       if (invalid.length) {
         Alert.alert(
           'Invalid prayer time(s)',
@@ -106,25 +154,91 @@ const NewFastScreen = () => {
         );
         return;
       }
+      if (outOfWindow.length) {
+        Alert.alert(
+          'Prayer times outside fast window',
+          `These times are outside your fast hours and were rejected: ${outOfWindow.join(', ')}`
+        );
+        return;
+      }
 
       setSubmitting(true);
       const now = new Date();
-      const end = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const defaultEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const type = (_route.params?.fastType ?? 'custom') as 'daily' | 'nightly' | 'weekly' | 'custom' | 'breakthrough';
+
+      // Build schedule per backend schema
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      let schedule: any;
+      // Normalize a base window for fixed schedules
+      let startAt = fastWindow ? new Date(fastWindow.start) : now;
+      let endAt = fastWindow ? new Date(fastWindow.end) : new Date(defaultEnd);
+      if (type === 'breakthrough') {
+        // Force 24h window for breakthrough
+        endAt = new Date(startAt.getTime() + 24 * 60 * 60 * 1000);
+      }
+      if (endAt <= startAt) {
+        // Ensure a valid positive duration
+        endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
+      }
+      if (fastWindow) {
+        // Determine if this is likely recurring (daily, nightly, weekly, or custom with frequency) vs fixed
+        const isRecurring = type === 'daily' || type === 'nightly' || type === 'weekly' || (!!configuredFrequency);
+        if (isRecurring) {
+          // Use HH:mm window from configured ISO dates
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          const window = {
+            start: `${pad(fastWindow.start.getHours())}:${pad(fastWindow.start.getMinutes())}`,
+            end: `${pad(fastWindow.end.getHours())}:${pad(fastWindow.end.getMinutes())}`,
+          };
+          schedule = {
+            kind: 'recurring',
+            frequency: configuredFrequency ?? (type === 'weekly' ? 'weekly' : 'daily'),
+            ...(configuredFrequency === 'weekly' || type === 'weekly'
+              ? { daysOfWeek: (configuredDays || []).map((d) => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(d)).filter((n) => n >= 0) }
+              : {}),
+            window,
+            timezone,
+          };
+        } else {
+          schedule = {
+            kind: 'fixed',
+            startAt: startAt.toISOString(),
+            endAt: endAt.toISOString(),
+            timezone,
+          };
+        }
+      } else {
+        // Fallback: create a 24h fixed fast starting now
+        schedule = {
+          kind: 'fixed',
+          startAt: startAt.toISOString(),
+          endAt: endAt.toISOString(),
+          timezone,
+        };
+      }
+
       const payload = {
-        type: _route.params?.fastType ?? 'custom',
+        type,
+        schedule,
         goal: goal?.trim() || undefined,
         smartGoal: smartGoal?.trim() || undefined,
-        prayerTimes: normalizedTimes,
+        prayerTimes: normalized.length ? normalized : undefined,
         verse: undefined,
         prayerFocus: undefined,
+        // legacy fields for compatibility; backend ignores when schedule provided
+  startTime: startAt.toISOString(),
+  endTime: endAt.toISOString(),
         reminderEnabled,
         widgetEnabled,
-        startTime: now.toISOString(),
-        endTime: end.toISOString(),
-        addAccountabilityPartners: inviteAllPartners,
+        addAccountabilityPartners: !!inviteAllPartners,
       } as const;
 
-      await fastingService.create(payload);
+      const sanitized = Object.fromEntries(
+        Object.entries(payload).filter(([, v]) => v !== undefined && v !== null)
+      );
+
+  await fastingService.create(sanitized as any);
       Alert.alert('Fast created', 'Your fast has been created.');
   // Redirect into the Fasting flow entry so it can refetch and route appropriately
   (navigation as any).navigate('FastingEntry');
@@ -137,6 +251,21 @@ const NewFastScreen = () => {
 
   const handleNext = () => {
     if (step < steps.length - 1) {
+      // Block leaving the Prayer Commitment step if there are invalid/out-of-window times
+      if (step === 2) {
+        const v = validatePrayerTimes(prayerTimes);
+        setInvalidTimes(v.invalid);
+        setOutsideWindowTimes(v.outOfWindow);
+        if (v.invalid.length || v.outOfWindow.length) {
+          Alert.alert(
+            'Fix prayer times',
+            v.invalid.length
+              ? `Invalid: ${v.invalid.join(', ')}`
+              : `Outside fast window: ${v.outOfWindow.join(', ')}`
+          );
+          return;
+        }
+      }
       setStep((s) => s + 1);
     } else {
       submitCreateFast();
@@ -217,7 +346,7 @@ const NewFastScreen = () => {
             <View style={styles.inputContainer}>
               <TextInput
                 value={prayerTimes}
-                onChangeText={setPrayerTimes}
+                onChangeText={onPrayerTimesChange}
                 placeholder="Prayer Times (e.g., 06:00, 12:30, 18:00 or 6 AM, 12 PM, 6:30pm)"
                 style={styles.input}
                 placeholderTextColor="#93acc8"
@@ -225,6 +354,16 @@ const NewFastScreen = () => {
                 underlineStyle={{ display: 'none' }}
                 theme={{ colors: { text: Colors.white } }}
               />
+              {!!invalidTimes.length && (
+                <Text style={{ color: '#ff6b6b', marginTop: 6 }}>
+                  Invalid: {invalidTimes.join(', ')}
+                </Text>
+              )}
+              {!!outsideWindowTimes.length && (
+                <Text style={{ color: '#ffb86c', marginTop: 6 }}>
+                  Outside fast window: {outsideWindowTimes.join(', ')}
+                </Text>
+              )}
             </View>
 
             <View style={styles.reminderContainer}>
@@ -458,6 +597,11 @@ const styles = StyleSheet.create({
     flex: 1,
     color: Colors.white,
     fontSize: 16,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 14,
+    marginTop: 8,
   },
 
   footer: {

@@ -56,6 +56,12 @@ const MenuScreen = () => {
                 color: Colors.primary.main,
                 special: 'invite'
               },
+              {
+                icon: 'hourglass-outline',
+                label: 'Fasting (Partners)',
+                onPress: () => (navigation as any)?.navigate('MainTabs', { screen: 'Fasting', params: { screen: 'PartnerFastingHub' } }),
+                color: Colors.secondary.main
+              },
               { 
                 icon: 'people-outline', 
                 label: 'Partners', 
