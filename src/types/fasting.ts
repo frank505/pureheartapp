@@ -30,16 +30,30 @@ export interface ListFastsResponse {
 
 export interface CreateFastPayload {
   type: FastType;
+  schedule: FixedSchedule | RecurringSchedule;
   goal?: string;
   smartGoal?: string;
-  prayerTimes?: string[];
+  prayerTimes?: string[]; // HH:mm strings
   verse?: string;
   prayerFocus?: string;
-  startTime: string; // ISO
-  endTime: string; // ISO
   reminderEnabled?: boolean;
   widgetEnabled?: boolean;
   addAccountabilityPartners?: boolean;
+}
+
+export interface FixedSchedule {
+  kind: 'fixed';
+  startAt: string; // ISO
+  endAt: string;   // ISO
+  timezone?: string;
+}
+
+export interface RecurringSchedule {
+  kind: 'recurring';
+  frequency: 'daily' | 'weekly';
+  daysOfWeek?: number[]; // 0-6, only when frequency=weekly
+  window: { start: string; end: string }; // HH:mm each
+  timezone: string; // required for recurring
 }
 
 export interface UpdateFastPayload {

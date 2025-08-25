@@ -223,12 +223,9 @@ const NewFastScreen = () => {
         schedule,
         goal: goal?.trim() || undefined,
         smartGoal: smartGoal?.trim() || undefined,
-        prayerTimes: normalized.length ? normalized : undefined,
+        prayerTimes: normalized, // backend defaults to [] if omitted
         verse: undefined,
         prayerFocus: undefined,
-        // legacy fields for compatibility; backend ignores when schedule provided
-  startTime: startAt.toISOString(),
-  endTime: endAt.toISOString(),
         reminderEnabled,
         widgetEnabled,
         addAccountabilityPartners: !!inviteAllPartners,
