@@ -1,9 +1,5 @@
-git_url(ENV["MATCH_GIT_URL"])  # Private certificates repo
+git_url(ENV["MATCH_GIT_URL"])
 storage_mode("git")
-
 type("appstore")
-
-username(ENV["FASTLANE_USER"])  # Apple ID used by match
-team_id(ENV["IOS_TEAM_ID"])      # Team ID
-
 app_identifier([ENV["IOS_BUNDLE_ID"]])
+username(ENV["FASTLANE_USER"])

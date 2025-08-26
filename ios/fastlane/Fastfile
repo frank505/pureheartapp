@@ -1,46 +1,36 @@
 default_platform(:ios)
 
 platform :ios do
-  desc "Build and upload to TestFlight"
-  lane :beta do
-  # Prepare CI (keychain, derived data, etc.)
-  setup_ci
-    api_key = app_store_connect_api_key(
-      key_id: ENV["APPSTORE_KEY_ID"],
-      issuer_id: ENV["APPSTORE_ISSUER_ID"],
-      key_filepath: ENV["APPSTORE_KEY_FILE"],
-      duration: 1200,
-      in_house: false
-    )
-
+  desc "Deploy to TestFlight"
+  lane :testflight_deploy do
+    # Automatic code signing with match
     match(
       type: "appstore",
       readonly: true,
       git_url: ENV["MATCH_GIT_URL"],
-      git_branch: ENV["MATCH_GIT_BRANCH"] || "main",
-      git_token: ENV["MATCH_GIT_TOKEN"],
-      app_identifier: [ENV["IOS_BUNDLE_ID"]],
-      username: ENV["FASTLANE_USER"],
-      team_id: ENV["IOS_TEAM_ID"],
-      api_key: api_key
+      git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
     )
-
-  increment_build_number(xcodeproj: "PureHeart.xcodeproj")
-
+    
+    # Increment build number
+    increment_build_number(
+      build_number: latest_testflight_build_number + 1,
+      xcodeproj: "./pureheart.xcodeproj"
+    )
+    
+    # Build the app
     build_app(
-      scheme: "PureHeart",
-      workspace: "PureHeart.xcworkspace",
-      configuration: "Release",
+      workspace: "./pureheart.xcworkspace",
+      scheme: "pureheart",
       export_method: "app-store",
-      clean: true,
-      include_bitcode: false,
-      include_symbols: true
+      configuration: "Release"
     )
-
+    
+    # Upload to TestFlight
     upload_to_testflight(
-      api_key: api_key,
-      skip_submission: true,
-      skip_waiting_for_build_processing: true
+      skip_waiting_for_build_processing: true,
+      apple_id: ENV["FASTLANE_USER"],
+      team_id: ENV["IOS_TEAM_ID"],
+      ipa: "./pureheart.ipa"
     )
   end
 end
