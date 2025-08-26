@@ -18,7 +18,10 @@ platform :ios do
     # Increment build number
     increment_build_number(xcodeproj: "PureHeart.xcodeproj")
     
-    # Build the app with automatic signing
+    # Get the provisioning profile that Match installed
+    profile_name = ENV["sigh_com.100klabs.pureheart_appstore_profile-name"] || "match AppStore com.100klabs.pureheart"
+    
+    # Build the app with manual signing using Match profiles
     build_app(
       workspace: "PureHeart.xcworkspace",
       scheme: "PureHeart",
@@ -27,11 +30,16 @@ platform :ios do
       export_method: "app-store",
       export_options: {
         method: "app-store",
+        provisioningProfiles: {
+          "com.100klabs.pureheart" => profile_name
+        },
+        signingStyle: "manual",
+        teamID: "U8M48L26Z9",
         uploadBitcode: false,
         uploadSymbols: true,
         compileBitcode: false
       },
-      xcargs: "-allowProvisioningUpdates CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=U8M48L26Z9"
+      xcargs: "CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER='#{profile_name}' DEVELOPMENT_TEAM=U8M48L26Z9 CODE_SIGN_IDENTITY='Apple Distribution: Akpu Franklin (U8M48L26Z9)'"
     )
     
     upload_to_testflight(
@@ -49,7 +57,11 @@ platform :ios do
     # Clean build folder
     clear_derived_data
     
-    # Enable automatic signing and build
+    # Get the provisioning profile that Match installed
+    profile_name = ENV["sigh_com.100klabs.pureheart_appstore_profile-name"] || "match AppStore com.100klabs.pureheart"
+    profile_uuid = ENV["sigh_com.100klabs.pureheart_appstore"] || "424e4e8a-f444-4ba9-a2dc-9c919a75c017"
+    
+    # Build with manual signing using Match profiles
     build_app(
       workspace: "PureHeart.xcworkspace",
       scheme: "PureHeart",
@@ -58,7 +70,15 @@ platform :ios do
       skip_package_ipa: true,
       skip_archive: false,
       export_method: "app-store",
-      xcargs: "-allowProvisioningUpdates CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=U8M48L26Z9"
+      export_options: {
+        method: "app-store",
+        provisioningProfiles: {
+          "com.100klabs.pureheart" => profile_name
+        },
+        signingStyle: "manual",
+        teamID: "U8M48L26Z9"
+      },
+      xcargs: "CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER='#{profile_name}' DEVELOPMENT_TEAM=U8M48L26Z9 CODE_SIGN_IDENTITY='Apple Distribution: Akpu Franklin (U8M48L26Z9)'"
     )
   end
   
