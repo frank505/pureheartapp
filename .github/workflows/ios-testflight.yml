@@ -1,141 +1,117 @@
-name: iOS TestFlight Deployment
+name: iOS TestFlight
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-    types: [closed]
-  workflow_dispatch: # Manual trigger
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'web/**'
+      - 'android/**'
+  workflow_dispatch: {}
 
 jobs:
-  build-and-deploy-ios:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true) || github.event_name == 'push'
-    runs-on: macos-latest
-    
+  build-and-deploy:
+    name: Build and Upload to TestFlight
+    runs-on: macos-14
+    timeout-minutes: 60
     env:
+      NODE_VERSION: ${{ secrets.NODE_VERSION }}
+      RUBY_VERSION: ${{ secrets.RUBY_VERSION }}
+      GEM_HOME: vendor/bundle
+      BUNDLE_PATH: vendor/bundle
+      BUNDLE_WITHOUT: development:test
+      # App Store Connect
       APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
       APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
       APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
-      FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
       FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
+      FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
       IOS_BUNDLE_ID: ${{ secrets.IOS_BUNDLE_ID }}
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-      MATCH_GIT_TOKEN: ${{ secrets.MATCH_GIT_TOKEN }}
       MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+      MATCH_GIT_TOKEN: ${{ secrets.MATCH_GIT_TOKEN }}
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-      NODE_VERSION: ${{ secrets.NODE_VERSION }}
-      RUBY_VERSION: ${{ secrets.RUBY_VERSION }}
-      
+  # CocoaPods speeds
+      CP_HOME_DIR: /tmp/.cocoapods
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          submodules: false
 
-      - name: Setup Node.js
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Setup Ruby
+      - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ env.RUBY_VERSION }}
           bundler-cache: true
 
-      - name: Cache Node Modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-legacy-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-legacy-
-            ${{ runner.os }}-node-
+      - name: Install JS deps
+        run: |
+          npm ci --no-audit --no-fund
 
       - name: Cache Pods
         uses: actions/cache@v4
         with:
-          path: ios/Pods
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ${{ env.CP_HOME_DIR }}
           key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-
-
-      - name: Install Node Dependencies
-        run: |
-          echo "Installing Node dependencies with legacy peer deps..."
-          npm ci --legacy-peer-deps
-          echo "✅ Node dependencies installed successfully"
-
-      - name: Verify Node Installation
-        run: |
-          echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
-          echo "Checking key dependencies..."
-          npm list react react-native --depth=0 || true
-
-      - name: Install Bundler and Dependencies
-        run: |
-          echo "Installing Bundler and Ruby dependencies..."
-          gem install bundler
-          bundle install
-          echo "✅ Ruby dependencies installed successfully"
+          restore-keys: ${{ runner.os }}-pods-
 
       - name: Install CocoaPods
+        working-directory: ios
         run: |
-          echo "Installing CocoaPods dependencies..."
-          cd ios
-          pod install --repo-update --verbose
-          echo "✅ CocoaPods installed successfully"
+          gem install cocoapods --no-document
+          pod install --repo-update
 
-      - name: Setup Keychain
+      - name: Install Fastlane
         run: |
-          security create-keychain -p "${{ secrets.MATCH_PASSWORD }}" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "${{ secrets.MATCH_PASSWORD }}" build.keychain
-          security set-keychain-settings -t 3600 -u build.keychain
+          gem install fastlane --no-document
 
-      - name: Build and Deploy to TestFlight
+      - name: Decode App Store Connect Key if base64
+        shell: bash
         run: |
-          echo "Starting iOS build and TestFlight deployment..."
-          bundle exec fastlane ios beta
-          echo "✅ Successfully deployed to TestFlight"
+          if echo "$APPSTORE_PRIVATE_KEY" | grep -q "BEGIN PRIVATE KEY"; then
+            echo "Key is raw, using as-is";
+          else
+            echo "Assuming base64 key";
+            decoded=$(echo "$APPSTORE_PRIVATE_KEY" | base64 --decode)
+            {
+              echo "APPSTORE_PRIVATE_KEY<<EOF";
+              echo "$decoded";
+              echo "EOF";
+            } >> $GITHUB_ENV
+            echo "APPSTORE_PRIVATE_KEY_BASE64=true" >> $GITHUB_ENV
+          fi
+
+      - name: Build and upload to TestFlight
+        working-directory: ios
         env:
-          FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
-          FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
-
-      - name: Clean up
-        if: always()
+          LC_ALL: en_US.UTF-8
+          LANG: en_US.UTF-8
         run: |
-          security delete-keychain build.keychain || true
+          bundle config set --local path 'vendor/bundle' || true
+          bundle exec fastlane beta || fastlane beta
 
-      - name: Upload Build Artifacts
-        if: failure()
+      - name: Upload debug artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs
+          name: ios-archives
           path: |
-            ios/fastlane/logs/
-            ios/build/
-          retention-days: 7
-
-  notify-deployment:
-    needs: build-and-deploy-ios
-    runs-on: ubuntu-latest
-    if: always()
-    
-    steps:
-      - name: Notify Success
-        if: needs.build-and-deploy-ios.result == 'success'
-        run: |
-          echo "✅ iOS app successfully deployed to TestFlight!"
-          echo "Build completed at $(date)"
-          
-      - name: Notify Failure
-        if: needs.build-and-deploy-ios.result == 'failure'
-        run: |
-          echo "❌ iOS deployment failed!"
-          echo "Check the build logs for more details."
+            ios/build/**/*.ipa
+            ~/Library/Developer/Xcode/Archives/**/*.xcarchive
+            ~/Library/Logs/gym/*.log
+            ~/Library/Logs/fastlane/*.log
