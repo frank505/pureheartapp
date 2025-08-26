@@ -54,11 +54,12 @@ jobs:
           echo 'team_id("${{ secrets.IOS_TEAM_ID }}")' >> fastlane/Appfile
           
           # Create Matchfile
-          echo 'git_url("${{ secrets.MATCH_GIT_URL }}")' > fastlane/Matchfile
+          # Use token-based authentication by embedding token in git URL
+          GIT_URL_WITH_TOKEN=$(echo "${{ secrets.MATCH_GIT_URL }}" | sed "s|https://github.com/|https://x-access-token:${{ secrets.MATCH_GIT_TOKEN }}@github.com/|")
+          echo "git_url(\"$GIT_URL_WITH_TOKEN\")" > fastlane/Matchfile
           echo 'storage_mode("git")' >> fastlane/Matchfile
           echo 'type("appstore")' >> fastlane/Matchfile
           echo 'app_identifier(["${{ secrets.IOS_BUNDLE_ID }}"])' >> fastlane/Matchfile
-          echo 'git_bearer_authorization(ENV["MATCH_GIT_TOKEN"])' >> fastlane/Matchfile
           
           # Create Fastfile for API key authentication
           cat > fastlane/Fastfile << 'EOL'
@@ -80,8 +81,6 @@ jobs:
               match(
                 type: "appstore",
                 readonly: true,
-                git_url: ENV["MATCH_GIT_URL"],
-                git_bearer_authorization: ENV["MATCH_GIT_TOKEN"],
                 keychain_name: ENV["KEYCHAIN_PATH"],
                 keychain_password: ENV["KEYCHAIN_PASSWORD"],
                 api_key: api_key
