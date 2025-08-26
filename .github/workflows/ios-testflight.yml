@@ -88,12 +88,14 @@ jobs:
               
               # Build the app
               gym(
-                workspace: "pureheart.xcworkspace",
-                scheme: "pureheart",
+                workspace: "PureHeart.xcworkspace",
+                scheme: "PureHeart",
                 export_method: "app-store",
                 configuration: "Release",
                 clean: true,
-                output_name: "pureheart.ipa"
+                output_name: "PureHeart.ipa",
+                destination: "generic/platform=iOS",
+                buildlog_path: "./logs"
               )
               
               # Upload to TestFlight
