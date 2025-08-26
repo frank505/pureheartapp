@@ -18,10 +18,7 @@ platform :ios do
     # Increment build number
     increment_build_number(xcodeproj: "PureHeart.xcodeproj")
     
-    # Get provisioning profile name from Match
-    profile_name = ENV["sigh_com.100klabs.pureheart_appstore_profile-name"] || "match AppStore com.100klabs.pureheart"
-    
-    # Build the app with explicit signing
+    # Build the app with minimal configuration
     build_app(
       workspace: "PureHeart.xcworkspace",
       scheme: "PureHeart",
@@ -30,22 +27,36 @@ platform :ios do
       export_method: "app-store",
       export_options: {
         method: "app-store",
-        provisioningProfiles: {
-          "com.100klabs.pureheart" => profile_name
-        },
-        signingStyle: "manual",
         uploadBitcode: false,
         uploadSymbols: true,
-        compileBitcode: false,
-        teamID: "U8M48L26Z9"
-      },
-      xcargs: "CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER='#{profile_name}' DEVELOPMENT_TEAM=U8M48L26Z9"
+        compileBitcode: false
+      }
     )
     
     upload_to_testflight(
       skip_waiting_for_build_processing: true,
       distribute_external: false,
       notify_external_testers: false
+    )
+  end
+  
+  desc "Just build without uploading (for debugging)"
+  lane :build_only do
+    setup_ci if ENV['CI']
+    certificates
+    
+    # Clean build folder
+    clear_derived_data
+    
+    # Just build, don't increment or upload
+    build_app(
+      workspace: "PureHeart.xcworkspace",
+      scheme: "PureHeart",
+      configuration: "Release",
+      clean: true,
+      skip_package_ipa: true,
+      skip_archive: false,
+      export_method: "app-store"
     )
   end
   

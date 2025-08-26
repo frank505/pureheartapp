@@ -83,6 +83,15 @@ jobs:
           
           echo "Deploying to TestFlight - Environment: $ENVIRONMENT"
 
+      - name: Build React Native bundle
+        run: |
+          npx react-native bundle \
+            --platform ios \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output ios/main.jsbundle \
+            --assets-dest ios/
+
       - name: Install Fastlane
         run: |
           cd ios
@@ -151,7 +160,8 @@ jobs:
           # Configure git authentication using custom Match token
           git config --global url."https://x-access-token:${{ secrets.MATCH_GIT_TOKEN }}@github.com/".insteadOf "https://github.com/"
           
-          fastlane beta
+          # Try building only first (debugging)
+          fastlane build_only
 
       - name: Upload build artifacts
         if: failure()
