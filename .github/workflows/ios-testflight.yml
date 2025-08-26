@@ -4,9 +4,7 @@ on:
   push:
     branches: 
       - main
-      - master
       - develop
-      - staging
   workflow_dispatch:
     inputs:
       environment:
@@ -72,12 +70,12 @@ jobs:
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
           
           # Determine environment based on branch
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             ENVIRONMENT="production-testflight"
             echo "ENVIRONMENT=production-testflight" >> $GITHUB_ENV
-          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
-            ENVIRONMENT="staging"
-            echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            ENVIRONMENT="development"
+            echo "ENVIRONMENT=development" >> $GITHUB_ENV
           else
             ENVIRONMENT="development"
             echo "ENVIRONMENT=development" >> $GITHUB_ENV
@@ -88,81 +86,76 @@ jobs:
           # Update Info.plist with new build number
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/PureHeart/Info.plist
 
-      - name: Import Code-Signing Certificates
-        uses: Apple-Actions/import-codesign-certs@v2
-        with:
-          p12-file-base64: ${{ secrets.IOS_DIST_SIGNING_KEY }}
-          p12-password: ${{ secrets.IOS_DIST_SIGNING_KEY_PASSWORD }}
-          keychain: signing_temp
-          create-keychain: true
-
-      - name: Import Provisioning Profile
-        uses: Apple-Actions/download-provisioning-profiles@v1
-        with:
-          bundle-id: ${{ secrets.IOS_BUNDLE_ID }}
-          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
-          api-private-key: ${{ secrets.APPSTORE_PRIVATE_KEY }}
-
-      - name: Build iOS App
+      - name: Install Fastlane
         run: |
           cd ios
-          xcodebuild \
-            -workspace PureHeart.xcworkspace \
-            -scheme PureHeart \
-            -configuration Release \
-            -destination generic/platform=iOS \
-            -archivePath PureHeart.xcarchive \
-            clean archive \
-            CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}" \
-            CODE_SIGN_IDENTITY="iPhone Distribution" \
-            DEVELOPMENT_TEAM="${{ secrets.IOS_TEAM_ID }}"
+          gem install fastlane
+          bundle init
+          echo 'gem "fastlane"' >> Gemfile
+          bundle install
 
-      - name: Export IPA
+      - name: Setup Fastlane Match
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
+          FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
         run: |
           cd ios
           
-          # Create export options plist
-          cat > ExportOptions.plist << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>app-store</string>
-              <key>teamID</key>
-              <string>${{ secrets.IOS_TEAM_ID }}</string>
-              <key>uploadBitcode</key>
-              <false/>
-              <key>uploadSymbols</key>
-              <true/>
-              <key>compileBitcode</key>
-              <false/>
-          </dict>
-          </plist>
+          # Create Fastfile if it doesn't exist
+          if [ ! -f "fastlane/Fastfile" ]; then
+            mkdir -p fastlane
+            cat > fastlane/Fastfile << 'EOF'
+          default_platform(:ios)
+
+          platform :ios do
+            desc "Fetch certificates and provisioning profiles"
+            lane :certificates do
+              match(type: "appstore", readonly: true)
+            end
+            
+            desc "Build and upload to TestFlight"
+            lane :beta do
+              certificates
+              build_app(
+                workspace: "PureHeart.xcworkspace",
+                scheme: "PureHeart",
+                configuration: "Release",
+                export_method: "app-store",
+                export_options: {
+                  method: "app-store",
+                  uploadBitcode: false,
+                  uploadSymbols: true,
+                  compileBitcode: false
+                }
+              )
+              upload_to_testflight(
+                skip_waiting_for_build_processing: true
+              )
+            end
+          end
           EOF
-          
-          xcodebuild \
-            -exportArchive \
-            -archivePath PureHeart.xcarchive \
-            -exportOptionsPlist ExportOptions.plist \
-            -exportPath ./build
+          fi
 
-      - name: Upload to TestFlight
-        uses: Apple-Actions/upload-testflight-build@v1
-        with:
-          app-path: ios/build/PureHeart.ipa
-          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
-          api-private-key: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      - name: Fetch certificates and build
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
+          FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
+        run: |
+          cd ios
+          fastlane beta
 
       - name: Upload build artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build-logs
+          name: ios-build-logs-fastlane
           path: |
             ios/build/
             ~/Library/Logs/gym/
+            ios/fastlane/report.xml
           retention-days: 7

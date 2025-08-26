@@ -1,0 +1,10 @@
+git_url("https://github.com/frank505/iosmatchrecordfiles")
+storage_mode("git")
+type("development")
+app_identifier(["com.100klabs.pureheart"])
+username("akpufranklin444@gmail.com")
+team_id("U8M48L26Z9")
+
+# For CI
+keychain_name("fastlane_tmp_keychain") if ENV['CI']
+keychain_password(SecureRandom.base64) if ENV['CI']

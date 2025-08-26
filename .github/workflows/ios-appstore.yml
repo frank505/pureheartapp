@@ -90,19 +90,15 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" ios/PureHeart/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/PureHeart/Info.plist
 
-      - name: Import Code-Signing Certificates
-        uses: Apple-Actions/import-codesign-certs@v2
-        with:
-          p12-file-base64: ${{ secrets.IOS_DIST_SIGNING_KEY }}
-          p12-password: ${{ secrets.IOS_DIST_SIGNING_KEY_PASSWORD }}
-
-      - name: Import Provisioning Profile
-        uses: Apple-Actions/download-provisioning-profiles@v1
-        with:
-          bundle-id: ${{ secrets.IOS_BUNDLE_ID }}
-          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
-          api-private-key: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      - name: Import Code-Signing Certificates with Fastlane Match
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
+          FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+        run: |
+          cd ios
+          fastlane match appstore --readonly
 
       - name: Build iOS App
         run: |

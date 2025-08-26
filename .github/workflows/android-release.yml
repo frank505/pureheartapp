@@ -49,6 +49,18 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Setup Android NDK
+        run: |
+          # Install specific NDK version that's compatible with React Native 0.80.x
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;25.1.8937393"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.1.8937393" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/25.1.8937393" >> $GITHUB_ENV
+
+      - name: Setup CMake
+        run: |
+          # Install compatible CMake version
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "cmake;3.18.1"
+
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
@@ -124,12 +136,28 @@ jobs:
       - name: Build Android Release
         run: |
           cd android
-          ./gradlew assembleRelease
+          
+          # Clean previous builds
+          ./gradlew clean
+          
+          # Build with specific flags to avoid CMake issues
+          ./gradlew assembleRelease \
+            -PdisablePreDex \
+            -PdisableR8=true \
+            --no-daemon \
+            --max-workers=2 \
+            --warning-mode=all \
+            -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 
-      - name: Sign APK
+      - name: Build Android Bundle
         run: |
           cd android
-          ./gradlew bundleRelease
+          ./gradlew bundleRelease \
+            -PdisablePreDex \
+            -PdisableR8=true \
+            --no-daemon \
+            --max-workers=2 \
+            -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

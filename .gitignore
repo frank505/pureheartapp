@@ -55,6 +55,7 @@ yarn-error.log
 
 # Bundle artifact
 *.jsbundle
+*.p8
 
 # Ruby / CocoaPods
 **/Pods/
@@ -76,3 +77,12 @@ yarn-error.log
 
 # Environment variables
 .env
+fastlane-secrets/
+ios/fastlane/report.xml
+ios/fastlane/Preview.html
+ios/fastlane/timeline.html
+ios/fastlane/test_output
+ios/fastlane/.env*
+*.mobileprovision
+*.cer
+*.p12

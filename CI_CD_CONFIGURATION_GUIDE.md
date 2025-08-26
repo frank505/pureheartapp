@@ -69,32 +69,91 @@ android {
 
 ## 🍎 **iOS Configuration**
 
-### 1. **Required Certificates & Profiles**
+### **Option 1: Manual Certificate Management (Current Setup)**
 
-#### **Distribution Certificate**:
+#### **Required Certificates & Profiles**
+
+**Distribution Certificate (.p12)**:
 1. Go to [Apple Developer Portal](https://developer.apple.com/account)
 2. Navigate to **Certificates, Identifiers & Profiles**
 3. Create/download **iOS Distribution Certificate**
-4. Export as `.p12` file from Keychain Access
+4. Export as `.p12` file from Keychain Access with a strong password
+5. This `.p12` file contains both the certificate and private key
 
-#### **Provisioning Profile**:
+**Provisioning Profile**:
 1. Create **App Store** provisioning profile
 2. Associate with your app's bundle ID: `com.pureheart`
 3. Include your distribution certificate
 4. Download the `.mobileprovision` file
 
-#### **App Store Connect API Key**:
+**App Store Connect API Key**:
 1. Go to [App Store Connect](https://appstoreconnect.apple.com)
 2. Navigate to **Users and Access > Keys**
 3. Create new API key with **Developer** access
 4. Download the `.p8` file
 5. Note the **Key ID** and **Issuer ID**
 
-### 2. **Required iOS Information**:
+### **Option 2: Fastlane Match (Recommended for Teams)**
+
+Fastlane Match automatically manages your iOS certificates and provisioning profiles in a Git repository or cloud storage.
+
+#### **Setup Fastlane Match**:
+```bash
+# Install fastlane
+gem install fastlane
+
+# Initialize fastlane in your ios directory
+cd ios
+fastlane init
+
+# Setup match
+fastlane match init
+```
+
+#### **Configure Match** (in `ios/fastfile`):
+```ruby
+platform :ios do
+  desc "Fetch certificates and provisioning profiles"
+  lane :certificates do
+    match(type: "appstore")
+  end
+  
+  desc "Build and upload to TestFlight"
+  lane :beta do
+    certificates
+    build_app(workspace: "PureHeart.xcworkspace", scheme: "PureHeart")
+    upload_to_testflight
+  end
+end
+```
+
+#### **Required GitHub Secrets for Match**:
+```
+MATCH_PASSWORD              # Password for match repository
+MATCH_GIT_BASIC_AUTHORIZATION # Base64 encoded git credentials
+FASTLANE_PASSWORD           # Your Apple ID password
+FASTLANE_SESSION           # 2FA session (optional)
+```
+
+### **Current Implementation Uses Manual Management**
+Our workflows are configured for **Option 1 (Manual)** which requires:
+
 - **Bundle ID**: Your app's bundle identifier
 - **Team ID**: Found in Apple Developer account
 - **Certificate Password**: Password used when exporting .p12
 - **Provisioning Profile Name**: Name of your App Store profile
+
+### **How to Export .p12 Certificate Properly**:
+1. Open **Keychain Access** on macOS
+2. Find your **"iPhone Distribution: [Your Name] ([Team ID])"** certificate
+3. **Expand the certificate** to see the private key underneath
+4. **Select BOTH** the certificate and private key (Cmd+click)
+5. Right-click and select **"Export 2 items..."**
+6. Choose **"Personal Information Exchange (.p12)"** format
+7. Set a **strong password** (you'll need this for GitHub secrets)
+8. Save the .p12 file
+
+⚠️ **Important**: The .p12 file must contain both the certificate AND private key for CI/CD to work.
 
 ## 🔐 **GitHub Secrets Configuration**
 
@@ -111,7 +170,7 @@ ANDROID_PACKAGE_NAME         # com.pureheart
 
 ### **iOS Secrets**
 ```
-IOS_DIST_SIGNING_KEY         # Base64 encoded .p12 certificate
+IOS_DIST_SIGNING_KEY         # Base64 encoded .p12 certificate (MUST include private key)
 IOS_DIST_SIGNING_KEY_PASSWORD # Certificate password
 IOS_BUNDLE_ID                # Your app's bundle ID
 IOS_TEAM_ID                  # Apple Developer Team ID
@@ -120,6 +179,8 @@ APPSTORE_ISSUER_ID          # App Store Connect API issuer ID
 APPSTORE_KEY_ID             # App Store Connect API key ID
 APPSTORE_PRIVATE_KEY        # Base64 encoded .p8 API key
 ```
+
+⚠️ **Critical**: The `IOS_DIST_SIGNING_KEY` must be a .p12 file containing BOTH the distribution certificate AND its private key. See the export instructions above.
 
 ### **Google Play Console (Optional)**
 ```
@@ -173,20 +234,34 @@ Run the setup script for guided configuration:
 ## ⚠️ **Common Issues & Solutions**
 
 ### **1. "At least one of p12-filepath or p12-file-base64 must be provided"**
-- **Cause**: Missing iOS distribution certificate in GitHub secrets
-- **Solution**: Add `IOS_DIST_SIGNING_KEY` secret with base64 encoded .p12 file
+- **Cause**: Missing `IOS_DIST_SIGNING_KEY` secret in GitHub
+- **Solution**: 
+  1. Export .p12 certificate properly (see instructions above)
+  2. Convert to base64: `base64 -i YourCert.p12 | pbcopy`
+  3. Add to GitHub secrets as `IOS_DIST_SIGNING_KEY`
 
-### **2. Android signing errors**
+### **2. "Certificate does not contain private key"**
+- **Cause**: .p12 file exported without private key
+- **Solution**: 
+  1. In Keychain Access, expand the certificate
+  2. Select BOTH certificate and private key
+  3. Export both items together as .p12
+
+### **3. "Provisioning profile doesn't match certificate"**
+- **Cause**: Profile created with different certificate
+- **Solution**: Recreate provisioning profile with correct certificate
+
+### **4. Android signing errors**
 - **Cause**: Missing keystore or incorrect passwords
-- **Solution**: Verify all Android secrets are correctly set
+- **Solution**: Run `./scripts/generate-android-keystore.sh` and verify secrets
 
-### **3. Java version conflicts**
-- **Cause**: Wrong Java version for your Android Gradle Plugin
+### **5. Java version conflicts**
+- **Cause**: Wrong Java version for Android Gradle Plugin
 - **Solution**: Use Java 17 (already configured in workflows)
 
-### **4. Provisioning profile errors**
-- **Cause**: Profile doesn't match bundle ID or certificate
-- **Solution**: Recreate provisioning profile with correct settings
+### **6. CMake compilation errors (Android)**
+- **Cause**: NDK/CMake version incompatibility
+- **Solution**: Run `./scripts/fix-android-build.sh` to diagnose and fix
 
 ## 🚀 **Testing Your Setup**
 
