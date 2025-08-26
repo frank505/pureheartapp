@@ -18,7 +18,7 @@ platform :ios do
     # Increment build number
     increment_build_number(xcodeproj: "PureHeart.xcodeproj")
     
-    # Build the app with minimal configuration
+    # Build the app with automatic signing
     build_app(
       workspace: "PureHeart.xcworkspace",
       scheme: "PureHeart",
@@ -30,7 +30,8 @@ platform :ios do
         uploadBitcode: false,
         uploadSymbols: true,
         compileBitcode: false
-      }
+      },
+      xcargs: "-allowProvisioningUpdates CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=U8M48L26Z9"
     )
     
     upload_to_testflight(
@@ -48,7 +49,7 @@ platform :ios do
     # Clean build folder
     clear_derived_data
     
-    # Just build, don't increment or upload
+    # Enable automatic signing and build
     build_app(
       workspace: "PureHeart.xcworkspace",
       scheme: "PureHeart",
@@ -56,7 +57,8 @@ platform :ios do
       clean: true,
       skip_package_ipa: true,
       skip_archive: false,
-      export_method: "app-store"
+      export_method: "app-store",
+      xcargs: "-allowProvisioningUpdates CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=U8M48L26Z9"
     )
   end
   
