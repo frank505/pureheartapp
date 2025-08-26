@@ -55,7 +55,7 @@ jobs:
 
       - name: Install JS deps
         run: |
-          npm ci --no-audit --no-fund
+          npm ci --legacy-peer-deps --no-audit --no-fund
 
       - name: Cache Pods
         uses: actions/cache@v4
