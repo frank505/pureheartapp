@@ -38,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci --legacy-peer-deps
-          cd ios && pod install
+          cd ios && pod install --repo-update
           
       - name: Setup Fastlane
         run: |
@@ -95,7 +95,10 @@ jobs:
                 clean: true,
                 output_name: "PureHeart.ipa",
                 destination: "generic/platform=iOS",
-                buildlog_path: "./logs"
+                buildlog_path: "./logs",
+                verbose: true,
+                skip_package_dependencies_resolution: false,
+                disable_xcpretty: true
               )
               
               # Upload to TestFlight
@@ -108,6 +111,13 @@ jobs:
             end
           end
           EOL
+          
+      - name: Create React Native Bundle
+        run: |
+          # Create the bundle directory if it doesn't exist
+          mkdir -p ios/PureHeart
+          # Generate React Native bundle for iOS release
+          npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output ios/PureHeart/main.jsbundle --assets-dest ios/PureHeart
           
       - name: Deploy to TestFlight
         env:
@@ -123,6 +133,10 @@ jobs:
           IOS_BUNDLE_ID: ${{ secrets.IOS_BUNDLE_ID }}
           KEYCHAIN_PATH: ${{ env.KEYCHAIN_PATH }}
           KEYCHAIN_PASSWORD: ${{ env.KEYCHAIN_PASSWORD }}
+          # React Native specific environment variables
+          NODE_BINARY: node
+          SKIP_BUNDLING: 1
+          RCT_NO_LAUNCH_PACKAGER: 1
         run: |
           cd ios
           bundle exec fastlane testflight_deploy
