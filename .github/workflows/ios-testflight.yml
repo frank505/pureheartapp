@@ -58,7 +58,7 @@ jobs:
           echo 'storage_mode("git")' >> fastlane/Matchfile
           echo 'type("appstore")' >> fastlane/Matchfile
           echo 'app_identifier(["${{ secrets.IOS_BUNDLE_ID }}"])' >> fastlane/Matchfile
-          echo 'git_basic_authorization(ENV["MATCH_GIT_TOKEN"])' >> fastlane/Matchfile
+          echo 'git_bearer_authorization(ENV["MATCH_GIT_TOKEN"])' >> fastlane/Matchfile
           
           # Create Fastfile for API key authentication
           cat > fastlane/Fastfile << 'EOL'
@@ -81,7 +81,7 @@ jobs:
                 type: "appstore",
                 readonly: true,
                 git_url: ENV["MATCH_GIT_URL"],
-                git_basic_authorization: ENV["MATCH_GIT_TOKEN"],
+                git_bearer_authorization: ENV["MATCH_GIT_TOKEN"],
                 keychain_name: ENV["KEYCHAIN_PATH"],
                 keychain_password: ENV["KEYCHAIN_PASSWORD"],
                 api_key: api_key
