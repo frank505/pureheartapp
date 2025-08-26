@@ -103,8 +103,8 @@ jobs:
         run: |
           cd ios
           
-          # Configure git authentication using GitHub's automatic token
-          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          # Configure git authentication using custom Match token
+          git config --global url."https://x-access-token:${{ secrets.MATCH_GIT_TOKEN }}@github.com/".insteadOf "https://github.com/"
           
           # Create Fastfile if it doesn't exist
           if [ ! -f "fastlane/Fastfile" ]; then
@@ -151,8 +151,8 @@ jobs:
         run: |
           cd ios
           
-          # Configure git authentication using GitHub's automatic token
-          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          # Configure git authentication using custom Match token
+          git config --global url."https://x-access-token:${{ secrets.MATCH_GIT_TOKEN }}@github.com/".insteadOf "https://github.com/"
           
           fastlane beta
 
