@@ -21,7 +21,7 @@ on:
 
 env:
   NODE_VERSION: '18'
-  JAVA_VERSION: '17'
+  JAVA_VERSION: '17'  # Best for React Native 0.80.x with Android Gradle Plugin 8.x
 
 jobs:
   build-android:
@@ -106,6 +106,15 @@ jobs:
           storeFile=release.keystore
           EOF
 
+      - name: Create gradle.properties for signing
+        run: |
+          cat >> android/gradle.properties << EOF
+          MYAPP_RELEASE_STORE_FILE=release.keystore
+          MYAPP_RELEASE_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}
+          MYAPP_RELEASE_STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          MYAPP_RELEASE_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
       - name: Update version code and name
         run: |
           # Update build.gradle with new version code and name
@@ -146,39 +155,10 @@ jobs:
           track: internal
           status: completed
 
-      - name: Notify Slack on Success
-        if: success()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: success
-          text: |
-            ✅ Android build successful!
-            Environment: ${{ env.ENVIRONMENT }}
-            Version: ${{ env.VERSION_NAME }}
-            Build: ${{ env.BUILD_NUMBER }}
-            Branch: ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
-            Deployed to Play Store: ${{ env.DEPLOY_TO_STORE }}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-      - name: Notify Slack on Failure
-        if: failure()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: failure
-          text: |
-            ❌ Android build failed!
-            Environment: ${{ env.ENVIRONMENT }}
-            Version: ${{ env.VERSION_NAME }}
-            Build: ${{ env.BUILD_NUMBER }}
-            Branch: ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-      - name: Clean up keystore
+      - name: Clean up keystore and sensitive files
         if: always()
         run: |
           rm -f android/app/release.keystore
           rm -f android/key.properties
+          # Remove the signing properties we added to gradle.properties
+          sed -i.bak '/MYAPP_RELEASE_/d' android/gradle.properties || true

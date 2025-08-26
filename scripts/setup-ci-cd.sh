@@ -160,11 +160,6 @@ echo "APPSTORE_ISSUER_ID: $ISSUER_ID" >> "$SETUP_DIR/secrets.txt"
 read -p "App Store Connect Key ID: " KEY_ID
 echo "APPSTORE_KEY_ID: $KEY_ID" >> "$SETUP_DIR/secrets.txt"
 
-read -p "Slack webhook URL (optional, press Enter to skip): " SLACK_WEBHOOK
-if [ ! -z "$SLACK_WEBHOOK" ]; then
-    echo "SLACK_WEBHOOK_URL: $SLACK_WEBHOOK" >> "$SETUP_DIR/secrets.txt"
-fi
-
 echo ""
 
 # 5. Generate summary
@@ -205,7 +200,6 @@ IOS_PROVISIONING_PROFILE_NAME=$PROFILE_NAME
 APPSTORE_ISSUER_ID=$ISSUER_ID
 APPSTORE_KEY_ID=$KEY_ID
 APPSTORE_PRIVATE_KEY=<base64-encoded-p8-key>
-SLACK_WEBHOOK_URL=$SLACK_WEBHOOK
 \`\`\`
 
 ## Workflow Triggers

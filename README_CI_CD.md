@@ -49,7 +49,10 @@ GOOGLE_PLAY_SERVICE_ACCOUNT_JSON # Google Play Console service account JSON
 
 ### Optional
 ```
-SLACK_WEBHOOK_URL                # Slack webhook for notifications
+### **Optional**
+```
+GOOGLE_PLAY_SERVICE_ACCOUNT_JSON # Service account JSON for Play Store uploads
+```
 ```
 
 ## 📋 Setup Instructions
@@ -84,7 +87,6 @@ See [CI_CD_SETUP_GUIDE.md](./CI_CD_SETUP_GUIDE.md) for detailed instructions.
 ## 📊 Monitoring & Notifications
 
 - **GitHub Actions**: Check the Actions tab for build status and logs
-- **Slack**: Receive notifications for build success/failure (if configured)
 - **App Store Connect**: Monitor upload and review status
 - **Google Play Console**: Check Android app status
 
