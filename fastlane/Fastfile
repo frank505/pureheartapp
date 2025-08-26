@@ -1,0 +1,86 @@
+# This file contains the fastlane configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Push a new beta build to TestFlight"
+  lane :beta do
+    setup_ci if ENV['CI']
+    
+    # Create API key for App Store Connect
+    api_key = app_store_connect_api_key(
+      key_id: ENV['APPSTORE_KEY_ID'],
+      issuer_id: ENV['APPSTORE_ISSUER_ID'],
+      key_content: ENV['APPSTORE_PRIVATE_KEY'],
+      duration: 1200,
+      in_house: false
+    )
+    
+    # Match certificates and provisioning profiles
+    match(
+      type: "appstore",
+      readonly: true,
+      git_url: ENV['MATCH_GIT_URL'],
+      git_token: ENV['MATCH_GIT_TOKEN'],
+      app_identifier: ENV['IOS_BUNDLE_ID'],
+      api_key: api_key
+    )
+    
+    # Update project settings
+    update_project_team(
+      path: "PureHeart.xcodeproj",
+      teamid: ENV['IOS_TEAM_ID']
+    )
+    
+    # Increment build number
+    increment_build_number(
+      xcodeproj: "PureHeart.xcodeproj"
+    )
+    
+    # Build the app
+    build_app(
+      workspace: "PureHeart.xcworkspace",
+      scheme: "PureHeart",
+      export_method: "app-store",
+      clean: true,
+      export_options: {
+        provisioningProfiles: {
+          ENV['IOS_BUNDLE_ID'] => "match AppStore #{ENV['IOS_BUNDLE_ID']}"
+        }
+      }
+    )
+    
+    # Upload to TestFlight
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+      distribute_external: false,
+      notify_external_testers: false
+    )
+  end
+  
+  desc "Create API Key for App Store Connect"
+  lane :create_api_key do
+    app_store_connect_api_key(
+      key_id: ENV['APPSTORE_KEY_ID'],
+      issuer_id: ENV['APPSTORE_ISSUER_ID'],
+      key_content: ENV['APPSTORE_PRIVATE_KEY'],
+      duration: 1200, # optional (maximum 1200)
+      in_house: false # optional but may be required if using match/sigh
+    )
+  end
+end
