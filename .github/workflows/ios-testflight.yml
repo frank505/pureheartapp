@@ -82,9 +82,6 @@ jobs:
           fi
           
           echo "Deploying to TestFlight - Environment: $ENVIRONMENT"
-          
-          # Update Info.plist with new build number
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" ios/PureHeart/Info.plist
 
       - name: Install Fastlane
         run: |
