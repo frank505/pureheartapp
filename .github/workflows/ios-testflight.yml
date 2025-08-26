@@ -96,29 +96,20 @@ jobs:
               match(
                 type: "appstore",
                 readonly: true,
-                keychain_name: ENV["KEYCHAIN_PATH"],
-                keychain_password: ENV["KEYCHAIN_PASSWORD"],
                 api_key: api_key
               )
               
               # Build the app
-              gym(
+              build_app(
                 workspace: "PureHeart.xcworkspace",
                 scheme: "PureHeart",
                 export_method: "app-store",
                 configuration: "Release",
-                clean: true,
-                output_name: "PureHeart.ipa",
-                destination: "generic/platform=iOS",
-                buildlog_path: "./logs",
-                verbose: true,
-                skip_package_dependencies_resolution: false,
-                disable_xcpretty: true,
-                xcargs: "-allowProvisioningUpdates"
+                clean: true
               )
               
               # Upload to TestFlight
-              pilot(
+              upload_to_testflight(
                 api_key: api_key,
                 skip_waiting_for_build_processing: true,
                 skip_submission: true,
