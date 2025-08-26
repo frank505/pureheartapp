@@ -21,7 +21,7 @@ jobs:
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ secrets.RUBY_VERSION }}
+          ruby-version: '3.2.2' # Pin to a stable version compatible with Fastlane
           bundler-cache: true
           
       - name: Install dependencies
@@ -32,7 +32,10 @@ jobs:
       - name: Setup Fastlane
         run: |
           cd ios
-          bundle add fastlane
+          echo 'source "https://rubygems.org"' > Gemfile
+          echo 'gem "fastlane"' >> Gemfile
+          echo 'gem "cocoapods"' >> Gemfile
+          echo 'gem "abbrev"' >> Gemfile  # Add missing dependency
           bundle install
           
       - name: Deploy to TestFlight
