@@ -45,14 +45,15 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ env.RUBY_VERSION }}
-          bundler-cache: false
+          bundler-cache: true
 
       - name: Cache Node Modules
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-node-legacy-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
+            ${{ runner.os }}-node-legacy-
             ${{ runner.os }}-node-
 
       - name: Cache Pods
@@ -64,20 +65,31 @@ jobs:
             ${{ runner.os }}-pods-
 
       - name: Install Node Dependencies
-        run: npm ci --legacy-peer-deps
-
-      - name: Install Bundler
-        run: gem install bundler
-
-      - name: Install Fastlane Dependencies
         run: |
-          cd fastlane
+          echo "Installing Node dependencies with legacy peer deps..."
+          npm ci --legacy-peer-deps
+          echo "✅ Node dependencies installed successfully"
+
+      - name: Verify Node Installation
+        run: |
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Checking key dependencies..."
+          npm list react react-native --depth=0 || true
+
+      - name: Install Bundler and Dependencies
+        run: |
+          echo "Installing Bundler and Ruby dependencies..."
+          gem install bundler
           bundle install
+          echo "✅ Ruby dependencies installed successfully"
 
       - name: Install CocoaPods
         run: |
+          echo "Installing CocoaPods dependencies..."
           cd ios
-          pod install --repo-update
+          pod install --repo-update --verbose
+          echo "✅ CocoaPods installed successfully"
 
       - name: Setup Keychain
         run: |
@@ -88,8 +100,9 @@ jobs:
 
       - name: Build and Deploy to TestFlight
         run: |
-          cd ios
-          bundle exec fastlane beta
+          echo "Starting iOS build and TestFlight deployment..."
+          bundle exec fastlane ios beta
+          echo "✅ Successfully deployed to TestFlight"
         env:
           FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
           FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
