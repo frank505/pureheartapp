@@ -100,16 +100,18 @@ jobs:
               )
               
               # Build the app
-              build_app(
+              gym(
                 workspace: "PureHeart.xcworkspace",
                 scheme: "PureHeart",
                 export_method: "app-store",
                 configuration: "Release",
                 clean: true,
-                xcargs: "-allowProvisioningUpdates",
-                export_xcargs: "-allowProvisioningUpdates",
-                silent: true,
-                suppress_xcode_output: false
+                output_name: "PureHeart.ipa",
+                xcargs: "-allowProvisioningUpdates IPHONEOS_DEPLOYMENT_TARGET=13.4",
+                verbose: true,
+                disable_xcpretty: true,
+                buildlog_path: "./logs",
+                skip_profile_detection: true
               )
               
               # Upload to TestFlight
