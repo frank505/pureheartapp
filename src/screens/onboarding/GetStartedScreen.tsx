@@ -96,9 +96,7 @@ const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ navigation }) => {
 
             {/* App Logo */}
             <Image
-              source={{
-                uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKPPk7qXiLLpurMRshjIYa8KBeYfx9nnPX8coCZHnlXyhZNYrZf2x7Fj1nlYdomXKgA5GTkZM2nx_ky4jfRzgnIvaCQZ90dmxKlgwjqsRm_aAtEe1YwYIkZ6s56DOcLQjyoZgqXozYtpmNW-Cs25FlYFIGZPSBesQ4etudzfolkzcNqf6DChflxkWYVKZJvUhAfmWl-ebkg-z14PWaM4bvupZbNm33zNZbgAsH-TIJWAASuCMxUmi07dylYNRJ_4nM_rLq4V9DC90M'
-              }}
+              source={require('../../../store-assets/final_form_image_101_cropped_to_be_used.png')}
               style={styles.appLogo}
               resizeMode="contain"
             />
@@ -192,7 +190,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 80,
+    paddingTop: 0,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
@@ -213,8 +211,8 @@ const styles = StyleSheet.create({
     color: '#f5993d',
   },
   appLogo: {
-    width: 120,
-    height: 48,
+    width: 200,
+    height: 50,
     marginBottom: 24,
   },
   welcomeTitle: {

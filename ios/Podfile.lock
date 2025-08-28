@@ -1936,6 +1936,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - react-native-splash-screen (3.3.0):
+    - React-Core
   - react-native-track-player (4.1.2):
     - React-Core
     - SwiftAudioEx (= 1.1.0)
@@ -2719,7 +2721,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNScreens (4.14.1):
+  - RNScreens (4.10.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2747,10 +2749,10 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNScreens/common (= 4.14.1)
+    - RNScreens/common (= 4.10.0)
     - SocketRocket
     - Yoga
-  - RNScreens/common (4.14.1):
+  - RNScreens/common (4.10.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2977,6 +2979,7 @@ DEPENDENCIES:
   - react-native-pager-view (from `../node_modules/react-native-pager-view`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - "react-native-slider (from `../node_modules/@react-native-community/slider`)"
+  - react-native-splash-screen (from `../node_modules/react-native-splash-screen`)
   - react-native-track-player (from `../node_modules/react-native-track-player`)
   - react-native-video (from `../node_modules/react-native-video`)
   - react-native-webview (from `../node_modules/react-native-webview`)
@@ -3141,6 +3144,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-safe-area-context"
   react-native-slider:
     :path: "../node_modules/@react-native-community/slider"
+  react-native-splash-screen:
+    :path: "../node_modules/react-native-splash-screen"
   react-native-track-player:
     :path: "../node_modules/react-native-track-player"
   react-native-video:
@@ -3303,6 +3308,7 @@ SPEC CHECKSUMS:
   react-native-pager-view: c4eb191519def25f8983e636c1d387a7e33a21c4
   react-native-safe-area-context: b99449a99a0e45c09050d8557c153ad63492e306
   react-native-slider: 697a1209ffd96f494a003ca19b79fd05d39bafcf
+  react-native-splash-screen: 95994222cc95c236bd3cdc59fe45ed5f27969594
   react-native-track-player: dd56f9948e03756a217c75e0a61aa04aab65b5a1
   react-native-video: 4da16bfca01a02aa2095e40683d74f2d6563207c
   react-native-webview: 44434e525f798a7b35b8b94d9db36cd25a75048f
@@ -3347,7 +3353,7 @@ SPEC CHECKSUMS:
   RNFBMessaging: e954bfb053a5c6bb10b26bae4bbc58a4edd41131
   RNGestureHandler: a52292df4f8fc7daab354ad2c37be401d4c3bed8
   RNGoogleSignin: 0f9deae0357018403a3c34b367456dee09c95b2c
-  RNScreens: 563778e390e5e229b17f4cb1f8c78e549eadd36f
+  RNScreens: 49fd658291d2cb457b56aaaa063a0450f57c8ba6
   RNShare: 45af37451c89d3e29db63e0133ce01f45b31a5ec
   RNSound: eb84be084c6f5816807cdba83b394d35e0838350
   RNSVG: 05951f386c4b23c484335dab2346f53e6210e8dc
@@ -3356,6 +3362,6 @@ SPEC CHECKSUMS:
   SwiftAudioEx: f6aa653770f3a0d3851edaf8d834a30aee4a7646
   Yoga: ce248fb32065c9b00451491b06607f1c25b2f1ed
 
-PODFILE CHECKSUM: befc9e4053a3b3b71020ae022ff6b4e6f6aaabfe
+PODFILE CHECKSUM: 94a79ad82287ca082d631f08f9f8f7417d22efc6
 
 COCOAPODS: 1.16.2

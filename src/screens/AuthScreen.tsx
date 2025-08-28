@@ -19,7 +19,10 @@ import {
   Alert,
   Dimensions,
   Platform,
+  Image,
+  ImageBackground,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID } from '@env';
 import {
   Text,
@@ -168,18 +171,29 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <View style={styles.iconContainer}>
-            <Icon 
-              name={Icons.status.info.name} 
-              color="#ffffff" 
-              size="xl" 
-            />
-          </View>
-          <Text style={styles.appTitle}>PureHeart</Text>
+    <View style={styles.container}>
+      <ImageBackground
+        source={{
+          uri: 'https://images.unsplash.com/photo-1500964757637-c85e8a162699?q=80&w=1000&auto=format&fit=crop'
+        }}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      />
+      <LinearGradient
+        colors={[
+          'rgba(18, 18, 18, 0.7)',
+          'rgba(18, 18, 18, 0.85)',
+          'rgba(18, 18, 18, 0.95)',
+        ]}
+        style={styles.gradientOverlay}
+      />
+      <SafeAreaView style={styles.contentWrapper}>
+        <View style={styles.header}><View style={styles.logoContainer}>
+          <Image
+            source={require('../../store-assets/final_form_image_101_cropped_to_be_used.png')}
+            style={styles.appLogo}
+            resizeMode="contain"
+          />
         </View>
         
         <Text style={styles.welcomeTitle}>Welcome Back</Text>
@@ -240,7 +254,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
           By continuing, you agree to our Terms of Service and Privacy Policy
         </Text>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 };
 
@@ -249,15 +264,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background.primary,
   },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  gradientOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  contentWrapper: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    zIndex: 1,
+  },
   header: {
-    paddingTop: 48,
+    paddingTop: 32,
     paddingHorizontal: 24,
-    paddingBottom: 32,
+    paddingBottom: 16,
     alignItems: 'center',
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 16,
   },
   iconContainer: {
     width: 64,
@@ -266,7 +293,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary.main,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
+  },
+  appLogo: {
+    width: 300,
+    height: 48,
+    marginBottom: 8,
   },
   appTitle: {
     fontSize: 28,
@@ -279,7 +311,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text.primary,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   welcomeSubtitle: {
     fontSize: 16,
@@ -287,11 +319,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     maxWidth: 300,
+    marginBottom: 24,
   },
   contentContainer: {
     flex: 1,
     paddingHorizontal: 24,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 16,
   },
   loadingContainer: {
     alignItems: 'center',
