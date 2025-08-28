@@ -20,6 +20,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { Provider as PaperProvider, DefaultTheme, MD3DarkTheme } from 'react-native-paper';
 import deviceTokenService from './src/services/deviceTokenService';
 import type { DevicePlatform } from './src/types/device';
+import BootSplash from 'react-native-bootsplash';
 
 // Import Redux store and persistor
 import { store, persistor } from './src/store';
@@ -111,6 +112,22 @@ const AppContent: React.FC = () => {
   // Get authentication and onboarding state from Redux
   const { isAuthenticated } = useAppSelector(state => state.user);
   const { isFirstLaunch, hasCompletedOnboarding } = useAppSelector(state => state.app);
+
+  // Hide splash screen when app is ready
+  useEffect(() => {
+    const hideSplashScreen = async () => {
+      try {
+        await BootSplash.hide({ fade: true });
+      } catch (error) {
+        console.log('BootSplash hide error:', error);
+      }
+    };
+
+    // Add a small delay to ensure everything is loaded
+    const timer = setTimeout(hideSplashScreen, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // iOS push notification handling: navigate to group chat when tapped
   useEffect(() => {
