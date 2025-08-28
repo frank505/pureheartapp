@@ -9,4 +9,12 @@
             android:gravity="center"
             android:src="@drawable/bootsplash_logo" />
     </item>
+    
+    <!-- Spinner positioned below the logo -->
+    <item
+        android:width="32dp"
+        android:height="32dp"
+        android:gravity="center_horizontal|bottom"
+        android:bottom="180dp"
+        android:drawable="@drawable/spinner" />
 </layer-list>

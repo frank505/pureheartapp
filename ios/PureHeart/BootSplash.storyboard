@@ -17,18 +17,24 @@
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView autoresizesSubviews="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="BootSplashLogo-846b65" translatesAutoresizingMaskIntoConstraints="NO" id="3lX-Ut-9ad">
+                            <imageView autoresizesSubviews="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="BootSplashLogo-8db724" translatesAutoresizingMaskIntoConstraints="NO" id="3lX-Ut-9ad">
                                 <rect key="frame" x="37.5" y="183.5" width="300" height="300"/>
                                 <accessibility key="accessibilityConfiguration">
                                     <accessibilityTraits key="traits" image="YES" notEnabled="YES"/>
                                 </accessibility>
                             </imageView>
+                            <activityIndicatorView opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" animating="YES" style="large" translatesAutoresizingMaskIntoConstraints="NO" id="spinner-activity">
+                                <rect key="frame" x="169.5" y="523.5" width="37" height="37"/>
+                                <color key="color" red="0.52156862749999999" green="0.39607843139999999" blue="0.27843137250000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                            </activityIndicatorView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
-                        <color key="backgroundColor" name="BootSplashBackground-846b65"/>
+                        <color key="backgroundColor" name="BootSplashBackground-8db724"/>
                         <constraints>
                             <constraint firstItem="3lX-Ut-9ad" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="Fh9-Fy-1nT"/>
                             <constraint firstItem="3lX-Ut-9ad" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="nvB-Ic-PnI"/>
+                            <constraint firstItem="spinner-activity" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="spinner-centerX"/>
+                            <constraint firstItem="spinner-activity" firstAttribute="top" secondItem="3lX-Ut-9ad" secondAttribute="bottom" constant="40" id="spinner-top"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -38,8 +44,8 @@
         </scene>
     </scenes>
     <resources>
-        <image name="BootSplashLogo-846b65" width="300" height="300"/>
-        <namedColor name="BootSplashBackground-846b65">
+        <image name="BootSplashLogo-8db724" width="300" height="300"/>
+        <namedColor name="BootSplashBackground-8db724">
             <color red="1.00000000000000" green="1.00000000000000" blue="1.00000000000000" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </namedColor>
     </resources>

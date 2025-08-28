@@ -188,22 +188,34 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
         style={styles.gradientOverlay}
       />
       <SafeAreaView style={styles.contentWrapper}>
-        <View style={styles.header}><View style={styles.logoContainer}>
-          <Image
-            source={require('../../store-assets/final_form_image_101_cropped_to_be_used.png')}
-            style={styles.appLogo}
-            resizeMode="contain"
-          />
-        </View>
-        
-        <Text style={styles.welcomeTitle}>Welcome Back</Text>
-        <Text style={styles.welcomeSubtitle}>
-          Choose your preferred way to continue your journey
-        </Text>
-      </View>
+        <View style={styles.mainContainer}>
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../../store-assets/final_form_image_101_cropped_to_be_used.png')}
+                style={styles.appLogo}
+                resizeMode="contain"
+              />
+            </View>
+            
+            <Text style={styles.welcomeTitle}>Welcome Home</Text>
+            <Text style={styles.welcomeSubtitle}>
+              Return to your place of spiritual growth and accountability
+            </Text>
+            
+            {/* Scripture verse */}
+            <View style={styles.scriptureContainer}>
+              <Text style={styles.scriptureText}>
+                "His divine power has given us everything we need for a godly life through our knowledge of him who called us by his own glory and goodness."
+              </Text>
+              <Text style={styles.scriptureReference}>
+                2 Peter 1:3
+              </Text>
+            </View>
+          </View>
 
-      {/* Main Content */}
-      <View style={styles.contentContainer}>
+          {/* Main Content */}
+          <View style={styles.contentContainer}>
         {/* Loading indicator */}
         {loading && (
           <View style={styles.loadingContainer}>
@@ -226,7 +238,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
               color="#ffffff" 
               size="lg" 
             />
-            <Text style={styles.socialButtonText}>Continue with Google</Text>
+            <Text style={styles.socialButtonText}>Enter with Google</Text>
           </TouchableOpacity>
 
           {/* Apple Login Button */}
@@ -242,7 +254,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
                 color="#000000" 
                 size="lg" 
               />
-              <Text style={[styles.socialButtonText, styles.appleButtonText]}>Continue with Apple</Text>
+              <Text style={[styles.socialButtonText, styles.appleButtonText]}>Enter with Apple</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -251,9 +263,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          By continuing, you agree to our Terms of Service and Privacy Policy
+          By entering, you join a community committed to spiritual growth and mutual accountability
         </Text>
       </View>
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -276,15 +289,19 @@ const styles = StyleSheet.create({
     height: '100%',
     zIndex: 1,
   },
-  header: {
-    paddingTop: 32,
-    paddingHorizontal: 24,
-    paddingBottom: 16,
+  mainContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   iconContainer: {
     width: 64,
@@ -296,9 +313,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   appLogo: {
-    width: 300,
-    height: 48,
-    marginBottom: 8,
+    width: 280,
+    height: 45,
+    marginBottom: 16,
   },
   appTitle: {
     fontSize: 28,
@@ -307,25 +324,44 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   welcomeTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: Colors.text.primary,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   welcomeSubtitle: {
     fontSize: 16,
     color: Colors.text.secondary,
     textAlign: 'center',
     lineHeight: 24,
-    maxWidth: 300,
-    marginBottom: 24,
+    maxWidth: 320,
+    marginBottom: 32,
+  },
+  scriptureContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  scriptureText: {
+    fontSize: 16,
+    fontStyle: 'italic',
+    color: Colors.primary.main,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  scriptureReference: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    fontWeight: '600',
   },
   contentContainer: {
-    flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: 'flex-start',
-    paddingTop: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 40,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -374,6 +410,10 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 24,
     paddingBottom: 32,
     paddingTop: 16,
