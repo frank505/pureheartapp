@@ -30,12 +30,21 @@ export interface MessageAttachmentDTO {
 export interface MessageDTO {
   id: string;
   groupId: string;
-  author: { id: string | number; name: string };
+  author: { 
+    id: string | number; 
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    name?: string;
+    currentStreak?: number;
+    mostRecentBadge?: Badge | null;
+  };
   text?: string;
   attachments: MessageAttachmentDTO[];
   parentId?: string;
   threadCount?: number;
   pinned: boolean;
+  likesCount: number;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -46,12 +55,50 @@ export interface MessagesResponse {
   nextCursor?: string;
 }
 
+export interface CommentDTO {
+  id: string;
+  messageId: string;
+  author: { 
+    id: string | number; 
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    name?: string;
+    currentStreak?: number;
+    mostRecentBadge?: Badge | null;
+  };
+  body: string;
+  mentions?: number[];
+  attachments?: Array<{ type: string; url: string; name?: string }>;
+  likesCount: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface CommentsResponse {
+  items: CommentDTO[];
+  page: number;
+  totalPages: number;
+}
+
+export interface Badge {
+  id: number;
+  code: string;
+  title: string;
+  icon: string;
+  tier: string;
+  unlockedAt: string;
+}
+
 export interface GroupMemberDTO {
   user: {
     id: number;
     firstName?: string;
     lastName?: string;
     email: string;
+    currentStreak?: number;
+    mostRecentBadge?: Badge | null;
   };
   role: 'owner' | 'moderator' | 'member';
   mutedUntil: string | null;
@@ -187,6 +234,43 @@ const groupService = {
 
   async deleteMessage(groupId: string, messageId: string): Promise<void> {
     await api.delete(`/groups/${groupId}/messages/${messageId}`);
+  },
+
+  // Comments
+  async listComments(
+    groupId: string,
+    messageId: string,
+    params?: { page?: number; pageSize?: number }
+  ): Promise<CommentsResponse> {
+    const { page = 1, pageSize = 20 } = params || {};
+    const { data } = await api.get<CommentsResponse>(`/groups/${groupId}/messages/${messageId}/comments`, { params: { page, limit: pageSize } });
+    return data;
+  },
+
+  async createComment(
+    groupId: string,
+    messageId: string,
+    input: { body: string; mentions?: number[]; attachments?: Array<{ type: string; url: string; name?: string }> }
+  ): Promise<CommentDTO> {
+    const { data } = await api.post<CommentDTO>(`/groups/${groupId}/messages/${messageId}/comments`, input);
+    return data;
+  },
+
+  // Likes
+  async likeMessage(groupId: string, messageId: string): Promise<void> {
+    await api.post(`/groups/${groupId}/messages/${messageId}/like`);
+  },
+
+  async unlikeMessage(groupId: string, messageId: string): Promise<void> {
+    await api.delete(`/groups/${groupId}/messages/${messageId}/like`);
+  },
+
+  async likeComment(groupId: string, messageId: string, commentId: string): Promise<void> {
+    await api.post(`/groups/${groupId}/messages/${messageId}/comments/${commentId}/like`);
+  },
+
+  async unlikeComment(groupId: string, messageId: string, commentId: string): Promise<void> {
+    await api.delete(`/groups/${groupId}/messages/${messageId}/comments/${commentId}/like`);
   },
 };
 

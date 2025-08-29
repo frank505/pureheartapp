@@ -16,6 +16,7 @@ import DailyDoseScreen from '../screens/DailyDoseScreen';
 import GrowthTrackerScreen from '../screens/GrowthTrackerScreen';
 import NotificationsCenterScreen from '../screens/NotificationsCenterScreen';
 import GroupChatScreen from '../screens/GroupChatScreen';
+import PostDetailScreen from '../screens/PostDetailScreen';
 
 
 import VictoriesScreen from '../screens/VictoriesScreen';
@@ -57,11 +58,11 @@ const RootNavigator = () => {
       <Stack.Screen name="AllGroups" component={AllGroupsScreen} options={{ headerShown: false }} />
 
       {/* Profile Dropdown Screens */}
-      <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
+      <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ headerShown: true }} />
       <Stack.Screen name="DailyDose" component={DailyDoseScreen} options={{ headerShown: true }} />
       <Stack.Screen name="GrowthTracker" component={GrowthTrackerScreen} options={{ headerShown: true }} />
-      <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} options={{ headerShown: true }} />
+      <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} options={{ headerShown: false }} />
 
       {/* Prayer and Victory Screens */}
       <Stack.Screen name="PrayerRequests" component={PrayerRequestsScreen} options={{ headerShown: false }} />
@@ -80,6 +81,15 @@ const RootNavigator = () => {
       <Stack.Screen 
         name="GroupChat" 
         component={GroupChatScreen} 
+        options={{ 
+          headerShown: false,
+          animation: 'slide_from_right'
+        }} 
+      />
+
+      <Stack.Screen 
+        name="PostDetail" 
+        component={PostDetailScreen} 
         options={{ 
           headerShown: false,
           animation: 'slide_from_right'

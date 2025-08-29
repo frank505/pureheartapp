@@ -5,7 +5,7 @@
  * Subscription content moved to separate screen.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -32,7 +32,7 @@ interface ProfileSettingsScreenProps {
   navigation?: any;
   route?: any;
 }
-
+ 
 const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { currentUser, loading, error } = useAppSelector((state) => state.user);
@@ -43,6 +43,9 @@ const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigatio
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');
+
+ 
+
 
   useEffect(() => {
     dispatch(getUserDetails());

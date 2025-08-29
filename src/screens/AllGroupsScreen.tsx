@@ -256,7 +256,7 @@ const AllGroupsScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Icon name={Icons.navigation.back.name} color={Colors.text.primary} size="md" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>All Groups</Text>
+        <Text style={styles.headerTitle}>Communities</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -268,11 +268,11 @@ const AllGroupsScreen = () => {
           buttons={[
             {
               value: 'my',
-              label: 'My Groups',
+              label: 'My Communities',
             },
             {
               value: 'public',
-              label: 'Public Groups',
+              label: 'Public Communities',
             },
           ]}
           style={styles.segmentedButtons}
@@ -280,7 +280,7 @@ const AllGroupsScreen = () => {
       </View>
 
       <Searchbar
-        placeholder={`Search ${activeTab === 'my' ? 'my' : 'public'} groups`}
+        placeholder={`Search ${activeTab === 'my' ? 'my' : 'public'} communities`}
         onChangeText={getCurrentSearchHandler()}
         value={getCurrentSearch()}
         style={styles.searchBar}

@@ -136,12 +136,12 @@ const MenuScreen = () => {
           <View style={[styles.sectionHeader, isSmall && styles.sectionHeaderSmall]}>
             <View style={styles.sectionTitleContainer}>
               <Icon name="people" color={Colors.primary.main} size="md" />
-              <Text style={[styles.sectionTitle, isSmall && styles.sectionTitleSmall]}>Community Groups</Text>
+              <Text style={[styles.sectionTitle, isSmall && styles.sectionTitleSmall]}>Communities</Text>
             </View>
           </View>
           <Surface style={styles.contentCard}>
             <TouchableOpacity onPress={() => navigation?.navigate('AllGroups')}>
-              <Text style={styles.linkText}>View All Community Groups</Text>
+              <Text style={styles.linkText}>View All Communities</Text>
             </TouchableOpacity>
           </Surface>
         </View>

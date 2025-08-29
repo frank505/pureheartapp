@@ -8,6 +8,7 @@ import FastDetailScreen from '../screens/FastDetailScreen';
 import ActivelyFastingScreen from '../screens/ActivelyFastingScreen';
 import FastJournalsListScreen from '../screens/FastJournalsListScreen';
 import FastJournalDetailScreen from '../screens/FastJournalDetailScreen';
+import CreateJournalScreen from '../screens/CreateJournalScreen';
 import PartnerFastingHubScreen from '../screens/PartnerFastingHubScreen';
 import PartnerUserJournalsScreen from '../screens/PartnerUserJournalsScreen';
 import { View, ActivityIndicator } from 'react-native';
@@ -26,6 +27,7 @@ export type FastingStackParamList = {
   ActivelyFasting: undefined;
   FastJournalsList: { fastId: number };
   FastJournalDetail: { fastId: number; journalId: number };
+  CreateJournal: { fastId: number };
   PartnerFastingHub: undefined;
   PartnerJournalsForUser: { userId: number };
   StartFast: undefined;
@@ -138,6 +140,7 @@ const FastingNavigator = () => {
   <Stack.Screen name="ActivelyFasting" component={ActivelyFastingScreen} />
   <Stack.Screen name="FastJournalsList" component={FastJournalsListScreen} />
   <Stack.Screen name="FastJournalDetail" component={FastJournalDetailScreen} />
+  <Stack.Screen name="CreateJournal" component={CreateJournalScreen} />
   <Stack.Screen name="PartnerFastingHub" component={PartnerFastingHubScreen} />
   <Stack.Screen name="PartnerJournalsForUser" component={PartnerUserJournalsScreen} />
       <Stack.Screen name="StartFast" component={StartFastScreen} />

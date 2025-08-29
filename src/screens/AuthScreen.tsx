@@ -206,10 +206,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
             {/* Scripture verse */}
             <View style={styles.scriptureContainer}>
               <Text style={styles.scriptureText}>
-                "His divine power has given us everything we need for a godly life through our knowledge of him who called us by his own glory and goodness."
+                "How can a young person stay on the path of purity? By living according to your word."
               </Text>
               <Text style={styles.scriptureReference}>
-                2 Peter 1:3
+                Psalm 119:9 NIV
               </Text>
             </View>
           </View>

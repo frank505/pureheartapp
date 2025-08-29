@@ -18,6 +18,18 @@ import { Platform } from 'react-native';
 import deviceTokenService from '../../services/deviceTokenService';
 
 /**
+ * Badge Interface
+ */
+export interface Badge {
+  id: number;
+  code: string;
+  title: string;
+  icon: string;
+  tier: string;
+  unlockedAt: string;
+}
+
+/**
  * User Interface
  * 
  * Defines the shape of a user object in our application.
@@ -32,6 +44,8 @@ export interface User {
   lastName?: string;
   avatar?: string;
   joinDate: string;
+  currentStreak?: number;
+  mostRecentBadge?: Badge | null;
   preferences: {
     notifications: boolean;
     darkMode: boolean;

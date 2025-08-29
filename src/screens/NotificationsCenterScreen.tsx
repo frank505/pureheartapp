@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useLayoutEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Surface, Button } from 'react-native-paper';
@@ -9,13 +9,16 @@ import { fetchNotifications, markAllReadAsync, markReadAsync } from '../store/sl
 import { useEffect, useState } from 'react';
 
 interface NotificationsCenterScreenProps { navigation?: any }
-
+ 
 const NotificationsCenterScreen: React.FC<NotificationsCenterScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const notifications = useAppSelector((s) => s.notifications.items);
   const unreadCount = useAppSelector((s) => s.notifications.unreadCount);
   const isLoading = useAppSelector((s) => s.notifications.isLoading);
   const [refreshing, setRefreshing] = useState(false);
+
+ 
+
 
   useEffect(() => {
     dispatch(fetchNotifications({ page: 1, limit: 20 }));

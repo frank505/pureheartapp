@@ -1,6 +1,7 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { TruthStackParamList } from './TruthNavigator';
 import { FastingStackParamList } from './FastingNavigator';
+import { MessageDTO } from '../services/groupService';
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -23,6 +24,11 @@ export type RootStackParamList = {
   ScriptureBrowser: undefined;
   AICompanion: undefined;
   GroupChat: { groupId: string; groupName: string; memberCount: number };
+  PostDetail: { 
+    groupId: string; 
+    post: MessageDTO;
+    groupName?: string;
+  };
   PartnersList: undefined;
   CheckInHistory: undefined;
   PrayerRequests: undefined;

@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, Surface, Button, Modal, Portal, TextInput, ActivityIndicator } from 'react-native-paper';
+import { Text, Surface, Button, Modal, Portal, TextInput, ActivityIndicator, FAB } from 'react-native-paper';
+import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { Colors, Icons } from '../constants';
 import Icon from '../components/Icon';
-import groupService, { GroupMemberDTO, MessageDTO } from '../services/groupService';
+import groupService, { GroupMemberDTO, MessageDTO, CommentDTO } from '../services/groupService';
 import { useAppSelector } from '../store/hooks';
 
 interface GroupChatScreenProps {
@@ -23,7 +24,6 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [sending, setSending] = useState(false);
-  const [inputText, setInputText] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [membersVisible, setMembersVisible] = useState(false);
   const [members, setMembers] = useState<GroupMemberDTO[]>([]);
@@ -32,12 +32,42 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
   const [membersHasMore, setMembersHasMore] = useState(true);
   const [ownerId, setOwnerId] = useState<number | null>(null);
 
+  // Post creation modal state
+  const [createPostVisible, setCreatePostVisible] = useState(false);
+  const [postText, setPostText] = useState('');
+  const richTextRef = useRef<RichEditor>(null);
+
   const isOwner = useMemo(() => {
     if (!currentUser || ownerId == null) return false;
     // currentUser.id is string per slice, backend uses number. Coerce.
     const me = Number(currentUser.id);
     return me === ownerId;
   }, [currentUser, ownerId]);
+
+  // Helper function to get badge icon from badge code
+  const getBadgeIcon = (badge: any) => {
+    if (!badge || !badge.code) return 'trophy';
+    const iconMap: { [key: string]: string } = {
+      'group_creator': 'account-group',
+      'first_post': 'message-text',
+      'active_member': 'star',
+      'streak_master': 'fire',
+      'daily_warrior': 'calendar-check',
+      // Add more badge mappings as needed
+    };
+    return iconMap[badge.code] || 'trophy';
+  };
+
+  // Helper function to get display name from author
+  const getAuthorDisplayName = (author: any): string => {
+    if (!author) return 'Unknown User';
+    if (author.id === 'ai') return 'AI';
+    if (author.name && typeof author.name === 'string') return author.name;
+    if (author.firstName && author.lastName) return `${author.firstName} ${author.lastName}`;
+    if (author.firstName && typeof author.firstName === 'string') return author.firstName;
+    if (author.lastName && typeof author.lastName === 'string') return author.lastName;
+    return `User ${author.id || 'Unknown'}`;
+  };
  
   const loadMessages = useCallback(
     async (reset = false) => {
@@ -192,21 +222,56 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
     ]);
   }, [groupId, navigation]);
 
-  const handleSend = useCallback(async () => {
-    const text = inputText.trim();
+  const handleCreatePost = useCallback(async () => {
+    const text = postText.trim();
     if (!groupId || !text || sending) return;
     try {
       setSending(true);
       const msg = await groupService.sendMessage(groupId, { text });
-      // Prepend to newest-first list
+      // Add to top of the list (newest first for normal social feed)
       setMessages((prev) => [msg, ...prev]);
-      setInputText('');
+      setPostText('');
+      setCreatePostVisible(false);
     } catch (e) {
-      Alert.alert('Error', 'Failed to send message');
+      Alert.alert('Error', 'Failed to create post');
     } finally {
       setSending(false);
     }
-  }, [groupId, inputText, sending]);
+  }, [groupId, postText, sending]);
+
+  const handlePostPress = useCallback((post: MessageDTO) => {
+    // Navigate to post detail screen
+    navigation?.navigate?.('PostDetail', { 
+      groupId, 
+      post,
+      groupName 
+    });
+  }, [navigation, groupId, groupName]);
+
+  const handleCloseCreatePost = useCallback(() => {
+    setCreatePostVisible(false);
+    setPostText('');
+  }, []);
+
+  const handleLikeMessage = useCallback(async (messageId: string) => {
+    try {
+      await groupService.likeMessage(groupId, messageId);
+      // Optimistically increment likesCount
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, likesCount: m.likesCount + 1 } : m));
+    } catch (e: any) {
+      if (e.response?.status === 409) {
+        // Already liked, so unlike
+        try {
+          await groupService.unlikeMessage(groupId, messageId);
+          setMessages(prev => prev.map(m => m.id === messageId ? { ...m, likesCount: Math.max(0, m.likesCount - 1) } : m));
+        } catch (unlikeError) {
+          Alert.alert('Error', 'Failed to unlike');
+        }
+      } else {
+        Alert.alert('Error', 'Failed to like');
+      }
+    }
+  }, [groupId]);
 
   const handleRefresh = useCallback(async () => {
     if (refreshing) return;
@@ -225,29 +290,69 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
         <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backButton}>
           <Icon name={Icons.navigation.back.name} color={Colors.text.primary} size="md" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{groupName || 'Group Chat'}</Text>
+        <Text style={styles.headerTitle}>{groupName || 'Group Feed'}</Text>
         <TouchableOpacity style={styles.headerIconButton} onPress={openMembers}>
           <Icon name={Icons.tabs.accountability.name} />
         </TouchableOpacity>
       </View>
 
-      {/* Messages List */}
+      {/* Posts Feed */}
       <FlatList
         data={messages}
         keyExtractor={(m) => m.id}
-        inverted
         contentContainerStyle={{ padding: 12 }}
         refreshing={refreshing}
         onRefresh={handleRefresh}
         renderItem={({ item }) => {
           const mine = currentUser && String(item.author.id) === String(currentUser.id);
           return (
-            <View style={[styles.msgRow, mine ? styles.msgRowMine : styles.msgRowOther]}>
-              <View style={[styles.msgBubble, mine ? styles.msgBubbleMine : styles.msgBubbleOther]}>
-                {item.text ? <Text style={mine ? styles.msgTextMine : styles.msgTextOther}>{item.text}</Text> : null}
-                <Text style={styles.msgTime}>{new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-              </View>
-            </View>
+            <TouchableOpacity onPress={() => handlePostPress(item)}>
+              <Surface style={styles.postContainer} elevation={1}>
+                <View style={styles.postHeader}>
+                  <View style={styles.postAuthor}>
+                    <Icon name={Icons.user.avatar.name} size="sm" />
+                    <View style={styles.postAuthorInfo}>
+                      <View style={styles.postAuthorMain}>
+                        <Text style={styles.postAuthorName}>{getAuthorDisplayName(item.author)}</Text>
+                        {item.author?.currentStreak && typeof item.author.currentStreak === 'number' && item.author.currentStreak > 0 && (
+                          <View style={styles.streakBadge}>
+                            <Icon name="fire" library="MaterialCommunityIcons" color={Colors.warning.main} size={14} />
+                            <Text style={styles.streakText}>{String(item.author.currentStreak)}</Text>
+                          </View>
+                        )}
+                        {item.author?.mostRecentBadge && (
+                          <View style={styles.userBadge}>
+                            <Icon 
+                              name={getBadgeIcon(item.author.mostRecentBadge)} 
+                              library="MaterialCommunityIcons" 
+                              color={Colors.primary.main} 
+                              size={12} 
+                            />
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                  <Text style={styles.postTime}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+                </View>
+                <View style={styles.postContent}>
+                  {item.text ? <Text style={styles.postText}>{item.text}</Text> : null}
+                </View>
+                <View style={styles.postActions}>
+                  <TouchableOpacity onPress={(e) => {
+                    e.stopPropagation();
+                    handleLikeMessage(item.id);
+                  }} style={styles.actionButton}>
+                    <Icon name="heart" library="MaterialCommunityIcons" color={Colors.error.main} size={20} />
+                    <Text style={styles.actionText}>{String(item.likesCount || 0)}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.actionButton}>
+                    <Icon name="comment" library="MaterialCommunityIcons" color={Colors.text.secondary} size={20} />
+                    <Text style={styles.actionText}>{String(item.threadCount || 0)}</Text>
+                  </View>
+                </View>
+              </Surface>
+            </TouchableOpacity>
           );
         }}
         onEndReachedThreshold={0.4}
@@ -261,25 +366,94 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
           loadingMsgs ? (
             <ActivityIndicator style={{ marginTop: 24 }} />
           ) : (
-            <Text style={{ color: Colors.text.secondary, textAlign: 'center', marginTop: 24 }}>No messages yet</Text>
+            <Text style={{ color: Colors.text.secondary, textAlign: 'center', marginTop: 24 }}>No posts yet</Text>
           )
         }
         style={{ flex: 1 }}
       />
 
-      {/* Composer */}
-      <Surface style={styles.composer} elevation={2}>
-        <TextInput
-          mode="outlined"
-          placeholder="Type a message"
-          value={inputText}
-          onChangeText={setInputText}
-          style={{ flex: 1 }}
-        />
-        <TouchableOpacity style={styles.sendBtn} onPress={handleSend} disabled={sending || !inputText.trim()}>
-          <Icon name={Icons.actions.send.name} color={sending || !inputText.trim() ? Colors.text.tertiary : Colors.primary.main} />
-        </TouchableOpacity>
-      </Surface>
+      {/* Floating Action Button */}
+      <FAB
+        icon="plus"
+        style={styles.fab}
+        onPress={() => setCreatePostVisible(true)}
+      />
+
+      {/* Create Post Modal */}
+      <Portal>
+        <Modal 
+          visible={createPostVisible} 
+          onDismiss={handleCloseCreatePost} 
+          contentContainerStyle={styles.createPostModal}
+        >
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>What's on your mind ?</Text>
+              <TouchableOpacity onPress={handleCloseCreatePost}>
+                <Icon name={Icons.navigation.close.name} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.richEditorContainer} showsVerticalScrollIndicator={false}>
+              <RichEditor
+                ref={richTextRef}
+                placeholder="What's on your mind? Share your thoughts, prayers, or victories..."
+                initialContentHTML={postText}
+                onChange={(html: string) => setPostText(html)}
+                androidHardwareAccelerationDisabled={true}
+                useContainer={true}
+                editorStyle={{ 
+                  backgroundColor: Colors.background.secondary, 
+                  color: Colors.text.primary,
+                  fontSize: 16,
+                  lineHeight: 24,
+                  padding: 16
+                }}
+                style={styles.richEditor}
+              />
+            </ScrollView>
+
+            <RichToolbar
+              editor={richTextRef}
+              actions={[
+                actions.undo, 
+                actions.redo, 
+                actions.bold, 
+                actions.italic, 
+                actions.underline,
+                actions.insertBulletsList, 
+                actions.insertOrderedList,
+                actions.alignLeft,
+                actions.alignCenter,
+                actions.insertLink
+              ]}
+              style={styles.richToolbar}
+            />
+
+            <View style={styles.modalActions}>
+              <Button 
+                mode="outlined" 
+                onPress={handleCloseCreatePost}
+                style={styles.cancelButton}
+              >
+                Cancel
+              </Button>
+              <Button 
+                mode="contained" 
+                onPress={handleCreatePost}
+                disabled={sending || !postText.trim()}
+                loading={sending}
+                style={styles.postButton}
+              >
+                Share Post
+              </Button>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+      </Portal>
 
       {/* Members Modal */}
       <Portal>
@@ -358,18 +532,94 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerIconButton: { padding: 6 },
-  msgRow: { flexDirection: 'row', marginBottom: 8 },
-  msgRowMine: { justifyContent: 'flex-end' },
-  msgRowOther: { justifyContent: 'flex-start' },
-  msgBubble: { maxWidth: '80%', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
-  msgBubbleMine: { backgroundColor: Colors.primary.main, borderTopRightRadius: 2 },
-  msgBubbleOther: { backgroundColor: Colors.background.secondary, borderTopLeftRadius: 2, borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border.primary },
-  msgTextMine: { color: Colors.white },
-  msgTextOther: { color: Colors.text.primary },
-  msgTime: { color: Colors.text.secondary, fontSize: 10, marginTop: 4 },
+  postContainer: { marginBottom: 12, padding: 12, borderRadius: 8, backgroundColor: Colors.background.secondary },
+  postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  postAuthor: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  postAuthorInfo: { flex: 1, minWidth: 0 },
+  postAuthorMain: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  postAuthorName: { color: Colors.text.primary, fontWeight: '600', flexShrink: 1 },
+  streakBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: Colors.warning.main + '20', 
+    paddingHorizontal: 6, 
+    paddingVertical: 2, 
+    borderRadius: 12, 
+    gap: 2,
+    flexShrink: 0
+  },
+  streakText: { color: Colors.warning.main, fontSize: 12, fontWeight: '600' },
+  userBadge: { 
+    backgroundColor: Colors.primary.main + '20', 
+    paddingHorizontal: 6, 
+    paddingVertical: 2, 
+    borderRadius: 12,
+    flexShrink: 0
+  },
+  postTime: { color: Colors.text.secondary, fontSize: 12 },
+  postContent: { marginBottom: 8 },
+  postText: { color: Colors.text.primary, lineHeight: 20 },
+  postActions: { flexDirection: 'row', gap: 16 },
+  actionButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  actionText: { color: Colors.text.secondary, fontSize: 14 },
+  commentsContainer: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.border.primary },
+  commentRow: { marginBottom: 8 },
+  commentContent: { },
+  commentAuthor: { color: Colors.text.primary, fontWeight: '600', fontSize: 14 },
+  commentBody: { color: Colors.text.primary, marginVertical: 4 },
+  commentActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  commentTime: { color: Colors.text.secondary, fontSize: 12 },
+  commentInputContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+  sendCommentBtn: { padding: 8 },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Colors.primary.main,
+  },
 
-  composer: { flexDirection: 'row', alignItems: 'center', padding: 8, gap: 8, borderTopWidth: 1, borderTopColor: Colors.border.primary },
-  sendBtn: { padding: 8 },
+  createPostModal: {
+    backgroundColor: Colors.background.primary,
+    margin: 20,
+    borderRadius: 16,
+    padding: 0,
+    maxHeight: '90%',
+    minHeight: 400,
+  },
+  richEditorContainer: {
+    flex: 1,
+    maxHeight: 300,
+    marginVertical: 8,
+    marginHorizontal: 16,
+  },
+  richEditor: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 8,
+    minHeight: 200,
+  },
+  richToolbar: {
+    backgroundColor: Colors.background.secondary,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border.primary,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    borderRadius: 8,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border.primary,
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+  },
+  postButton: {
+    flex: 1,
+  },
 
   modalContainer: {
     backgroundColor: Colors.background.secondary,
@@ -381,7 +631,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    paddingTop: 20,
+    paddingBottom: 8,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border.primary,
   },
   modalTitle: { color: Colors.text.primary, fontSize: 18, fontWeight: '700' },
   memberRow: {

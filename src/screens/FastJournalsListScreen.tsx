@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, TextInput, Button, Portal, Modal } from 'react-native-paper';
+import { Text, TextInput } from 'react-native-paper';
 import { Colors } from '../constants';
 import fastingService from '../services/fastingService';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '../components';
 
 type RouteParams = { fastId: number };
@@ -16,11 +16,6 @@ const FastJournalsListScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
   const [q, setQ] = useState('');
-  const [composeVisible, setComposeVisible] = useState(false);
-  const [cTitle, setCTitle] = useState('');
-  const [cBody, setCBody] = useState('');
-  const [cVisibility, setCVisibility] = useState<'private' | 'partner'>('private');
-  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     if (!fastId) return;
@@ -36,6 +31,13 @@ const FastJournalsListScreen: React.FC = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Reload when screen comes into focus (e.g., after creating a journal)
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -78,63 +80,13 @@ const FastJournalsListScreen: React.FC = () => {
       )}
 
       {/* Floating Add Button */}
-      <TouchableOpacity style={styles.fab} onPress={() => setComposeVisible(true)} activeOpacity={0.8}>
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => navigation.navigate('CreateJournal', { fastId })} 
+        activeOpacity={0.8}
+      >
         <Text style={{ color: Colors.white, fontSize: 24, marginTop: -2 }}>＋</Text>
       </TouchableOpacity>
-
-      <Portal>
-        <Modal
-          visible={composeVisible}
-          onDismiss={() => setComposeVisible(false)}
-          contentContainerStyle={styles.modal}
-        >
-          <Text style={styles.modalTitle}>New Journal</Text>
-          <TextInput
-            mode="outlined"
-            placeholder="Title (optional)"
-            value={cTitle}
-            onChangeText={setCTitle}
-            style={styles.modalInput}
-          />
-          <TextInput
-            mode="outlined"
-            placeholder="Write your entry..."
-            value={cBody}
-            onChangeText={setCBody}
-            multiline
-            numberOfLines={6}
-            style={[styles.modalInput, { height: 140 }]}
-          />
-          <View style={styles.visibilityRow}>
-            <Text style={{ color: Colors.white, marginRight: 8 }}>Visibility:</Text>
-            <Button mode={cVisibility === 'private' ? 'contained' : 'outlined'} onPress={() => setCVisibility('private')}>Private</Button>
-            <Button mode={cVisibility === 'partner' ? 'contained' : 'outlined'} onPress={() => setCVisibility('partner')}>Partner</Button>
-          </View>
-          <View style={styles.modalActions}>
-            <Button mode="text" onPress={() => setComposeVisible(false)} disabled={saving}>Cancel</Button>
-            <Button
-              mode="contained"
-              loading={saving}
-              disabled={saving || !cBody.trim()}
-              onPress={async () => {
-                try {
-                  setSaving(true);
-                  await fastingService.createJournal(fastId, { title: cTitle.trim() || undefined, body: cBody.trim(), visibility: cVisibility });
-                  setCTitle('');
-                  setCBody('');
-                  setCVisibility('private');
-                  setComposeVisible(false);
-                  await load();
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
-              Save
-            </Button>
-          </View>
-        </Modal>
-      </Portal>
     </SafeAreaView>
   );
 };
@@ -160,16 +112,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     elevation: 6,
   },
-  modal: {
-    backgroundColor: Colors.background.secondary,
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-  },
-  modalTitle: { color: Colors.white, fontSize: 18, fontWeight: '700', marginBottom: 8 },
-  modalInput: { backgroundColor: Colors.background.tertiary, marginBottom: 12 },
-  visibilityRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
 });
 
 export default FastJournalsListScreen;
