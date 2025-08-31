@@ -419,19 +419,39 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         note: note?.trim() || undefined,
         status: 'victory', // Explicitly set status to victory for normal check-ins
       };
+      
       if (visibilityOption === 'private') {
         payload.visibility = 'private';
-      } else {
-        payload.visibility = 'partner';
-        if (visibilityOption === 'allPartners') {
-          payload.partnerIds = partnerChoices.map((p) => p.id);
-        } else if (visibilityOption === 'selectPartners') {
-          payload.partnerIds = selectedPartnerIds;
-        }
-      }
-      if (visibilityOption === 'group') {
+      } else if (visibilityOption === 'group') {
         payload.visibility = 'group';
         payload.groupIds = selectedGroupIds;
+        
+        // Validate group selection
+        if (!selectedGroupIds || selectedGroupIds.length === 0) {
+          Alert.alert('Group Required', 'Please select at least one group to share with.');
+          return;
+        }
+      } else {
+        // Handle partner visibility options
+        payload.visibility = 'partner';
+        
+        if (visibilityOption === 'allPartners') {
+          payload.partnerIds = partnerChoices.map((p) => p.id);
+          
+          // Validate that user has partners
+          if (!partnerChoices || partnerChoices.length === 0) {
+            Alert.alert('No Partners', 'You don\'t have any connected partners yet. Please invite partners first or choose private visibility.');
+            return;
+          }
+        } else if (visibilityOption === 'selectPartners') {
+          payload.partnerIds = selectedPartnerIds;
+          
+          // Validate partner selection
+          if (!selectedPartnerIds || selectedPartnerIds.length === 0) {
+            Alert.alert('Partner Required', 'Please select at least one partner to share with.');
+            return;
+          }
+        }
       }
      
       await dispatch(createCheckIn(payload)).unwrap();
@@ -459,7 +479,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           }
         ]}
       >
-        <ScreenHeader title="Home" iconName="home" navigation={navigation} />
+        <ScreenHeader title="Home"  navigation={navigation} />
       </Animated.View>
 
       <ScrollView 
@@ -772,24 +792,43 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             </View>
 
             {visibilityOption === 'selectPartners' && (
-              <PartnerGroupSelector
-                partners={connectedPartners}
-                groups={[]}
-                selectedPartners={selectedPartnerIds}
-                selectedGroups={[]}
-                onPartnerSelectionChange={setSelectedPartnerIds}
-                onGroupSelectionChange={() => {}}
-              />
+              <>
+                <PartnerGroupSelector
+                  partners={connectedPartners}
+                  groups={[]}
+                  selectedPartners={selectedPartnerIds}
+                  selectedGroups={[]}
+                  onPartnerSelectionChange={setSelectedPartnerIds}
+                  onGroupSelectionChange={() => {}}
+                />
+                {(!selectedPartnerIds || selectedPartnerIds.length === 0) && (
+                  <Text style={{ color: Colors.error.main, fontSize: 12, marginTop: 4 }}>
+                    Please select at least one partner to share with
+                  </Text>
+                )}
+              </>
             )}
             {visibilityOption === 'group' && (
-              <PartnerGroupSelector
-                partners={[]}
-                groups={groups}
-                selectedPartners={[]}
-                selectedGroups={selectedGroupIds}
-                onPartnerSelectionChange={() => {}}
-                onGroupSelectionChange={setSelectedGroupIds}
-              />
+              <>
+                <PartnerGroupSelector
+                  partners={[]}
+                  groups={groups}
+                  selectedPartners={[]}
+                  selectedGroups={selectedGroupIds}
+                  onPartnerSelectionChange={() => {}}
+                  onGroupSelectionChange={setSelectedGroupIds}
+                />
+                {(!selectedGroupIds || selectedGroupIds.length === 0) && (
+                  <Text style={{ color: Colors.error.main, fontSize: 12, marginTop: 4 }}>
+                    Please select at least one group to share with
+                  </Text>
+                )}
+              </>
+            )}
+            {visibilityOption === 'allPartners' && (!partnerChoices || partnerChoices.length === 0) && (
+              <Text style={{ color: Colors.error.main, fontSize: 12, marginTop: 4 }}>
+                You don't have any connected partners yet. Please invite partners first or choose private visibility.
+              </Text>
             )}
 
             {/* Note input */}
@@ -804,7 +843,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
               <Button mode="text" onPress={() => setCheckinVisible(false)}>Cancel</Button>
-              <Button mode="contained" onPress={submitCheckIn} disabled={isCreating} loading={isCreating}>Save Check-in</Button>
+              <Button 
+                mode="contained" 
+                onPress={submitCheckIn} 
+                disabled={
+                  isCreating || 
+                  (visibilityOption === 'selectPartners' && (!selectedPartnerIds || selectedPartnerIds.length === 0)) ||
+                  (visibilityOption === 'allPartners' && (!partnerChoices || partnerChoices.length === 0)) ||
+                  (visibilityOption === 'group' && (!selectedGroupIds || selectedGroupIds.length === 0))
+                } 
+                loading={isCreating}
+              >
+                Save Check-in
+              </Button>
             </View>
           </Modal>
           {/* Modal: Invite Partner */}

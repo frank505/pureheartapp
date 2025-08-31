@@ -47,7 +47,7 @@ const FastJournalsListScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScreenHeader title="Journals" iconName="book-outline" navigation={navigation} showBackButton />
+      <ScreenHeader title="Journals" navigation={navigation} showBackButton />
       <View style={{ paddingHorizontal: 16 }}>
         <TextInput
           mode="outlined"

@@ -14,39 +14,45 @@ import ProfileDropdown from './ProfileDropdown';
 
 interface ScreenHeaderProps {
   title: string;
-  iconName?: string;
-  iconColor?: string;
   navigation?: any;
   showBackButton?: boolean;
 }
 
 const ScreenHeader: React.FC<ScreenHeaderProps> = ({ 
   title, 
-  iconName, 
-  iconColor = Colors.primary.main,
   navigation,
   showBackButton = false
 }) => {
+  const handleProfileSettings = () => {
+    navigation?.navigate('ProfileSettings');
+  };
+
   return (
     <View style={styles.headerContent}>
-      <TouchableOpacity
-        style={styles.headerIconContainer}
-        onPress={() => {
-          if (showBackButton) {
-            navigation?.goBack();
-          } else if (navigation?.toggleDrawer) {
-            navigation.toggleDrawer();
-          } else if (navigation?.openDrawer) {
-            navigation.openDrawer();
-          }
-        }}
-      >
-        <Icon 
-          name={showBackButton ? "arrow-back" : iconName || ""} 
-          color={iconColor} 
-          size="sm" 
-        />
-      </TouchableOpacity>
+      {showBackButton ? (
+        <TouchableOpacity
+          style={styles.headerIconContainer}
+          onPress={() => navigation?.goBack()}
+        > 
+          <Icon 
+            name="arrow-back" 
+            color={Colors.primary.main} 
+            size="sm" 
+          />
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={styles.headerIconContainer}
+          onPress={handleProfileSettings}
+        > 
+          <Icon 
+            name="settings-outline" 
+            color={Colors.text.primary} 
+            size="sm" 
+          />
+        </TouchableOpacity>
+      )}
+     
       <Text style={styles.headerTitle}>{title}</Text>
       <ProfileDropdown navigation={navigation} />
     </View>

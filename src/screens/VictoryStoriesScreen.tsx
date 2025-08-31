@@ -8,7 +8,7 @@ import { Colors } from '../constants';
 const VictoryStoriesScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
-      <ScreenHeader title="Victory Stories" iconName="trophy-outline" />
+      <ScreenHeader title="Victory Stories"  />
       <ScrollView>
         <View style={styles.content}>
           <Text>Victory Stories content will go here</Text>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Surface, TextInput, Button, Chip } from 'react-native-paper';
 import checkinService, { CheckInDTO, Comment } from '../services/checkinService';
@@ -33,7 +33,6 @@ const CheckInDetailScreen = ({ route, navigation }: any) => {
     try {
       setLoading(true);
       const res = await checkinService.getComments(checkInId, { page: pageNum, limit: 20 });
-      // Alert.alert('comments data', JSON.stringify(res));
       setComments(res.items);
       setPage(res.page);
       setTotalPages(res.totalPages);
@@ -54,7 +53,10 @@ const CheckInDetailScreen = ({ route, navigation }: any) => {
     try {
       setPosting(true);
       const created = await checkinService.addComment(checkInId, { body: commentBody.trim() });
-      setComments((prev) => [created, ...prev]);
+      if(created){
+     await loadComments(1);
+      }
+      // setComments((prev) => [created, ...prev]);
       setCommentBody('');
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Failed to post comment');
@@ -87,17 +89,22 @@ const CheckInDetailScreen = ({ route, navigation }: any) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Custom Screen Header with Back Button */}
-      <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
-          <View style={styles.iconContainer}>
-            <Icon name="arrow-back" color={Colors.primary.main} size="md" />
-          </View>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Check-in</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
+      <SafeAreaView style={styles.container}>
+        {/* Custom Screen Header with Back Button */}
+        <View style={styles.headerContainer}>
+          <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
+            <View style={styles.iconContainer}>
+              <Icon name="arrow-back" color={Colors.primary.main} size="md" />
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Check-in</Text>
+          <View style={styles.headerSpacer} />
+        </View>
 
       {checkIn && (
         <Surface style={styles.card} elevation={2}>
@@ -155,7 +162,8 @@ const CheckInDetailScreen = ({ route, navigation }: any) => {
           Post
         </Button>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 };
 

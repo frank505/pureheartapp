@@ -284,17 +284,22 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
   }, [refreshing, loadMessages]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-      {/* Custom Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backButton}>
-          <Icon name={Icons.navigation.back.name} color={Colors.text.primary} size="md" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{groupName || 'Group Feed'}</Text>
-        <TouchableOpacity style={styles.headerIconButton} onPress={openMembers}>
-          <Icon name={Icons.tabs.accountability.name} />
-        </TouchableOpacity>
-      </View>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
+      <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+        {/* Custom Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backButton}>
+            <Icon name={Icons.navigation.back.name} color={Colors.text.primary} size="md" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{groupName || 'Group Feed'}</Text>
+          <TouchableOpacity style={styles.headerIconButton} onPress={openMembers}>
+            <Icon name={Icons.tabs.accountability.name} />
+          </TouchableOpacity>
+        </View>
 
       {/* Posts Feed */}
       <FlatList
@@ -503,7 +508,8 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
           )}
         </Modal>
       </Portal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 };
 

@@ -56,11 +56,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
     });
   };
 
-  const handleProfileSettings = () => {
-    hideDropdown();
-    navigation?.navigate('ProfileSettings');
-  };
-
   const handleSubscription = () => {
     hideDropdown();
     navigation?.navigate('Subscription');
@@ -185,24 +180,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
 
               <View style={styles.divider} />
 
-            
-
-              <View style={styles.divider} />
-
            
-              <View style={styles.divider} />
-              <TouchableOpacity 
-                style={styles.dropdownItem}
-                onPress={handleProfileSettings}
-              >
-                <Icon 
-                  name="settings-outline" 
-                  color={Colors.text.primary} 
-                  size="sm" 
-                />
-                <Text style={styles.dropdownText}>Profile & Settings</Text>
-              </TouchableOpacity>
-              
               <View style={styles.divider} />
               
               <TouchableOpacity 

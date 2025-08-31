@@ -132,7 +132,7 @@ export const loginUser = createAsyncThunk(
       // Register FCM token if available
       const fcmToken = await AsyncStorage.getItem('fcm_token');
       if (fcmToken) {
-        await deviceTokenService.register(fcmToken, Platform.OS);
+        await deviceTokenService.register(fcmToken, Platform.OS as any);
       }
 
       return user;
@@ -174,7 +174,7 @@ export const loginUserWithApple = createAsyncThunk(
       // Register FCM token if available
       const fcmToken = await AsyncStorage.getItem('fcm_token');
       if (fcmToken) {
-        await deviceTokenService.register(fcmToken, Platform.OS);
+        await deviceTokenService.register(fcmToken, Platform.OS as any);
       }
 
       return user;

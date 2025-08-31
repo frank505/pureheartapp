@@ -18,7 +18,6 @@ const FastingScreen = () => {
       <View style={styles.content}>
         <ScreenHeader 
           title="Fasting" 
-          iconName="settings-outline" 
           navigation={navigation} 
         />
         <ScrollView>

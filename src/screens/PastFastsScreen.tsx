@@ -6,6 +6,7 @@ import { Colors } from '../constants';
 import fastingService from '../services/fastingService';
 import type { Fast } from '../types/fasting';
 import { useNavigation } from '@react-navigation/native';
+import { ScreenHeader } from '../components';
 
 const PastFastsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -59,8 +60,13 @@ const PastFastsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <ScreenHeader
+        title="Fasting"
+        navigation={navigation}
+      />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Your Fasts</Text>
+
+        <Text style={styles.headerTitle}>Fasting And Prayers</Text>
         <TouchableOpacity style={styles.createBtn} onPress={() => navigation.navigate('StartFast') as any}>
           <Text style={styles.createBtnText}>Create Fast</Text>
         </TouchableOpacity>

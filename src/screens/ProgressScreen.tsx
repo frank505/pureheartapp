@@ -40,6 +40,58 @@ interface ProgressScreenProps {
   route?: any;
 }
 
+// Component to handle image loading with fallback
+const ImageWithFallback: React.FC<{
+  uri: string;
+  style: any;
+  fallbackIcon?: string;
+  resizeMode?: 'contain' | 'cover' | 'stretch' | 'center' | 'repeat';
+}> = ({ uri, style, fallbackIcon = '🏆', resizeMode = 'contain' }) => {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return <Text style={[style, { textAlign: 'center', fontSize: 28 }]}>{fallbackIcon}</Text>;
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={style}
+      resizeMode={resizeMode}
+      onError={() => {
+        console.warn(`Failed to load image: ${uri}`);
+        setHasError(true);
+      }}
+    />
+  );
+};
+
+// Component to handle SVG loading with fallback
+const SvgWithFallback: React.FC<{
+  uri: string;
+  width: number;
+  height: number;
+  fallbackIcon?: string;
+}> = ({ uri, width, height, fallbackIcon = '🏆' }) => {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return <Text style={{ fontSize: 28, textAlign: 'center' }}>{fallbackIcon}</Text>;
+  }
+
+  return (
+    <SvgUri
+      uri={uri}
+      width={width}
+      height={height}
+      onError={() => {
+        console.warn(`Failed to load SVG: ${uri}`);
+        setHasError(true);
+      }}
+    />
+  );
+};
+
 const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { achievements, analytics, calendar, features, badges, loading, error } = useAppSelector((state) => state.progress);
@@ -194,7 +246,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       {/* Custom Header */}
       <View style={styles.header}>
-        <ScreenHeader title="Quest Progress" iconName="stats-chart" navigation={navigation} />
+        <ScreenHeader title="Quest Progress"  navigation={navigation} />
       </View>
 
       <ScrollView 
@@ -258,41 +310,69 @@ const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
           <Text style={styles.sectionTitle}>🏆 Badges Collection</Text>
           <View style={styles.achievementsGrid}>
             {badges.map((badge) => {
-              const dynamic = getCardColors(`${badge.id}-${badge.code || badge.title}`, badge.unlocked);
-              return (
-              <Surface key={badge.id} style={[styles.achievementCard, badge.unlocked && styles.badgeUnlocked, dynamic]} elevation={2}>
-                <LinearGradient
-                  colors={getGradientColors(`${badge.id}-${badge.code || badge.title}`, badge.unlocked)}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.gradientBackground}
-                />
-                <View style={styles.badgeContent}>
-                  {/https?:\/\//.test(badge.icon) ? (
-                    <Pressable onPress={() => Linking.openURL(badge.icon)} accessibilityRole="link" accessibilityLabel={`Open ${badge.title} link`}>
-                      {/\.svg(\?|$)/.test(badge.icon) ? (
-                        <SvgUri uri={badge.icon} width={56} height={56} />
-                      ) : (
-                        <Image source={{ uri: badge.icon }} style={styles.badgeImage} resizeMode="contain" />
-                      )}
-                    </Pressable>
-                  ) : (
-                    <Text style={styles.badgeIcon}>{badge.icon}</Text>
-                  )}
-                  <Text style={styles.badgeTitle}>{badge.title}</Text>
-                  <Text style={styles.badgeDescription}>{badge.description}</Text>
-                  {badge.unlocked ? (
-                    <View style={styles.unlockedBadge}>
-                      <Text style={styles.unlockedText}>✓</Text>
+              try {
+                const dynamic = getCardColors(`${badge.id}-${badge.code || badge.title}`, badge.unlocked);
+                return (
+                <Surface key={badge.id} style={[styles.achievementCard, badge.unlocked && styles.badgeUnlocked, dynamic]} elevation={2}>
+                  <LinearGradient
+                    colors={getGradientColors(`${badge.id}-${badge.code || badge.title}`, badge.unlocked)}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gradientBackground}
+                  />
+                  <View style={styles.badgeContent}>
+                    {/https?:\/\//.test(badge.icon) ? (
+                      <Pressable onPress={() => Linking.openURL(badge.icon)} accessibilityRole="link" accessibilityLabel={`Open ${badge.title} link`}>
+                        {/\.svg(\?|$)/.test(badge.icon) ? (
+                          <SvgWithFallback 
+                            uri={badge.icon} 
+                            width={56} 
+                            height={56}
+                            fallbackIcon="🏆"
+                          />
+                        ) : (
+                          <ImageWithFallback 
+                            uri={badge.icon} 
+                            style={styles.badgeImage} 
+                            resizeMode="contain"
+                            fallbackIcon="🏆"
+                          />
+                        )}
+                      </Pressable>
+                    ) : (
+                      <Text style={styles.badgeIcon}>{badge.icon}</Text>
+                    )}
+                    <Text style={styles.badgeTitle}>{badge.title}</Text>
+                    <Text style={styles.badgeDescription}>{badge.description}</Text>
+                    {badge.unlocked ? (
+                      <View style={styles.unlockedBadge}>
+                        <Text style={styles.unlockedText}>✓</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.lockedBadge}>
+                        <Icon name="lock-closed" color={Colors.text.secondary} size="sm" />
+                      </View>
+                    )}
+                  </View>
+                </Surface>
+                );
+              } catch (error) {
+                console.warn(`Error rendering badge ${badge.id}:`, error);
+                // Return a fallback badge component
+                return (
+                  <Surface key={badge.id} style={[styles.achievementCard, styles.fallbackCard]} elevation={2}>
+                    <View style={styles.badgeContent}>
+                      <Text style={styles.badgeIcon}>🏆</Text>
+                      <Text style={styles.badgeTitle}>{badge.title || 'Badge'}</Text>
+                      <Text style={styles.badgeDescription}>Unable to load badge</Text>
+                      <View style={styles.lockedBadge}>
+                        <Icon name="alert-circle" color={Colors.text.secondary} size="sm" />
+                      </View>
                     </View>
-                  ) : (
-                    <View style={styles.lockedBadge}>
-                      <Icon name="lock-closed" color={Colors.text.secondary} size="sm" />
-                    </View>
-                  )}
-                </View>
-              </Surface>
-            );})}
+                  </Surface>
+                );
+              }
+            })}
             
           </View>
         </View>
@@ -549,6 +629,11 @@ const styles = StyleSheet.create({
   badgeUnlocked: {
     borderColor: '#22c55e',
     borderWidth: 2,
+  },
+  fallbackCard: {
+    backgroundColor: Colors.background.tertiary,
+    borderColor: Colors.error.main,
+    borderWidth: 1,
   },
   badgeContent: {
     alignItems: 'center',

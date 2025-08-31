@@ -52,7 +52,7 @@ const FastJournalDetailScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-  <ScreenHeader title="Journal" iconName="book-outline" navigation={navigation} showBackButton />
+  <ScreenHeader title="Journal"  navigation={navigation} showBackButton />
       {journal && (
         <View style={styles.header}>
           {!!journal.title && <Text style={styles.title}>{journal.title}</Text>}

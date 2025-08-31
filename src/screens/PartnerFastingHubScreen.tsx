@@ -26,7 +26,7 @@ const PartnerFastingHubScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-  <ScreenHeader title="Partners Fasting" iconName="hourglass-outline" navigation={navigation} showBackButton />
+  <ScreenHeader title="Partners Fasting" navigation={navigation} showBackButton />
       {loading ? (
         <View style={styles.center}><ActivityIndicator color={Colors.primary.main} /></View>
       ) : (

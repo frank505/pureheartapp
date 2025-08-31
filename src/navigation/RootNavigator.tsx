@@ -18,8 +18,6 @@ import NotificationsCenterScreen from '../screens/NotificationsCenterScreen';
 import GroupChatScreen from '../screens/GroupChatScreen';
 import PostDetailScreen from '../screens/PostDetailScreen';
 
-
-import VictoriesScreen from '../screens/VictoriesScreen';
 import PrayerRequestDetailScreen from '../screens/PrayerRequestDetailScreen';
 
 import VictoryDetailScreen from '../screens/VictoryDetailScreen';

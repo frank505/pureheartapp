@@ -167,7 +167,7 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
           }
         ]}
       >
-        <ScreenHeader title="Emergency" iconName="alert-circle" iconColor={Colors.error.main} navigation={navigation} />
+        <ScreenHeader title="Emergency"  navigation={navigation} />
       </Animated.View>
 
       <ScrollView 
