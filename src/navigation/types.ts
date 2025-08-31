@@ -48,6 +48,7 @@ export type RootStackParamList = {
   MyVictories: undefined;
   AllGroups: undefined;
   NewGroup: undefined;
+  PartnerFastingHub: undefined;
   PublicVictories: undefined;
   StartFast: undefined;
   ConfigureFast: { 

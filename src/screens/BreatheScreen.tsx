@@ -44,6 +44,7 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
   // Audio state
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioLoaded, setAudioLoaded] = useState(false);
+  const [audioSupported, setAudioSupported] = useState(true); // Track if audio is supported
   
   // Animation refs
   const scaleAnim = useRef(new Animated.Value(0.7)).current;
@@ -55,9 +56,9 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
   const progressAnim = useRef(new Animated.Value(0)).current;
   
   // Refs for cleanup
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const phaseIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const scriptureIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const phaseIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scriptureIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initialTextRef = useRef<string | undefined>(route?.params?.initialText);
 
   // Breathing pattern configuration
@@ -213,11 +214,33 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Validate audio URL
+  // Validate audio URL and format
   const isValidAudioUrl = (url: string) => {
     try {
+      Alert.alert(url);
       new URL(url);
-      return true;
+      // Check for supported audio formats
+      const supportedFormats = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.mp4'];
+      const urlLower = url.toLowerCase();
+      
+      // First check for explicit format extensions
+      const hasValidExtension = supportedFormats.some(format => urlLower.includes(format));
+      
+      // Also check for common audio-related keywords in URL
+      const hasAudioKeywords = urlLower.includes('audio') || 
+                              urlLower.includes('mp3') ||
+                              urlLower.includes('m4a') ||
+                              urlLower.includes('aac') ||
+                              urlLower.includes('wav');
+      
+      // Reject known problematic formats or streaming services that might not work
+      const isProblematicUrl = urlLower.includes('youtube') || 
+                               urlLower.includes('spotify') ||
+                               urlLower.includes('soundcloud') ||
+                               urlLower.includes('.wma') ||
+                               urlLower.includes('.flac');
+      
+      return (hasValidExtension || hasAudioKeywords) && !isProblematicUrl;
     } catch {
       return false;
     }
@@ -253,6 +276,7 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
       setAnalysis(null);
       setAudioUrl(null);
       setAudioError(null);
+      setAudioSupported(true); // Reset audio support flag
       
       // Reset scriptures to default
       setScriptures([
@@ -285,13 +309,14 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
         }
       }
       
-      // Set audio URL if available
-      if (result?.asmrAudioUrl && isValidAudioUrl(result.asmrAudioUrl)) {
-        console.log('Setting new audio URL:', result.asmrAudioUrl);
-        setAudioUrl(result.asmrAudioUrl);
-      }
-      
-      // Auto-start the new session
+        // Set audio URL if available and supported
+        if (result?.asmrAudioUrl && isValidAudioUrl(result.asmrAudioUrl)) {
+          console.log('Setting new audio URL:', result.asmrAudioUrl);
+          setAudioUrl(result.asmrAudioUrl);
+        } else {
+          console.log('No valid/supported audio URL provided:', result?.asmrAudioUrl);
+          setAudioUrl(null);
+        }      // Auto-start the new session
       setIsAnimating(true);
     } catch (error) {
       console.error('Error resetting breathing session:', error);
@@ -314,6 +339,7 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
     try {
       setIsPreparing(true);
       setAudioError(null);
+      setAudioSupported(true); // Reset audio support for new session
       setIsPaused(false);
       
       // Get analysis if not already available
@@ -337,18 +363,22 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
           }
         }
         
-        // Set audio URL if available
+        // Set audio URL if available and supported
         if (result?.asmrAudioUrl && isValidAudioUrl(result.asmrAudioUrl)) {
           console.log('Setting audio URL:', result.asmrAudioUrl);
           setAudioUrl(result.asmrAudioUrl);
         } else {
-          console.log('No valid audio URL provided');
+          console.log('No valid/supported audio URL provided:', result?.asmrAudioUrl);
+          setAudioUrl(null);
         }
       } else {
         // Use existing analysis
         if (analysis.asmrAudioUrl && isValidAudioUrl(analysis.asmrAudioUrl)) {
           console.log('Using existing audio URL:', analysis.asmrAudioUrl);
           setAudioUrl(analysis.asmrAudioUrl);
+        } else {
+          console.log('Existing audio URL not valid/supported:', analysis.asmrAudioUrl);
+          setAudioUrl(null);
         }
       }
       
@@ -402,17 +432,29 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
   // Audio event handlers
   const handleAudioError = (error: any) => {
     console.error('Audio playback error:', error);
-    const errorMsg = error?.error?.errorString || error?.error || 'Audio playback failed';
-    setAudioError(errorMsg);
+    console.log('Audio URL that failed:', audioUrl);
     
-    // Show user-friendly error message
-    if (isAnimating) {
-      Alert.alert(
-        'Audio Notice', 
-        'Background audio could not be played. The breathing session will continue with visual guidance only.',
-        [{ text: 'Continue', style: 'default' }]
-      );
+    const errorMsg = error?.error?.errorString || 
+                     error?.error?.localizedDescription ||
+                     error?.error || 
+                     'Audio playbook failed';
+    
+    setAudioError(errorMsg);
+    setAudioUrl(null); // Clear the problematic URL
+    setAudioSupported(false); // Disable audio for this session
+    
+    // Log more details for debugging
+    if (error?.error?.code) {
+      console.error('Audio error code:', error.error.code);
+      
+      // Handle specific format error codes
+      if (error.error.code === -11828 || error.error.code === '-11828') {
+        console.log('Audio format not supported - disabling audio for this session');
+      }
     }
+    
+    // Continue breathing session without audio
+    console.log('Continuing breathing session without audio due to format error');
   };
 
   return (
@@ -422,13 +464,13 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
         colors={['#0f0c29', '#24243e', '#302b63']}
         style={styles.container}
       >
-        {/* Audio Player - Fixed Implementation */}
-        {audioUrl && !audioError && (
+        {/* Audio Player - Only render if supported and no errors */}
+        {audioUrl && !audioError && audioSupported && (
           <Video
             source={{ uri: audioUrl }}
             audioOnly={true}
             repeat={true}
-            paused={!isAnimating || isPaused} // Pause when not animating or when paused
+            paused={!isAnimating || isPaused}
             playInBackground={true}
             ignoreSilentSwitch="ignore"
             volume={1.0}

@@ -8,6 +8,8 @@ import CreatePrayerRequestScreen from '../screens/CreatePrayerRequestScreen';
 import CreateVictoryScreen from '../screens/CreateVictoryScreen';
 import MyVictoriesScreen from '../screens/MyVictoriesScreen';
 import AllGroupsScreen from '../screens/AllGroupsScreen';
+import NewGroupScreen from '../screens/NewGroupScreen';
+import PartnerFastingHubScreen from '../screens/PartnerFastingHubScreen';
 import TruthNavigator from './TruthNavigator';
 
 import ProfileSettingsScreen from '../screens/ProfileSettingsScreen';
@@ -27,9 +29,6 @@ import CheckInHistoryScreen from '../screens/CheckInHistoryScreen';
 import CheckInDetailScreen from '../screens/CheckInDetailScreen';
 
 import EditPrayerRequestScreen from '../screens/EditPrayerRequestScreen';
-
-
-
 
 import { RootStackParamList } from './types';
 
@@ -54,6 +53,8 @@ const RootNavigator = () => {
    
 
       <Stack.Screen name="AllGroups" component={AllGroupsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="NewGroup" component={NewGroupScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="PartnerFastingHub" component={PartnerFastingHubScreen} options={{ headerShown: false }} />
 
       {/* Profile Dropdown Screens */}
       <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: false }} />
