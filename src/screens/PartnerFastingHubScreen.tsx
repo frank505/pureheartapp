@@ -44,7 +44,12 @@ const PartnerFastingHubScreen: React.FC = () => {
                 )}
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name}>{item.user?.firstName || ''} {item.user?.lastName || ''}</Text>
-                  <Text style={styles.meta}>{item.type} • {item.progress.hoursCompleted}/{item.progress.totalHours}h</Text>
+                  <Text style={styles.meta}>
+                    {item.type} • {item.progress.totalDays === 'infinite' 
+                      ? `${item.progress.hoursCompleted}/${item.progress.dailyHours}h today (Recurring)`
+                      : `${item.progress.hoursCompleted}/${item.progress.totalHours}h`
+                    }
+                  </Text>
                 </View>
               </View>
               <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${item.progress.percentage}%` }]} /></View>

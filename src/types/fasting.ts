@@ -1,6 +1,14 @@
 export type FastType = 'daily' | 'nightly' | 'weekly' | 'custom' | 'breakthrough';
 export type FastStatus = 'upcoming' | 'active' | 'completed' | 'failed';
 
+export interface FastProgress {
+  percentage: number;
+  hoursCompleted: number;
+  totalHours: number | null; // null for infinite/recurring fasts
+  totalDays: number | string; // 'infinite' for recurring fasts
+  dailyHours: number;
+}
+
 export interface Fast {
   id: number;
   userId: number;
@@ -19,6 +27,11 @@ export interface Fast {
   brokenAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  currentDuration?: string;
+  completedPrayers?: string[];
+  progress?: FastProgress;
+  accountabilityPartner?: any;
+  recentJournals?: FastJournal[];
 }
 
 export interface ListFastsResponse {
@@ -126,11 +139,7 @@ export interface PartnerActiveFasterItem {
   type: FastType;
   startTime: string;
   endTime: string;
-  progress: {
-    percentage: number;
-    hoursCompleted: number;
-    totalHours: number;
-  };
+  progress: FastProgress;
   user: {
     id: number;
     firstName?: string;

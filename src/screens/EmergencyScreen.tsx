@@ -243,13 +243,13 @@ const EmergencyScreen: React.FC<EmergencyScreenProps> = ({ navigation }) => {
                   color: Colors.primary.light,
                   description: 'Connect with accountability partner'
                 },
-                // { 
-                //   title: 'Worship & Redirect', 
-                //   icon: 'musical-notes-outline', 
-                //   onPress: handleWorshipRedirect,
-                //   color: Colors.warning.main,
-                //   description: 'Uplifting worship music'
-                // },
+                { 
+                  title: 'Worship & Redirect', 
+                  icon: 'musical-notes-outline', 
+                  onPress: handleWorshipRedirect,
+                  color: Colors.warning.main,
+                  description: 'Uplifting worship music'
+                },
                 { 
                   title: 'Emergency AI Support', 
                   icon: 'chatbubble-ellipses-outline', 

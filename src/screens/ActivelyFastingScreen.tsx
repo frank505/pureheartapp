@@ -18,6 +18,7 @@ const ActivelyFastingScreen: React.FC = () => {
   const [now, setNow] = useState<Date>(new Date());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [journal, setJournal] = useState('');
+  const [fastData, setFastData] = useState<any>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -29,6 +30,17 @@ const ActivelyFastingScreen: React.FC = () => {
         setEnd(new Date(item.endTime));
         setGoal(item.goal || undefined);
         setFastId(item.id);
+        
+        // Get detailed fast data for better progress information
+        try {
+          const detailedFast = await fastingService.get(item.id);
+          setFastData(detailedFast);
+          console.log('Detailed fast data:', JSON.stringify(detailedFast, null, 2));
+        } catch {
+          // Fallback to list data if detailed fetch fails
+          setFastData(item);
+          console.log('Using list data:', JSON.stringify(item, null, 2));
+        }
       }
     } finally {
       setLoading(false);
@@ -50,21 +62,48 @@ const ActivelyFastingScreen: React.FC = () => {
   }, []);
 
   const remaining = useMemo(() => {
-    if (!end) return { h: '00', m: '00', s: '00' };
+    if (!fastData?.progress) return { h: '00', m: '00', s: '00', isComplete: false };
+    
+    // For recurring fasts, use start time + daily hours to calculate today's end
+    if (fastData.progress.totalDays === 'infinite') {
+      if (!start) return { h: '00', m: '00', s: '00', isComplete: false };
+      
+      const startTime = new Date(start);
+      const dailyHoursMs = fastData.progress.dailyHours * 3600000; // Convert hours to milliseconds
+      const todayEndTime = new Date(startTime.getTime() + dailyHoursMs);
+      
+      const ms = Math.max(0, todayEndTime.getTime() - now.getTime());
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      const isComplete = ms <= 0;
+      
+      return { h: pad(h), m: pad(m), s: pad(s), isComplete };
+    }
+    
+    // For fixed fasts, use the actual end time
+    if (!end) return { h: '00', m: '00', s: '00', isComplete: false };
     const ms = Math.max(0, end.getTime() - now.getTime());
     const h = Math.floor(ms / 3600000);
     const m = Math.floor((ms % 3600000) / 60000);
     const s = Math.floor((ms % 60000) / 1000);
-    return { h: pad(h), m: pad(m), s: pad(s) };
-  }, [end, now]);
+    const isComplete = ms <= 0;
+    return { h: pad(h), m: pad(m), s: pad(s), isComplete };
+  }, [start, end, now, fastData]);
 
   const progress = useMemo(() => {
-    if (!start || !end) return { pct: 0, elapsedH: 0, totalH: 0 };
-    const total = Math.max(0, end.getTime() - start.getTime());
-    const elapsed = Math.max(0, Math.min(now.getTime(), end.getTime()) - start.getTime());
-    const pct = total ? Math.min(100, (elapsed / total) * 100) : 0;
-    return { pct, elapsedH: Math.round((elapsed / 3600000) * 10) / 10, totalH: Math.round((total / 3600000) * 10) / 10 };
-  }, [start, end, now]);
+    if (!fastData?.progress) return { pct: 0, elapsedH: 0, totalH: 0, isRecurring: false, dailyH: 0 };
+    
+    const isRecurring = fastData.progress.totalDays === 'infinite';
+    
+    return {
+      pct: fastData.progress.percentage,
+      elapsedH: fastData.progress.hoursCompleted,
+      totalH: fastData.progress.totalHours,
+      isRecurring,
+      dailyH: fastData.progress.dailyHours,
+    };
+  }, [fastData]);
 
   const goToJournals = () => {
     if (!fastId) return;
@@ -72,17 +111,50 @@ const ActivelyFastingScreen: React.FC = () => {
   };
 
   const handleEnd = async () => {
-    if (!fastId) return;
-    try {
-      await fastingService.endEarly(fastId);
-      // Refresh entry screen so it decides again
-      navigation.replace('FastingEntry');
-    } catch {
-      // noop for now
-    }
+    if (!fastId || !fastData) return;
+    
+    const isRecurring = fastData.progress?.totalDays === 'infinite';
+    const title = isRecurring ? 'End Recurring Fast' : 'End Fast';
+    const message = isRecurring 
+      ? 'This will end your recurring fast completely. You can always start a new one later.'
+      : 'Are you sure you want to end this fast early?';
+    
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'End Fast',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await fastingService.endEarly(fastId);
+              navigation.replace('FastingEntry');
+            } catch {
+              Alert.alert('Error', 'Failed to end fast. Please try again.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   
+
+  const displayEndTime = useMemo(() => {
+    if (!fastData?.progress || !start) return end;
+    
+    // For recurring fasts, calculate today's end time
+    if (fastData.progress.totalDays === 'infinite') {
+      const startTime = new Date(start);
+      const dailyHoursMs = fastData.progress.dailyHours * 3600000;
+      return new Date(startTime.getTime() + dailyHoursMs);
+    }
+    
+    // For fixed fasts, use the actual end time
+    return end;
+  }, [start, end, fastData]);
 
   const dateLabel = useMemo(() => {
     const d = now;
@@ -95,7 +167,17 @@ const ActivelyFastingScreen: React.FC = () => {
         <Text style={styles.bigDate}>{dateLabel}</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Remaining Time</Text>
+      <Text style={styles.sectionTitle}>
+        {progress.isRecurring ? 'Time Left Today' : 'Remaining Time'}
+      </Text>
+
+      {progress.isRecurring && remaining.isComplete && (
+        <View style={styles.completionNotice}>
+          <Text style={styles.completionText}>
+            🎉 Today's fasting window is complete! Your recurring fast continues tomorrow.
+          </Text>
+        </View>
+      )}
 
       <View style={styles.timeRow}>
         <View style={styles.timeCol}>
@@ -114,12 +196,32 @@ const ActivelyFastingScreen: React.FC = () => {
 
       <View style={styles.progressWrap}>
         <View style={styles.rowBetween}>
-          <Text style={styles.progressTitle}>Fasting Progress</Text>
-          <Text style={styles.progressMeta}>{progress.elapsedH}/{progress.totalH} hours</Text>
+          <Text style={styles.progressTitle}>
+            {progress.isRecurring ? 'Today\'s Progress' : 'Fasting Progress'}
+          </Text>
+          <Text style={styles.progressMeta}>
+            {progress.isRecurring 
+              ? `${progress.elapsedH}/${progress.dailyH} hours today`
+              : `${progress.elapsedH}/${progress.totalH} hours`
+            }
+          </Text>
         </View>
         <View style={styles.progressBarBg}>
           <View style={[styles.progressBarFill, { width: `${progress.pct}%` }]} />
         </View>
+        {progress.isRecurring && (
+          <>
+            <View style={[styles.rowBetween, { marginTop: 8 }]}>
+              <Text style={styles.progressTitle}>Recurring Fast</Text>
+              <Text style={styles.progressMeta}>
+                {typeof fastData?.progress?.totalDays === 'number' 
+                  ? `Day ${fastData.progress.totalDays}`
+                  : 'Ongoing'
+                }
+              </Text>
+            </View>
+          </>
+        )}
       </View>
 
       {!!goal && (
@@ -154,8 +256,10 @@ const ActivelyFastingScreen: React.FC = () => {
             <View style={styles.dot} />
           </View>
           <View style={styles.timelineRightCol}>
-            <Text style={styles.timelineTitle}>{end ? end.toLocaleString() : ''}</Text>
-            <Text style={styles.timelineSub}>End Time</Text>
+            <Text style={styles.timelineTitle}>{displayEndTime ? displayEndTime.toLocaleString() : ''}</Text>
+            <Text style={styles.timelineSub}>
+              {progress.isRecurring ? 'Today\'s End Time' : 'End Time'}
+            </Text>
           </View>
         </View>
       </View>
@@ -216,6 +320,22 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     minHeight: 120,
     textAlignVertical: 'top',
+  },
+  completionNotice: {
+    backgroundColor: '#0f4c3a',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#10b981',
+  },
+  completionText: {
+    color: '#10b981',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

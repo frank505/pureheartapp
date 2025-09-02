@@ -11,7 +11,9 @@ import { Icon } from '../components';
 interface FastDetailProgress {
   percentage: number;
   hoursCompleted: number;
-  totalHours: number;
+  totalHours: number | null;
+  totalDays: number | string;
+  dailyHours: number;
 }
 
 interface FastDetailData {
@@ -93,7 +95,20 @@ const FastDetailScreen: React.FC = () => {
             <Row label="Start" value={new Date(data.startTime).toLocaleString()} />
             <Row label="End" value={new Date(data.endTime).toLocaleString()} />
             {!!data.progress && (
-              <Row label="Progress" value={`${Math.round(data.progress.percentage)}% (${data.progress.hoursCompleted}/${data.progress.totalHours}h)`} />
+              <>
+                {data.progress.totalDays === 'infinite' ? (
+                  <>
+                    <Row label="Today's Progress" value={`${Math.round(data.progress.percentage)}% (${data.progress.hoursCompleted}/${data.progress.dailyHours}h today)`} />
+                    <Row label="Fast Type" value="Recurring (Infinite)" />
+                    <Row label="Daily Window" value={`${data.progress.dailyHours} hours`} />
+                  </>
+                ) : (
+                  <>
+                    <Row label="Progress" value={`${Math.round(data.progress.percentage)}% (${data.progress.hoursCompleted}/${data.progress.totalHours}h)`} />
+                    <Row label="Total Days" value={String(data.progress.totalDays)} />
+                  </>
+                )}
+              </>
             )}
             <Row label="Current Duration" value={data.currentDuration || undefined} />
           </Surface>

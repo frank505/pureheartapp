@@ -217,7 +217,6 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
   // Validate audio URL and format
   const isValidAudioUrl = (url: string) => {
     try {
-      Alert.alert(url);
       new URL(url);
       // Check for supported audio formats
       const supportedFormats = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.mp4'];

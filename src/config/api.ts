@@ -6,7 +6,7 @@
  */
 
 // Define the base URLs for production and development
-const prodBaseURL = 'https://api.thepurityapp.com/api';
+const prodBaseURL = 'https://api.thepurityapp.com/api'; 
 // const devBaseURL = 'http://localhost:3036/api';
 const devBaseURL = 'https://api.thepurityapp.com/api';
 
