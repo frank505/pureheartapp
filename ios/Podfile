@@ -45,10 +45,4 @@ target 'PureHeart' do
   end
 end
 
-target 'PureHeartContentFilter' do
-  # Network Extension target - minimal dependencies
-  use_frameworks! :linkage => :static
-  
-  # Add any specific pods needed for the network extension
-  # (Keep this minimal as network extensions have restrictions)
-end
+
