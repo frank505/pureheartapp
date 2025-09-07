@@ -8,5 +8,15 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<key>com.apple.developer.family-controls</key>
+	<true/>
+	<key>com.apple.developer.networking.networkextension</key>
+	<array>
+		<string>content-filter-provider</string>
+	</array>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.100klabs.pureheart.contentfilter</string>
+	</array>
 </dict>
 </plist>

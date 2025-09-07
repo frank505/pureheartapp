@@ -16,6 +16,7 @@ import ProfileSettingsScreen from '../screens/ProfileSettingsScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import DailyDoseScreen from '../screens/DailyDoseScreen';
 import GrowthTrackerScreen from '../screens/GrowthTrackerScreen';
+import ProgressScreen from '../screens/ProgressScreen';
 import NotificationsCenterScreen from '../screens/NotificationsCenterScreen';
 import GroupChatScreen from '../screens/GroupChatScreen';
 import PostDetailScreen from '../screens/PostDetailScreen';
@@ -29,6 +30,7 @@ import CheckInHistoryScreen from '../screens/CheckInHistoryScreen';
 import CheckInDetailScreen from '../screens/CheckInDetailScreen';
 
 import EditPrayerRequestScreen from '../screens/EditPrayerRequestScreen';
+import AnalyticsScreen from '../screens/AnalyticsScreen';
 
 import { RootStackParamList } from './types';
 
@@ -61,7 +63,9 @@ const RootNavigator = () => {
       <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ headerShown: true }} />
       <Stack.Screen name="DailyDose" component={DailyDoseScreen} options={{ headerShown: true }} />
       <Stack.Screen name="GrowthTracker" component={GrowthTrackerScreen} options={{ headerShown: true }} />
+      <Stack.Screen name="Progress" component={ProgressScreen} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} options={{ headerShown: false }} />
+  <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ headerShown: false }} />
 
       {/* Prayer and Victory Screens */}
       <Stack.Screen name="PrayerRequests" component={PrayerRequestsScreen} options={{ headerShown: false }} />

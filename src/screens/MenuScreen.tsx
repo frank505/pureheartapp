@@ -37,7 +37,7 @@ const MenuScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScreenHeader title="Menu"  navigation={navigation} />
+      <ScreenHeader title="Menu" navigation={navigation} showProgressInHeader={true} showGrowthTracker={false} />
       <ScrollView>
         {/* Quick Actions Section */}
         <View style={styles.quickActionsSection}>

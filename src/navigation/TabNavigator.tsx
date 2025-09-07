@@ -3,11 +3,11 @@ import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 // Import our screen components
-import EmergencyStack from './EmergencyStack';
+import LibraryStack from './LibraryStack';
 import AccountabilityNavigator from './AccountabilityNavigator';
 import FastingNavigator from './FastingNavigator';
-import ProgressScreen from '../screens/ProgressScreen';
 import MenuScreen from '../screens/MenuScreen';
+import SettingsTabScreen from '../screens/SettingsTabScreen';
 
 // These imports will be removed as they'll be moved to root navigator
 // import InvitePartnerScreen from '../screens/InvitePartnerScreen';
@@ -22,6 +22,7 @@ import MenuScreen from '../screens/MenuScreen';
 // Import centralized colors and icons
 import { ComponentColors, Icons, Colors } from '../constants';
 import { TabIcon } from '../components/Icon';
+import OldHomeScreen from '../screens/OldHomeScreen';
 
 /**
  * TabNavigator Component
@@ -37,7 +38,7 @@ import { TabIcon } from '../components/Icon';
  * 
  * Tab Structure:
  * - Home: Main dashboard and quick actions
- * - Emergency: Emergency contacts and SOS functionality
+ * - Library: Library resources and help options
  * - Accountability: Partner connections and spiritual accountability
  * - Truth: Scripture and spiritual guidance
  * - Progress: Tracking spiritual growth and milestones
@@ -90,8 +91,9 @@ const TabNavigator: React.FC = () => {
           borderTopColor: ComponentColors.tabBar.border,
           paddingVertical: 8,
           height: 76,
+          elevation: 8,
         },
-        tabBarActiveTintColor: Colors.primary.main,
+        tabBarActiveTintColor: Colors.secondary.main,
         tabBarInactiveTintColor: ComponentColors.tabBar.inactiveTint,
         tabBarItemStyle: {
           paddingVertical: 4,
@@ -103,6 +105,23 @@ const TabNavigator: React.FC = () => {
         },
       }}
     >
+      {/* Quitter Tab (new, shown first) */}
+      {/* <Tab.Screen
+        name="Old Home"
+        component={OldHomeScreen}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ focused, color }) => (
+            <CustomTabIcon 
+              iconName={'leaf-outline'} 
+              focused={focused} 
+              color={color} 
+            />
+          ),
+          tabBarLabel: 'Quitter',
+        }}
+      /> */}
+
       {/* Home Tab */}
       <Tab.Screen
         name="Home"
@@ -136,43 +155,26 @@ const TabNavigator: React.FC = () => {
           tabBarLabel: 'Fasting',
         }}
       />
-      {/* Emergency Tab */}
+      {/* Library Tab */}
       <Tab.Screen
-        name="Emergency"
-        component={EmergencyStack}
+        name="Library"
+        component={LibraryStack}
         options={{ 
-          headerShown: false, // Custom header in EmergencyScreen
+          headerShown: false, // Custom header in LibraryScreen
           tabBarIcon: ({ focused, color }) => (
             <CustomTabIcon 
-              iconName={Icons.tabs.emergency.name} 
+              iconName={'library-outline'} 
               focused={focused} 
               color={color} 
             />
           ),
-          tabBarLabel: 'Emergency',
+          tabBarLabel: 'Library',
         }}
       />
 
       
 
      
-
-      {/* Progress Tab */}
-      <Tab.Screen
-        name="Progress"
-        component={ProgressScreen}
-        options={{
-          headerShown: false, // Custom header in ProgressScreen
-          tabBarIcon: ({ focused, color }) => (
-            <CustomTabIcon 
-              iconName={Icons.tabs.progress.name} 
-              focused={focused} 
-              color={color} 
-            />
-          ),
-          tabBarLabel: 'Progress',
-        }}
-      />
 
       {/* Menu Tab */}
       <Tab.Screen
@@ -188,6 +190,23 @@ const TabNavigator: React.FC = () => {
             />
           ),
           tabBarLabel: 'Menu',
+        }}
+      />
+
+      {/* Settings Tab */}
+      <Tab.Screen
+        name="Settings"
+        component={SettingsTabScreen}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ focused, color }) => (
+            <CustomTabIcon 
+              iconName={Icons.tabs.settings ? Icons.tabs.settings.name : 'settings-outline'} 
+              focused={focused} 
+              color={color} 
+            />
+          ),
+          tabBarLabel: 'Settings',
         }}
       />
     </Tab.Navigator>

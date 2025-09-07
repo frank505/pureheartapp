@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, StatusBar, ActivityIndicator, Alert, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { EmergencyStackParamList } from '../navigation/EmergencyStack';
+import { LibraryStackParamList } from '../navigation/LibraryStack';
 import Icon from '../components/Icon';
 import { IconNames } from '../constants/Icons';
 import { Colors } from '../constants';
@@ -12,7 +12,7 @@ import { responsiveFontSizes, responsiveSpacing, scaleFontSize } from '../utils/
 import Video from 'react-native-video';
 import { analyzeBreathe, BreatheAnalysisResult } from '../services/breatheService';
 
-type BreatheScreenProps = NativeStackScreenProps<EmergencyStackParamList, 'BreatheScreen'>;
+type BreatheScreenProps = NativeStackScreenProps<LibraryStackParamList, 'BreatheScreen'>;
 
 const { width, height } = Dimensions.get('window');
 

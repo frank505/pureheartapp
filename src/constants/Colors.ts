@@ -19,10 +19,10 @@
 export const Colors = {
   // Background colors
   background: {
-    primary: '#121212',      // Main app background - matches --background-color
-    secondary: '#1e1e1e',    // Cards, surfaces, containers - matches --surface-color
-    tertiary: '#2c2c2c',     // Elevated surfaces, borders - matches --accent-color
-    quaternary: '#4b5563',   // Subtle backgrounds, disabled states
+  primary: '#0f172a',      // Deep slate (ocean start)
+  secondary: '#1e293b',    // Dark slate (ocean step)
+  tertiary: '#334155',     // Slate (ocean step)
+  quaternary: '#475569',   // Lighter slate (ocean step)
   },
 
   // Text colors
@@ -35,10 +35,10 @@ export const Colors = {
 
   // Primary brand colors (PureHeart orange/yellow theme)
   primary: {
-    main: '#f5993d',         // Primary buttons, links, highlights - matches HTML design
-    light: '#f7b668',        // Hover states, light variants
-    dark: '#e8832a',         // Pressed states, dark variants
-    container: '#4a2c14',    // Primary container backgrounds
+  main: '#f5993d',         // Keep orange as secondary accent (legacy)
+  light: '#f7b668',
+  dark: '#e8832a',
+  container: '#4a2c14',
   },
 
   // Secondary colors
@@ -116,16 +116,16 @@ export const Theme = {
   onSurfaceVariant: Colors.text.secondary,
   
   // Primary colors
-  primary: Colors.primary.main,
-  primaryContainer: Colors.background.secondary,
+  primary: Colors.secondary.main,                // Switch primary to green accent
+  primaryContainer: Colors.secondary.container,
   onPrimary: Colors.white,
-  onPrimaryContainer: Colors.text.primary,
+  onPrimaryContainer: Colors.white,
   
   // Secondary colors
-  secondary: Colors.secondary.main,
-  secondaryContainer: Colors.secondary.container,
+  secondary: Colors.primary.main,                // Orange moved to secondary accent role
+  secondaryContainer: Colors.primary.container,
   onSecondary: Colors.white,
-  onSecondaryContainer: Colors.text.primary,
+  onSecondaryContainer: Colors.white,
   
   // Error colors
   error: Colors.error.main,
@@ -156,16 +156,16 @@ export const Theme = {
 export const ComponentColors = {
   // Navigation
   tabBar: {
-    background: Colors.background.secondary,
-    border: Colors.border.primary,
-    activeTint: Colors.primary.main,
-    inactiveTint: Colors.text.secondary,
+  background: Colors.background.secondary,
+  border: Colors.border.primary,
+  activeTint: Colors.secondary.main, // green accent
+  inactiveTint: Colors.text.secondary,
   },
   
   header: {
-    background: Colors.background.secondary,
-    text: Colors.text.primary,
-    border: Colors.border.primary,
+  background: Colors.background.secondary,
+  text: Colors.white,
+  border: Colors.border.primary,
   },
   
   // Cards

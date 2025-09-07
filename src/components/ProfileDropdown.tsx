@@ -71,6 +71,11 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
     navigation?.navigate('GrowthTracker');
   };
 
+  const handleProfileSettings = () => {
+    hideDropdown();
+    navigation?.navigate('ProfileSettings');
+  };
+
   const handleLogout = () => {
     hideDropdown();
     Alert.alert(
@@ -99,28 +104,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <View style={styles.headerIcons}>
-        <TouchableOpacity 
-          style={styles.iconButton}
-          onPress={handleDailyDose}
-        >
-          <Icon 
-            name="book-outline" 
-            color={Colors.text.primary} 
-            size="sm" 
-          />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.iconButton}
-          onPress={handleGrowthTracker}
-        >
-          <Icon 
-            name="leaf-outline" 
-            color={Colors.text.primary} 
-            size="sm" 
-          />
-        </TouchableOpacity>
-        
         <TouchableOpacity 
           style={styles.profileButton}
           onPress={showDropdown}
@@ -180,6 +163,17 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
 
               <View style={styles.divider} />
 
+              <TouchableOpacity 
+                style={styles.dropdownItem}
+                onPress={handleProfileSettings}
+              >
+                <Icon 
+                  name="settings-outline" 
+                  color={Colors.text.primary} 
+                  size="sm" 
+                />
+                <Text style={styles.dropdownText}>Settings</Text>
+              </TouchableOpacity>
            
               <View style={styles.divider} />
               

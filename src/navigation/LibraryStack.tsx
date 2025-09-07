@@ -5,6 +5,7 @@ import BreatheScreen from '../screens/BreatheScreen';
 import WorshipScreen from '../screens/WorshipScreen';
 import AISessionsScreen from '../screens/AISessionsScreen';
 import AIChatScreen from '../screens/AIChatScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
 
 export type LibraryStackParamList = {
   LibraryMain: undefined;
@@ -12,6 +13,10 @@ export type LibraryStackParamList = {
   WorshipScreen: undefined;
   AISessions: undefined;
   AIChat: { sessionId?: number; title?: string } | undefined;
+  Articles: undefined;
+  Learn: undefined;
+  Podcast: undefined;
+  Leaderboard: undefined;
 };
 
 const Stack = createStackNavigator<LibraryStackParamList>();
@@ -43,6 +48,24 @@ const LibraryStack = () => {
       <Stack.Screen 
         name="AIChat" 
         component={AIChatScreen}
+      />
+
+  {/* Library feature placeholders */}
+      <Stack.Screen 
+        name="Articles" 
+        component={require('../screens/ArticlesScreen').default}
+      />
+      <Stack.Screen 
+        name="Learn" 
+        component={require('../screens/LearnScreen').default}
+      />
+      <Stack.Screen 
+        name="Podcast" 
+        component={require('../screens/PodcastScreen').default}
+      />
+      <Stack.Screen 
+        name="Leaderboard" 
+        component={LeaderboardScreen}
       />
      
     </Stack.Navigator>

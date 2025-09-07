@@ -68,4 +68,5 @@ export type RootStackParamList = {
   EditVictory: { victoryId: string };
   CheckInDetail: { checkInId: string };
   AddictionSupport: undefined;
+  Analytics: undefined;
 };

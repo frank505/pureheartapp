@@ -246,7 +246,12 @@ const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       {/* Custom Header */}
       <View style={styles.header}>
-        <ScreenHeader title="Quest Progress"  navigation={navigation} />
+        <ScreenHeader 
+          title="Quest Progress" 
+          navigation={navigation} 
+          showBackButton={true}
+          showGrowthTracker={false}
+        />
       </View>
 
       <ScrollView 

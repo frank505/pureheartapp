@@ -1,0 +1,231 @@
+/**
+ * LibraryScreen Component
+ * 
+ * Resource Library with immediate help options.
+ * Features spiritual resources, guidance, and support tools.
+ * Designed to provide immediate assistance during spiritual struggles.
+ */
+
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Linking } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Colors } from '../constants';
+import Icon from '../components/Icon';
+import ScreenHeader from '../components/ScreenHeader';
+import { Modal, TextInput, Button, Surface } from 'react-native-paper';
+import EmergencyPartnerSelectModal from '../components/EmergencyPartnerSelectModal';
+import { useAppDispatch, useAppSelector } from '../store';
+import { fetchTodaysRecommendation } from '../store/slices/recommendationsSlice';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+interface LibraryScreenProps {
+  navigation?: any;
+}
+
+const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
+  const dispatch = useAppDispatch();
+  const { today: todaysRecommendation } = useAppSelector((state) => state.recommendations);
+
+  // Local UI state for modals
+  const [feelingText, setFeelingText] = useState('');
+  const [showPartnerModal, setShowPartnerModal] = useState(false);
+  const [showFeelingModal, setShowFeelingModal] = useState(false);
+
+  // Handlers for relaxation cards
+  const handleBreatheWithJesus = () => setShowFeelingModal(true);
+  const handleCallBrother = () => setShowPartnerModal(true);
+
+  // Load today's recommendation (for future UI integration)
+  useEffect(() => {
+    dispatch(fetchTodaysRecommendation());
+  }, [dispatch]);
+
+  // Feeling modal actions
+  const handleFeelingCancel = () => setShowFeelingModal(false);
+  const handleFeelingContinue = () => {
+    setShowFeelingModal(false);
+    navigation?.navigate('BreatheScreen', { initialText: feelingText?.trim() || undefined });
+  };
+  // Decorative background elements removed for a cleaner, consistent look
+
+  const openWebsite = () => {
+    Linking.openURL('https://thepurityapp.com').catch(() => {});
+  };
+
+  return (
+    <SafeAreaView style={styles.root}>
+      {/* Background gradient */}
+      <LinearGradient
+        colors={["#0f172a", "#1e293b", "#334155", "#475569", "#64748b"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
+  {/* Stars removed */}
+
+  {/* Moon removed per design request */}
+
+  {/* Mountains removed */}
+
+  {/* Fixed Screen Header (outside scroll) */}
+  <ScreenHeader title="Library" navigation={navigation} showBackButton={false} />
+
+  <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        {/* Icon Grid */}
+        <View style={styles.iconGrid}>
+          {[
+            { icon: '⭕', text: 'Breathing\nWith Jesus', onPress: () => navigation?.navigate('BreatheScreen') },
+            { icon: '🧠', text: 'Purity AI\nTherapist', onPress: () => navigation?.navigate('AISessions') },
+            { icon: '🧘‍♂️', text: 'Worship', onPress: () => navigation?.navigate('WorshipScreen') },
+            { icon: '📰', text: 'Articles', onPress: () => navigation?.navigate('Articles') },
+          ].map((item, idx) => (
+            <TouchableOpacity key={idx} style={styles.iconItem} onPress={item.onPress}>
+              <View style={styles.iconCircle}>
+                <Text style={styles.iconEmoji}>{item.icon}</Text>
+              </View>
+              <Text style={styles.iconText}>{item.text}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Button Grid */}
+        <View style={styles.buttonGrid}>
+          {[ 
+            { label: 'Daily Word', colors: ['#F97316', '#EA580C'], onPress: () => navigation?.navigate('Articles') },
+            { label: 'Truth Center', colors: ['#EC4899', '#8B5CF6'], onPress: () => navigation?.navigate('Progress') },
+            { label: 'Prayer Requests', colors: ['#10B981', '#059669'], onPress: () => navigation?.navigate('Learn') },
+            { label: 'Victories In Christ', colors: ['#3B82F6', '#1D4ED8'], onPress: () => navigation?.navigate('Podcast') },
+          ].map((b, i) => (
+            <TouchableOpacity key={i} style={styles.featureButtonWrapper} activeOpacity={0.9} onPress={b.onPress}>
+              <LinearGradient colors={b.colors} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.featureButton}>
+                <Text style={styles.featureButtonText}>{b.label}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+      
+
+        {/* Leaderboard preview */}
+        <View style={{ marginBottom: 76 }}>
+          <TouchableOpacity
+            style={styles.leaderboardHeader}
+            onPress={() => navigation?.navigate('Leaderboard')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.leaderboardTitle}>Leaderboard</Text>
+            <Text style={styles.leaderboardChevron}>›</Text>
+          </TouchableOpacity>
+          <View style={styles.leaderboardList}>
+            {[
+              { medal: '🥇', name: 'Gold Leader', days: '200 days', style: styles.daysGold },
+              { medal: '🥈', name: 'Silver Leader', days: '198 days', style: styles.daysSilver },
+              { medal: '🥈', name: 'Silver Leader', days: '198 days', style: styles.daysSilver },
+              { medal: '🥈', name: 'Silver Leader', days: '198 days', style: styles.daysSilver },
+            ].map((u, i) => (
+              <View key={i} style={[styles.leaderboardItem, i === 1 && { borderBottomWidth: 0 }]}>
+                <View style={styles.userInfo}>
+                  <Text style={styles.trophyIcon}>{u.medal}</Text>
+                  <Text style={styles.userName}>{u.name}</Text>
+                </View>
+                <View style={[styles.userDays, u.style]}>
+                  <Text style={styles.userDaysText}>{u.days}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+      </ScrollView>
+
+      {/* Feeling Modal */}
+      <Modal visible={showFeelingModal} onDismiss={handleFeelingCancel} contentContainerStyle={styles.paperModalContainer}>
+        <Surface style={styles.paperCard}>
+          <Text style={styles.modalTitle}>How are you feeling?</Text>
+          <Text style={styles.modalSubtitle}>Share a few words to guide the breathing session.</Text>
+          <TextInput
+            mode="outlined"
+            placeholder="Anxious, tempted, overwhelmed..."
+            value={feelingText}
+            onChangeText={setFeelingText}
+            style={styles.modalInput}
+          />
+          <View style={styles.modalActions}>
+            <Button onPress={handleFeelingCancel}>Cancel</Button>
+            <Button mode="contained" onPress={handleFeelingContinue}>Continue</Button>
+          </View>
+        </Surface>
+      </Modal>
+
+      {/* Partner Select Modal */}
+      <EmergencyPartnerSelectModal
+        visible={showPartnerModal}
+        onDismiss={() => setShowPartnerModal(false)}
+        navigation={navigation}
+      />
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  content: { paddingHorizontal: 20, paddingBottom: 120, paddingTop: 16, maxWidth: 420, alignSelf: 'center', width: '100%' },
+
+  // Moon (removed)
+
+  // Mountains (removed)
+
+  // Header
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, marginTop: 4 },
+  appTitle: { fontSize: 28, fontWeight: '800', color: '#ffffff' },
+  websiteLink: { fontSize: 16, color: 'rgba(255,255,255,0.9)' },
+
+  // Icon Grid
+  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 24 },
+  iconItem: { width: '22%', alignItems: 'center', marginBottom: 16 },
+  iconCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  iconEmoji: { fontSize: 22 },
+  iconText: { marginTop: 8, fontSize: 12, textAlign: 'center', color: '#ffffff', opacity: 0.9 },
+
+  // Button Grid
+  buttonGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 5 },
+  featureButtonWrapper: { width: '48%', marginBottom: 14 },
+  featureButton: { width: '100%', minHeight: 100, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  featureButtonText: { color: '#ffffff', fontWeight: '700', fontSize: 18 },
+
+  // Relaxation
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#ffffff', marginBottom: 6 },
+  sectionDescription: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginBottom: 16 },
+  relaxationGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  relaxationItem: { width: '48%', alignItems: 'center', gap: 12 as any, padding: 14, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 14, marginBottom: 14 },
+  relaxationIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
+  relaxationText: { color: '#ffffff', fontWeight: '700', textAlign: 'center' },
+
+  // Leaderboard
+  leaderboardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 12 },
+  leaderboardTitle: { fontSize: 20, fontWeight: '700', color: '#ffffff' },
+  leaderboardChevron: { fontSize: 20, color: 'rgba(255,255,255,0.9)' },
+  leaderboardList: { backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 8 },
+  leaderboardItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.15)' },
+  userInfo: { flexDirection: 'row', alignItems: 'center', gap: 10 as any },
+  trophyIcon: { fontSize: 18 },
+  userName: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+  userDays: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14 },
+  userDaysText: { color: '#ffffff', fontWeight: '800', fontSize: 12 },
+  daysGold: { backgroundColor: '#D97706' },
+  daysSilver: { backgroundColor: '#6B7280' },
+
+  // Paper modal styles
+  paperModalContainer: { paddingHorizontal: 20 },
+  paperCard: { backgroundColor: 'rgba(0,0,0,0.7)', padding: 16, borderRadius: 12 },
+  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 6 },
+  modalSubtitle: { color: 'rgba(255,255,255,0.8)', marginBottom: 12 },
+  modalInput: { marginBottom: 12, backgroundColor: '#111827' },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 as any },
+});
+
+export default LibraryScreen;

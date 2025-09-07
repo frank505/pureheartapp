@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
+  Platform,
 } from 'react-native';
 import {
   Text,
@@ -27,6 +28,8 @@ import { Colors, Icons } from '../constants';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { updateProfile, getUserDetails } from '../store/slices/userSlice';
 import { fetchSettings, updateSettings } from '../services/settingsService';
+import { ContentFilter } from '../services/contentFilter';
+import { AppBlocking, AppBlockingData } from '../services/appBlocking';
 
 interface ProfileSettingsScreenProps {
   navigation?: any;
@@ -44,7 +47,18 @@ const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigatio
   const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');
 
- 
+  // Content Filter States
+  const [contentFilterEnabled, setContentFilterEnabled] = useState<boolean>(false);
+  const [contentFilterLoading, setContentFilterLoading] = useState<boolean>(true);
+
+  // App Blocking States
+  const [appBlockingData, setAppBlockingData] = useState<AppBlockingData>({
+    applicationCount: 0,
+    categoryCount: 0,
+    totalCount: 0,
+    hasSelection: false,
+  });
+  const [appBlockingLoading, setAppBlockingLoading] = useState<boolean>(false);
 
 
   useEffect(() => {
@@ -68,6 +82,55 @@ const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigatio
       }
     };
     loadSettings();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Content Filter Effects
+  useEffect(() => {
+    let mounted = true;
+    const loadContentFilterStatus = async () => {
+      if (Platform.OS !== 'ios') {
+        setContentFilterLoading(false);
+        return;
+      }
+      
+      try {
+        const status = await ContentFilter.isFilterEnabled();
+        if (!mounted) return;
+        setContentFilterEnabled(status);
+      } catch (error) {
+        console.error('Failed to get content filter status:', error);
+      } finally {
+        if (mounted) setContentFilterLoading(false);
+      }
+    };
+    
+    loadContentFilterStatus();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // App Blocking Effects
+  useEffect(() => {
+    let mounted = true;
+    const loadAppBlockingData = async () => {
+      if (Platform.OS !== 'ios') {
+        return;
+      }
+      
+      try {
+        const data = await AppBlocking.getBlockedApps();
+        if (!mounted) return;
+        setAppBlockingData(data);
+      } catch (error) {
+        console.error('Failed to get blocked apps:', error);
+      }
+    };
+    
+    loadAppBlockingData();
     return () => {
       mounted = false;
     };
@@ -116,6 +179,102 @@ const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigatio
     } finally {
       setSettingsLoading(false);
     }
+  };
+
+  // Content Filter Functions
+  const toggleContentFilter = async () => {
+    if (contentFilterEnabled) {
+      // If currently enabled, disable it
+      try {
+        setContentFilterLoading(true);
+        const result = await ContentFilter.disableFilter();
+        if (result) {
+          setContentFilterEnabled(false);
+          Alert.alert('Content Filter Disabled', 'Content filtering has been turned off.');
+        }
+      } catch (error) {
+        console.error('Failed to disable content filter:', error);
+        Alert.alert('Error', 'Failed to disable content filter');
+      } finally {
+        setContentFilterLoading(false);
+      }
+    } else {
+      // If currently disabled, enable it
+      try {
+        setContentFilterLoading(true);
+        const result = await ContentFilter.enableFilter();
+        if (result) {
+          // Wait a bit then check the status
+          setTimeout(async () => {
+            try {
+              const status = await ContentFilter.isFilterEnabled();
+              setContentFilterEnabled(status);
+            } catch (error) {
+              console.error('Failed to check content filter status:', error);
+            } finally {
+              setContentFilterLoading(false);
+            }
+          }, 1000);
+        } else {
+          setContentFilterLoading(false);
+        }
+      } catch (error) {
+        console.error('Failed to toggle content filter:', error);
+        setContentFilterLoading(false);
+      }
+    }
+  };
+
+  // App Blocking Functions
+  const handleBlockApps = async () => {
+    try {
+      setAppBlockingLoading(true);
+      const result = await AppBlocking.showFamilyActivityPicker();
+      if (result) {
+        setAppBlockingData(result);
+        const message = result.totalCount > 0 
+          ? `${result.totalCount} app${result.totalCount !== 1 ? 's' : ''} and categories are now blocked.`
+          : 'App restrictions have been updated.';
+        Alert.alert('Apps Updated', message);
+      }
+    } catch (error: any) {
+      console.error('Failed to show app picker:', error);
+      // Error handling is done in the service, no need to show additional alerts here
+    } finally {
+      setAppBlockingLoading(false);
+    }
+  };
+
+  const handleClearBlockedApps = async () => {
+    Alert.alert(
+      'Clear Blocked Apps',
+      'Are you sure you want to remove all app restrictions?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setAppBlockingLoading(true);
+              await AppBlocking.clearAllBlockedApps();
+              setAppBlockingData({
+                applicationCount: 0,
+                categoryCount: 0,
+                totalCount: 0,
+                hasSelection: false,
+              });
+              Alert.alert('Success', 'All app restrictions have been removed.');
+            } catch (error) {
+              console.error('Failed to clear blocked apps:', error);
+              Alert.alert('Error', 'Failed to clear app restrictions.');
+            } finally {
+              setAppBlockingLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleDeleteAccount = () => {
@@ -226,7 +385,85 @@ const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigatio
           </Surface>
         </View>
 
-        {/* Privacy Settings removed for now */}
+        {/* Content Filter Section - iOS Only */}
+        {Platform.OS === 'ios' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Safari Content Filter</Text>
+            <Surface style={styles.settingsCard} elevation={2}>
+              <View style={styles.settingItem}>
+                <View style={styles.settingContent}>
+                  <Text style={styles.settingTitle}>Content Filter</Text>
+                  <Text style={styles.settingDescription}>Block adult content in Safari</Text>
+                </View>
+                {contentFilterLoading ? (
+                  <ActivityIndicator color={Colors.primary.main} style={{ marginRight: 8 }} />
+                ) : (
+                  <Switch
+                    value={contentFilterEnabled}
+                    onValueChange={toggleContentFilter}
+                    trackColor={{ false: '#767577', true: Colors.primary.main }}
+                    thumbColor={contentFilterEnabled ? '#ffffff' : '#f4f3f4'}
+                    disabled={contentFilterLoading}
+                  />
+                )}
+              </View>
+            </Surface>
+          </View>
+        )}
+
+        {/* App Blocking Section - iOS Only */}
+        {Platform.OS === 'ios' && AppBlocking.isAppBlockingSupported() && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>App Restrictions</Text>
+            <Surface style={styles.settingsCard} elevation={2}>
+              <TouchableOpacity 
+                style={styles.settingItem} 
+                onPress={handleBlockApps}
+                disabled={appBlockingLoading}
+              >
+                <View style={styles.settingContent}>
+                  <Text style={styles.settingTitle}>Block Apps</Text>
+                  <Text style={styles.settingDescription}>
+                    {appBlockingData.hasSelection
+                      ? `${appBlockingData.totalCount} app${appBlockingData.totalCount !== 1 ? 's' : ''} and categories blocked`
+                      : 'Choose apps and categories to block'
+                    }
+                  </Text>
+                </View>
+                {appBlockingLoading ? (
+                  <ActivityIndicator color={Colors.primary.main} style={{ marginRight: 8 }} />
+                ) : (
+                  <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="md" />
+                )}
+              </TouchableOpacity>
+
+              {appBlockingData.hasSelection && (
+                <>
+                  <View style={styles.divider} />
+                  <TouchableOpacity 
+                    style={styles.settingItem} 
+                    onPress={handleClearBlockedApps}
+                    disabled={appBlockingLoading}
+                  >
+                    <View style={styles.settingContent}>
+                      <Text style={[styles.settingTitle, { color: Colors.error.main }]}>
+                        Clear All Restrictions
+                      </Text>
+                      <Text style={styles.settingDescription}>
+                        Remove all app and category blocks
+                      </Text>
+                    </View>
+                    {appBlockingLoading ? (
+                      <ActivityIndicator color={Colors.error.main} style={{ marginRight: 8 }} />
+                    ) : (
+                      <Icon name="chevron-forward-outline" color={Colors.error.main} size="md" />
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
+            </Surface>
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support</Text>

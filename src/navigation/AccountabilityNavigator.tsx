@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import HomeScreen from '../screens/HomeScreen';
+import OldHomeScreen from '../screens/OldHomeScreen';
 import PrayerRequestsScreen from '../screens/PrayerRequestsScreen';
 import VictoriesScreen from '../screens/VictoriesScreen';
 import CreatePrayerRequestScreen from '../screens/CreatePrayerRequestScreen';
@@ -16,14 +16,16 @@ import MyVictoriesScreen from '../screens/MyVictoriesScreen';
 import EditPrayerRequestScreen from '../screens/EditPrayerRequestScreen';
 import DailyDoseScreen from '../screens/DailyDoseScreen';
 import AllGroupsScreen from '../screens/AllGroupsScreen';
-
-
+import HomeScreen from '../screens/HomeScreen';
+ 
+ 
 const Stack = createNativeStackNavigator();
 
 const AccountabilityNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="AccountabilityHome" component={HomeScreen} />
+      <Stack.Screen name='AccountabilityHome' component={HomeScreen} />
+      {/* <Stack.Screen name="AccountabilityHome" component={OldHomeScreen} /> */}
       <Stack.Screen name="PrayerRequests" component={PrayerRequestsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="CreatePrayerRequest" component={CreatePrayerRequestScreen} options={{ headerShown: false }} />
       <Stack.Screen name="PrayerRequestDetail" component={PrayerRequestDetailScreen} options={{ headerShown: false }} />
