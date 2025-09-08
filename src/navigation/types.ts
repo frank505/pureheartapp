@@ -33,7 +33,8 @@ export type RootStackParamList = {
   CheckInHistory: undefined;
   PrayerRequests: undefined;
   NotificationsCenter: undefined;
-  AIChat: undefined;
+  AISessions: undefined;
+  AIChat: { sessionId?: number; title?: string } | undefined;
   EditPartnerPhone: {
     partner: {
       id: string;

@@ -17,6 +17,7 @@ import { Modal, TextInput, Button, Surface } from 'react-native-paper';
 import EmergencyPartnerSelectModal from '../components/EmergencyPartnerSelectModal';
 import { useAppDispatch, useAppSelector } from '../store';
 import { fetchTodaysRecommendation } from '../store/slices/recommendationsSlice';
+import { progressService, StreakLeaderboardItem } from '../services/progressService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -32,6 +33,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const [feelingText, setFeelingText] = useState('');
   const [showPartnerModal, setShowPartnerModal] = useState(false);
   const [showFeelingModal, setShowFeelingModal] = useState(false);
+  const [leaders, setLeaders] = useState<StreakLeaderboardItem[]>([]);
 
   // Handlers for relaxation cards
   const handleBreatheWithJesus = () => setShowFeelingModal(true);
@@ -41,6 +43,17 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   useEffect(() => {
     dispatch(fetchTodaysRecommendation());
   }, [dispatch]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const items = await progressService.getStreakLeaderboard(3);
+        if (mounted) setLeaders(items.slice(0, 3));
+      } catch {}
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   // Feeling modal actions
   const handleFeelingCancel = () => setShowFeelingModal(false);
@@ -121,22 +134,21 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             <Text style={styles.leaderboardChevron}>›</Text>
           </TouchableOpacity>
           <View style={styles.leaderboardList}>
-            {[
-              { medal: '🥇', name: 'Gold Leader', days: '200 days', style: styles.daysGold },
-              { medal: '🥈', name: 'Silver Leader', days: '198 days', style: styles.daysSilver },
-              { medal: '🥈', name: 'Silver Leader', days: '198 days', style: styles.daysSilver },
-              { medal: '🥈', name: 'Silver Leader', days: '198 days', style: styles.daysSilver },
-            ].map((u, i) => (
-              <View key={i} style={[styles.leaderboardItem, i === 1 && { borderBottomWidth: 0 }]}>
-                <View style={styles.userInfo}>
-                  <Text style={styles.trophyIcon}>{u.medal}</Text>
-                  <Text style={styles.userName}>{u.name}</Text>
+            {leaders.length === 0 ? (
+              <Text style={{ color: '#fff', opacity: 0.8, paddingVertical: 10 }}>No streaks yet</Text>
+            ) : (
+              leaders.map((u, i) => (
+                <View key={`${u.username}-${i}`} style={[styles.leaderboardItem, i === leaders.length - 2 && { borderBottomWidth: 0 }]}> 
+                  <View style={styles.userInfo}>
+                    <Text style={styles.trophyIcon}>{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</Text>
+                    <Text style={styles.userName}>{u.username}</Text>
+                  </View>
+                  <View style={[styles.userDays, i === 0 ? styles.daysGold : styles.daysSilver]}>
+                    <Text style={styles.userDaysText}>{u.days} days</Text>
+                  </View>
                 </View>
-                <View style={[styles.userDays, u.style]}>
-                  <Text style={styles.userDaysText}>{u.days}</Text>
-                </View>
-              </View>
-            ))}
+              ))
+            )}
           </View>
         </View>
 

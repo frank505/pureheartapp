@@ -31,6 +31,8 @@ import CheckInDetailScreen from '../screens/CheckInDetailScreen';
 
 import EditPrayerRequestScreen from '../screens/EditPrayerRequestScreen';
 import AnalyticsScreen from '../screens/AnalyticsScreen';
+import AISessionsScreen from '../screens/AISessionsScreen';
+import AIChatScreen from '../screens/AIChatScreen';
 
 import { RootStackParamList } from './types';
 
@@ -66,6 +68,10 @@ const RootNavigator = () => {
       <Stack.Screen name="Progress" component={ProgressScreen} options={{ headerShown: false }} />
       <Stack.Screen name="NotificationsCenter" component={NotificationsCenterScreen} options={{ headerShown: false }} />
   <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ headerShown: false }} />
+
+  {/* AI Sessions (global) */}
+  <Stack.Screen name="AISessions" component={AISessionsScreen} options={{ headerShown: false }} />
+  <Stack.Screen name="AIChat" component={AIChatScreen} options={{ headerShown: false }} />
 
       {/* Prayer and Victory Screens */}
       <Stack.Screen name="PrayerRequests" component={PrayerRequestsScreen} options={{ headerShown: false }} />

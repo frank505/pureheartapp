@@ -66,6 +66,11 @@ export interface FeaturesAndBadgesData {
   badges: Badge[];
 }
 
+export interface StreakLeaderboardItem {
+  username: string;
+  days: number;
+}
+
 const getAchievements = async (): Promise<Achievement[]> => {
   const response = await api.get<IAPIResponse<{ items: Achievement[] }>>('/progress/achievements');
   if (response.data.success) {
@@ -98,9 +103,21 @@ const getFeaturesAndBadges = async (): Promise<FeaturesAndBadgesData> => {
   throw new Error(response.data.message);
 };
 
+const getStreakLeaderboard = async (limit = 50): Promise<StreakLeaderboardItem[]> => {
+  const max = Math.max(1, Math.min(50, Number(limit) || 50));
+  const response = await api.get<IAPIResponse<{ items: StreakLeaderboardItem[] }>>('/progress/leaderboard/streaks', {
+    params: { limit: max },
+  });
+  if (response.data.success) {
+    return response.data.data.items || [];
+  }
+  throw new Error(response.data.message);
+};
+
 export const progressService = {
   getAchievements,
   getAnalytics,
   getCalendar,
   getFeaturesAndBadges,
+  getStreakLeaderboard,
 };

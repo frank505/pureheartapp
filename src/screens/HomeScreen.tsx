@@ -64,6 +64,17 @@ const HomeScreen: React.FC = () => {
   const [hasShared, setHasShared] = useState<boolean>(false);
   const [firsts, setFirsts] = useState<UserFirstsFlags | null>(null);
 
+  const refreshFirsts = useCallback(async () => {
+    try {
+      const f = await userFirstsService.getUserFirsts();
+      setFirsts(f);
+      setRedditJoined(Boolean(f?.has_joined_reddit));
+      setHasShared(Boolean(f?.has_shared_with_a_friend));
+    } catch {
+      // noop
+    }
+  }, []);
+
   const refreshNotificationsStatus = useCallback(async () => {
     try {
       // Try hasPermission (cast to any for compatibility), else requestPermission
@@ -100,12 +111,12 @@ const HomeScreen: React.FC = () => {
     useCallback(() => {
       refreshNotificationsStatus();
       refreshContentFilterStatus();
-      (async () => {
-        try { const f = await userFirstsService.getUserFirsts(); setFirsts(f); setRedditJoined(Boolean(f?.has_joined_reddit)); setHasShared(Boolean(f?.has_shared_with_a_friend)); }
-        catch { /* noop */ }
-      })();
+    refreshFirsts();
     }, [refreshNotificationsStatus, refreshContentFilterStatus])
   );
+
+  // Also load firsts on initial mount (in case screen is already focused)
+  useEffect(() => { refreshFirsts(); }, [refreshFirsts]);
 
   // Daily Reflections modal state
   const [reflectionsVisible, setReflectionsVisible] = useState(false);
@@ -677,23 +688,15 @@ const HomeScreen: React.FC = () => {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.todoItem, { marginTop: 10 }]} onPress={() => navigation.navigate('AllGroups') as any}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.todoItemTitle}>Join Community</Text>
-              <Text style={styles.todoItemDesc}>Find groups to walk with you</Text>
-            </View>
-            <View style={[styles.checkbox, (groups?.length || 0) > 0 && styles.checkboxOn]}>
-              {(groups?.length || 0) > 0 ? <Text style={styles.checkboxMark}>✓</Text> : null}
-            </View>
-          </TouchableOpacity>
+          {/* Join Community removed per spec */}
 
       <TouchableOpacity
             style={[styles.todoItem, { marginTop: 10 }]}
-            onPress={async () => {
+      onPress={async () => {
               try {
         await Linking.openURL(REDDIT_URL);
         setRedditJoined(true);
-        try { await userFirstsService.markJoinedReddit(); } catch {}
+    try { await userFirstsService.markJoinedReddit(); await refreshFirsts(); } catch {}
               } catch {
                 Alert.alert('Open failed', 'Could not open Reddit.');
               }
@@ -732,11 +735,11 @@ const HomeScreen: React.FC = () => {
 
       <TouchableOpacity
             style={[styles.todoItem, { marginTop: 10 }]}
-            onPress={async () => {
+      onPress={async () => {
               try {
         await handleShareApp();
         setHasShared(true);
-        try { await userFirstsService.markSharedWithFriend(); } catch {}
+    try { await userFirstsService.markSharedWithFriend(); await refreshFirsts(); } catch {}
               } catch {}
             }}
           >

@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ScreenHeader from '../components/ScreenHeader';
+import { progressService, StreakLeaderboardItem } from '../services/progressService';
 
 type Leader = {
   id: string;
@@ -13,16 +14,26 @@ type Leader = {
 const medals = ['🥇', '🥈', '🥉'] as const;
 
 const LeaderboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  // Mock top 50 data; replace with API integration when available.
-  const leaders = useMemo<Leader[]>(
-    () =>
-      Array.from({ length: 50 }, (_, i) => ({
-        id: String(i + 1),
-        name: i === 0 ? 'Gold Leader' : i === 1 ? 'Silver Leader' : i === 2 ? 'Bronze Leader' : `Leader ${i + 1}`,
-        days: 200 - i * 2,
-      })),
-    []
-  );
+  const [leaders, setLeaders] = useState<Leader[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const items = await progressService.getStreakLeaderboard(50);
+        if (!mounted) return;
+        const mapped: Leader[] = items.map((u, i) => ({ id: `${u.username}-${i}`, name: u.username, days: u.days }));
+        setLeaders(mapped);
+      } catch (e: any) {
+        if (mounted) setError(e?.message || 'Failed to load leaderboard');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const renderItem = ({ item, index }: { item: Leader; index: number }) => {
     const isTop3 = index < 3;
@@ -57,13 +68,21 @@ const LeaderboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       />
 
       <ScreenHeader title="Leaderboard" navigation={navigation} showBackButton />
-
-      <FlatList
-        contentContainerStyle={styles.list}
-        data={leaders}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-      />
+      {loading ? (
+        <View style={[styles.list, { alignItems: 'center', justifyContent: 'center' }]}> 
+          <ActivityIndicator color="#fff" />
+        </View>
+      ) : (
+        <FlatList
+          contentContainerStyle={styles.list}
+          data={leaders}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          ListEmptyComponent={() => (
+            <Text style={{ color: '#fff', textAlign: 'center', opacity: 0.8 }}>No streaks yet</Text>
+          )}
+        />
+      )}
     </SafeAreaView>
   );
 };
