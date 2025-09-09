@@ -35,6 +35,9 @@ export type RootStackParamList = {
   NotificationsCenter: undefined;
   AISessions: undefined;
   AIChat: { sessionId?: number; title?: string } | undefined;
+  // Global access to emergency/library tools
+  BreatheScreen: { initialText?: string } | undefined;
+  WorshipScreen: undefined;
   EditPartnerPhone: {
     partner: {
       id: string;
@@ -70,4 +73,6 @@ export type RootStackParamList = {
   CheckInDetail: { checkInId: string };
   AddictionSupport: undefined;
   Analytics: undefined;
+  PanicHistory: undefined;
+  PanicDetail: { id: number };
 };

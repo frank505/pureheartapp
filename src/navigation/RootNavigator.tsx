@@ -33,6 +33,11 @@ import EditPrayerRequestScreen from '../screens/EditPrayerRequestScreen';
 import AnalyticsScreen from '../screens/AnalyticsScreen';
 import AISessionsScreen from '../screens/AISessionsScreen';
 import AIChatScreen from '../screens/AIChatScreen';
+import AICompanionScreen from '../screens/AICompanionScreen';
+import BreatheScreen from '../screens/BreatheScreen';
+import WorshipScreen from '../screens/WorshipScreen';
+import PanicHistoryScreen from '../screens/PanicHistoryScreen';
+import PanicDetailScreen from '../screens/PanicDetailScreen';
 
 import { RootStackParamList } from './types';
 
@@ -72,6 +77,13 @@ const RootNavigator = () => {
   {/* AI Sessions (global) */}
   <Stack.Screen name="AISessions" component={AISessionsScreen} options={{ headerShown: false }} />
   <Stack.Screen name="AIChat" component={AIChatScreen} options={{ headerShown: false }} />
+  <Stack.Screen name="AICompanion" component={AICompanionScreen} options={{ headerShown: false }} />
+
+  {/* Emergency tools (global for cross-tab routing) */}
+  <Stack.Screen name="BreatheScreen" component={BreatheScreen as unknown as React.ComponentType<any>} options={{ headerShown: false }} />
+  <Stack.Screen name="WorshipScreen" component={WorshipScreen as unknown as React.ComponentType<any>} options={{ headerShown: false }} />
+  <Stack.Screen name="PanicHistory" component={PanicHistoryScreen as unknown as React.ComponentType<any>} options={{ headerShown: false }} />
+  <Stack.Screen name="PanicDetail" component={PanicDetailScreen as unknown as React.ComponentType<any>} options={{ headerShown: false }} />
 
       {/* Prayer and Victory Screens */}
       <Stack.Screen name="PrayerRequests" component={PrayerRequestsScreen} options={{ headerShown: false }} />
@@ -85,6 +97,7 @@ const RootNavigator = () => {
       {/* Check-in Screens */}
       <Stack.Screen name="CheckInHistory" component={CheckInHistoryScreen} options={{ headerShown: true }} />
       <Stack.Screen name="CheckInDetail" component={CheckInDetailScreen} options={{ headerShown: true }} />
+ 
 
     
       <Stack.Screen 

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
-import { Text, TextInput } from 'react-native-paper';
+import { Text, TextInput, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../components';
 import { Colors } from '../constants';
@@ -24,13 +24,11 @@ const NewFastScreen = () => {
 
   const [goal, setGoal] = useState('');
   const [smartGoal, setSmartGoal] = useState('');
-  const [prayerTimes, setPrayerTimes] = useState('');
+  const [prayerTimeInput, setPrayerTimeInput] = useState('');
+  const [selectedPrayerTimes, setSelectedPrayerTimes] = useState<string[]>([]);
   const [reminderEnabled, setReminderEnabled] = useState(false);
-  const [widgetEnabled, setWidgetEnabled] = useState(false);
   const [inviteAllPartners, setInviteAllPartners] = useState(true);
 
-  const [invalidTimes, setInvalidTimes] = useState<string[]>([]);
-  const [outsideWindowTimes, setOutsideWindowTimes] = useState<string[]>([]);
 
   const fastWindow = useMemo(() => {
     if (!configuredStartISO || !configuredEndISO) return null;
@@ -52,34 +50,45 @@ const NewFastScreen = () => {
     return t >= start || t <= endSameDay;
   };
 
-  const validatePrayerTimes = (input: string) => {
-    const raw = input.split(',').map((t) => t.trim()).filter(Boolean);
-    const normalized: string[] = [];
-    const invalid: string[] = [];
-    const outOfWindow: string[] = [];
-    for (const t of raw) {
-      const parsed = parseTimeTo24h(t);
-      if (!parsed) {
-        invalid.push(t);
-        continue;
-      }
-      if (fastWindow) {
-        const [hh, mm] = parsed.split(':').map(Number);
-        if (!isTimeWithinWindow(hh, mm, fastWindow.start, fastWindow.end)) {
-          outOfWindow.push(t);
-          continue;
-        }
-      }
-      normalized.push(parsed);
+  const formatDisplayTime = (d: Date) => {
+    try {
+      const s = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      return s.replace(' am', ' AM').replace(' pm', ' PM');
+    } catch {
+      const hh = d.getHours();
+      const mm = d.getMinutes().toString().padStart(2, '0');
+      const mer = hh >= 12 ? 'PM' : 'AM';
+      const h12 = hh % 12 === 0 ? 12 : hh % 12;
+      return `${h12}:${mm} ${mer}`;
     }
-    return { normalized, invalid, outOfWindow } as const;
   };
 
-  const onPrayerTimesChange = (text: string) => {
-    setPrayerTimes(text);
-    const v = validatePrayerTimes(text);
-    setInvalidTimes(v.invalid);
-    setOutsideWindowTimes(v.outOfWindow);
+  // Helpers for single-time input + chips
+  const canAddCurrentInput = () => {
+    const parsed = parseTimeTo24h(prayerTimeInput);
+    if (!parsed) return { ok: false, reason: 'invalid' as const };
+    if (fastWindow) {
+      const [hh, mm] = parsed.split(':').map(Number);
+      if (!isTimeWithinWindow(hh, mm, fastWindow.start, fastWindow.end)) {
+        return { ok: false, reason: 'outside' as const };
+      }
+    }
+    if (selectedPrayerTimes.includes(parsed)) {
+      return { ok: false, reason: 'duplicate' as const };
+    }
+    return { ok: true as const, parsed };
+  };
+
+  const addCurrentTime = () => {
+    const res = canAddCurrentInput();
+    if (!res.ok) return;
+    const next = Array.from(new Set([...selectedPrayerTimes, res.parsed!])).sort();
+    setSelectedPrayerTimes(next);
+    setPrayerTimeInput('');
+  };
+
+  const removeTime = (t: string) => {
+    setSelectedPrayerTimes((prev) => prev.filter((x) => x !== t));
   };
 
   // Multi-step slideshow state
@@ -146,19 +155,31 @@ const NewFastScreen = () => {
 
   const submitCreateFast = async () => {
     try {
-      const { normalized, invalid, outOfWindow } = validatePrayerTimes(prayerTimes);
+      // Final guard: ensure selected times are valid and within window
+      const invalid: string[] = [];
+      const outOfWindow: string[] = [];
+      const normalized: string[] = [];
+      for (const t of selectedPrayerTimes) {
+        const parsed = parseTimeTo24h(t);
+        if (!parsed) {
+          invalid.push(t);
+          continue;
+        }
+        if (fastWindow) {
+          const [hh, mm] = parsed.split(':').map(Number);
+          if (!isTimeWithinWindow(hh, mm, fastWindow.start, fastWindow.end)) {
+            outOfWindow.push(t);
+            continue;
+          }
+        }
+        normalized.push(parsed);
+      }
       if (invalid.length) {
-        Alert.alert(
-          'Invalid prayer time(s)',
-          `Please use times like 06:00, 12:00, 18:00 or 6 AM, 6:30pm. Invalid: ${invalid.join(', ')}`
-        );
+        Alert.alert('Invalid prayer time(s)', `Invalid: ${invalid.join(', ')}`);
         return;
       }
       if (outOfWindow.length) {
-        Alert.alert(
-          'Prayer times outside fast window',
-          `These times are outside your fast hours and were rejected: ${outOfWindow.join(', ')}`
-        );
+        Alert.alert('Prayer times outside fast window', `Outside: ${outOfWindow.join(', ')}`);
         return;
       }
 
@@ -223,11 +244,10 @@ const NewFastScreen = () => {
         schedule,
         goal: goal?.trim() || undefined,
         smartGoal: smartGoal?.trim() || undefined,
-        prayerTimes: normalized, // backend defaults to [] if omitted
+  prayerTimes: normalized, // backend defaults to [] if omitted
         verse: undefined,
         prayerFocus: undefined,
         reminderEnabled,
-        widgetEnabled,
         addAccountabilityPartners: !!inviteAllPartners,
       } as const;
 
@@ -248,21 +268,6 @@ const NewFastScreen = () => {
 
   const handleNext = () => {
     if (step < steps.length - 1) {
-      // Block leaving the Prayer Commitment step if there are invalid/out-of-window times
-      if (step === 2) {
-        const v = validatePrayerTimes(prayerTimes);
-        setInvalidTimes(v.invalid);
-        setOutsideWindowTimes(v.outOfWindow);
-        if (v.invalid.length || v.outOfWindow.length) {
-          Alert.alert(
-            'Fix prayer times',
-            v.invalid.length
-              ? `Invalid: ${v.invalid.join(', ')}`
-              : `Outside fast window: ${v.outOfWindow.join(', ')}`
-          );
-          return;
-        }
-      }
       setStep((s) => s + 1);
     } else {
       submitCreateFast();
@@ -340,27 +345,72 @@ const NewFastScreen = () => {
               Commit to specific prayer times during your fast to strengthen your spiritual connection 
               and seek guidance. Consider setting reminders to stay consistent.
             </Text>
+
+            {fastWindow && (
+              <Text style={styles.windowHint}>
+                Fasting window: {formatDisplayTime(fastWindow.start)} – {formatDisplayTime(fastWindow.end)}
+              </Text>
+            )}
+
+            {!!selectedPrayerTimes.length && (
+              <View style={styles.chipsContainer}>
+                {selectedPrayerTimes.map((t) => (
+                  <Chip
+                    key={t}
+                    style={styles.chip}
+                    textStyle={styles.chipText}
+                    onClose={() => removeTime(t)}
+                  >
+                    {t}
+                  </Chip>
+                ))}
+              </View>
+            )}
             <View style={styles.inputContainer}>
               <TextInput
-                value={prayerTimes}
-                onChangeText={onPrayerTimesChange}
-                placeholder="Prayer Times (e.g., 06:00, 12:30, 18:00 or 6 AM, 12 PM, 6:30pm)"
+                value={prayerTimeInput}
+                onChangeText={setPrayerTimeInput}
+                placeholder="Add a prayer time (e.g., 06:00 or 6:30 PM)"
                 style={styles.input}
                 placeholderTextColor="#93acc8"
                 selectionColor={Colors.primary.main}
                 underlineStyle={{ display: 'none' }}
                 theme={{ colors: { text: Colors.white } }}
+                right={
+                  (() => {
+                    const res = canAddCurrentInput();
+                    const canAdd = res.ok;
+                    return (
+                      <TextInput.Icon
+                        icon={canAdd ? 'plus-circle' : 'clock-outline'}
+                        onPress={canAdd ? addCurrentTime : undefined}
+                        disabled={!canAdd}
+                        forceTextInputFocus={false}
+                      />
+                    );
+                  })()
+                }
+                onSubmitEditing={() => { const r = canAddCurrentInput(); if (r.ok) addCurrentTime(); }}
               />
-              {!!invalidTimes.length && (
-                <Text style={{ color: '#ff6b6b', marginTop: 6 }}>
-                  Invalid: {invalidTimes.join(', ')}
-                </Text>
-              )}
-              {!!outsideWindowTimes.length && (
-                <Text style={{ color: '#ffb86c', marginTop: 6 }}>
-                  Outside fast window: {outsideWindowTimes.join(', ')}
-                </Text>
-              )}
+              {(() => {
+                if (!prayerTimeInput.trim()) return null;
+                const res = canAddCurrentInput();
+                if (res.ok) {
+                  return (
+                    <Text style={styles.helperOk}>Within fasting window. Tap + to add.</Text>
+                  );
+                }
+                if (res.reason === 'invalid') {
+                  return <Text style={styles.helperError}>Enter a valid time like 06:00 or 6:30 PM.</Text>;
+                }
+                if (res.reason === 'outside') {
+                  return <Text style={styles.helperWarn}>Outside your fast window.</Text>;
+                }
+                if (res.reason === 'duplicate') {
+                  return <Text style={styles.helperWarn}>You already added this time.</Text>;
+                }
+                return null;
+              })()}
             </View>
 
             <View style={styles.reminderContainer}>
@@ -376,25 +426,6 @@ const NewFastScreen = () => {
               <Switch
                 value={reminderEnabled}
                 onValueChange={setReminderEnabled}
-                trackColor={{ false: '#243447', true: '#1979e6' }}
-                thumbColor={Colors.white}
-                ios_backgroundColor="#243447"
-              />
-            </View>
-
-            <View style={styles.reminderContainer}>
-              <View style={styles.reminderIcon}>
-                <Icon name="apps" size={24} color={Colors.white} />
-              </View>
-              <View style={styles.reminderText}>
-                <Text style={styles.reminderTitle}>Add to Widget</Text>
-                <Text style={styles.reminderDescription}>
-                  Add fast progress tracking to your home screen widget.
-                </Text>
-              </View>
-              <Switch
-                value={widgetEnabled}
-                onValueChange={setWidgetEnabled}
                 trackColor={{ false: '#243447', true: '#1979e6' }}
                 thumbColor={Colors.white}
                 ios_backgroundColor="#243447"
@@ -530,6 +561,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 24,
   },
+  windowHint: {
+    fontSize: 14,
+    color: '#93acc8',
+    marginBottom: 8,
+  },
   inputContainer: {
     marginVertical: 12,
   },
@@ -542,6 +578,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     height: 56,
     fontSize: 16,
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  chip: {
+    backgroundColor: '#243447',
+  },
+  chipText: {
+    color: Colors.white,
   },
   textArea: {
     height: 144,
@@ -599,6 +647,18 @@ const styles = StyleSheet.create({
     color: 'red',
     fontSize: 14,
     marginTop: 8,
+  },
+  helperOk: {
+    color: '#7bd88f',
+    marginTop: 6,
+  },
+  helperWarn: {
+    color: '#ffb86c',
+    marginTop: 6,
+  },
+  helperError: {
+    color: '#ff6b6b',
+    marginTop: 6,
   },
 
   footer: {

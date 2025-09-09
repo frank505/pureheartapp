@@ -1,8 +1,8 @@
-// DEPRECATED: MenuScreen has been replaced by HubScreen. This file is kept temporarily for reference.
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Text, Surface, Modal, TextInput, Button, Portal } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import { Icon, ScreenHeader } from '../components';
 import { Colors, Icons } from '../constants';
 import { useNavigation } from '@react-navigation/native';
@@ -11,7 +11,7 @@ import { RootStackParamList } from '../navigation/types';
 import { useAppDispatch } from '../store/hooks';
 import { fetchPartners, acceptByCode } from '../store/slices/invitationSlice';
 
-const MenuScreen = () => {
+const HubScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const isSmall = false; // You can implement responsive design logic here if needed
   const [acceptVisible, setAcceptVisible] = useState(false);
@@ -38,7 +38,15 @@ const MenuScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-  <ScreenHeader title="Menu" navigation={navigation} showBackButton={false} />
+      {/* Background gradient to match LibraryScreen vibe */}
+      <LinearGradient
+        colors={["#0f172a", "#1e293b", "#334155", "#475569", "#64748b"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
+  <ScreenHeader title="Hub" navigation={navigation} showBackButton={false} />
       <ScrollView>
         {/* Quick Actions Section */}
         <View style={styles.quickActionsSection}>
@@ -87,6 +95,18 @@ const MenuScreen = () => {
                 onPress: () => navigation?.navigate('CreatePrayerRequest'),
                 color: Colors.warning.main
               },
+              {
+                icon: 'alert-circle-outline',
+                label: 'Panic History',
+                onPress: () => navigation?.navigate('PanicHistory'),
+                color: Colors.error.main
+              },
+              { 
+                icon: 'stats-chart-outline', 
+                label: 'Analytics', 
+                onPress: () => navigation?.navigate('Analytics'),
+                color: Colors.secondary.main
+              },
               { 
                 icon: 'book-outline', 
                 label: 'Truth Center', 
@@ -94,14 +114,15 @@ const MenuScreen = () => {
                 color: Colors.primary.dark
               },
               
-            ].map((action, index) => (
+            ].map((action) => (
               <TouchableOpacity
                 key={action.label}
                 style={[
                   styles.quickActionItem,
-                  { backgroundColor: action.special === 'invite' ? Colors.primary.main : Colors.background.secondary }
+                  { backgroundColor: action.special === 'invite' ? Colors.primary.main : 'rgba(255,255,255,0.12)' }
                 ]}
                 onPress={action.onPress}
+                activeOpacity={0.9}
               >
                 <Icon
                   name={action.icon}
@@ -194,7 +215,7 @@ const MenuScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.primary,
+    backgroundColor: 'transparent',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -233,7 +254,7 @@ const styles = StyleSheet.create({
   quickActionItem: {
     width: '48%',
     height: 96,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -279,4 +300,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MenuScreen;
+export default HubScreen;

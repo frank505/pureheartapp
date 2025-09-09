@@ -150,6 +150,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
+  flex: 1,
+  flexShrink: 1,
+  // Allow text to wrap within the available space so it never overlaps icons
+  flexWrap: 'wrap',
+  // In React Native, setting minWidth: 0 lets flex children shrink properly
+  minWidth: 0,
     fontSize: 20,
     fontWeight: '700',
     color: Colors.white,
@@ -158,6 +164,8 @@ const styles = StyleSheet.create({
   rightIconsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  // Keep icons from shrinking; text will wrap instead
+  flexShrink: 0,
     gap: 8,
   },
 });

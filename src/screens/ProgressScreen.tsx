@@ -247,7 +247,7 @@ const ProgressScreen: React.FC<ProgressScreenProps> = ({ navigation }) => {
       {/* Custom Header */}
       <View style={styles.header}>
         <ScreenHeader 
-          title="Quest Progress" 
+          title="Quest Map" 
           navigation={navigation} 
           showBackButton={true}
           showGrowthTracker={false}

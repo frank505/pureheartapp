@@ -58,7 +58,7 @@ const WorshipScreen: React.FC<WorshipScreenProps> = ({ navigation }) => {
         <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
           <Icon name="close-outline" size="lg" color={Colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Worship and Redirect</Text>
+        <Text style={styles.headerTitle}>Worship For the day</Text>
         <View style={styles.headerSpacer} />
       </View>
 

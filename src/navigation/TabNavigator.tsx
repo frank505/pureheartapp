@@ -6,7 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import LibraryStack from './LibraryStack';
 import AccountabilityNavigator from './AccountabilityNavigator';
 import FastingNavigator from './FastingNavigator';
-import MenuScreen from '../screens/MenuScreen';
+import HubScreen from '../screens/HubScreen';
 import SettingsTabScreen from '../screens/SettingsTabScreen';
 
 // These imports will be removed as they'll be moved to root navigator
@@ -176,10 +176,10 @@ const TabNavigator: React.FC = () => {
 
      
 
-      {/* Menu Tab */}
+      {/* Hub Tab (renamed from Menu) */}
       <Tab.Screen
-        name="Menu"
-        component={MenuScreen}
+        name="Hub"
+        component={HubScreen}
         options={{
           headerShown: false,
           tabBarIcon: ({ focused, color }) => (
@@ -189,7 +189,7 @@ const TabNavigator: React.FC = () => {
               color={color} 
             />
           ),
-          tabBarLabel: 'Menu',
+          tabBarLabel: 'Hub',
         }}
       />
 

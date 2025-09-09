@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, StatusBar, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, StatusBar, ActivityIndicator, Alert, Platform, Modal, TextInput } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LibraryStackParamList } from '../navigation/LibraryStack';
@@ -11,6 +11,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import { responsiveFontSizes, responsiveSpacing, scaleFontSize } from '../utils/responsive';
 import Video from 'react-native-video';
 import { analyzeBreathe, BreatheAnalysisResult } from '../services/breatheService';
+import { matchBucket } from '../constants/panicKeywords';
+import panicService from '../services/panicService';
 
 type BreatheScreenProps = NativeStackScreenProps<LibraryStackParamList, 'BreatheScreen'>;
 
@@ -18,6 +20,8 @@ const { width, height } = Dimensions.get('window');
 
 const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets?.() ?? { top: 0, bottom: 0 } as any;
+  const [panicVisible, setPanicVisible] = useState(false);
+  const [panicText, setPanicText] = useState(route?.params?.initialText || '');
   
   // Core state
   const [isAnimating, setIsAnimating] = useState(false);
@@ -459,6 +463,50 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
   return (
     <View style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      {/* Quick Panic Input */}
+      <Modal visible={panicVisible} animationType="fade" transparent onRequestClose={() => setPanicVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: '90%', borderRadius: 16, backgroundColor: 'rgba(15,23,42,0.95)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+            <View style={{ padding: 16, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 18 }}>In Panic?</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', marginTop: 4, fontSize: 13, textAlign: 'center' }}>Tell us how you feel right now. We’ll guide you.</Text>
+            </View>
+            <View style={{ padding: 16 }}>
+              <Text style={{ color: '#fff', fontWeight: '600', marginBottom: 8 }}>Your words</Text>
+              <TextInput
+                style={{ minHeight: 80, color: '#fff', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', padding: 12, backgroundColor: 'rgba(15,23,42,0.4)' }}
+                placeholder="I feel ..."
+                placeholderTextColor={'rgba(255,255,255,0.6)'}
+                value={panicText}
+                onChangeText={setPanicText}
+                autoFocus
+                multiline
+              />
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, padding: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
+              <TouchableOpacity style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }} onPress={() => setPanicVisible(false)}>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, backgroundColor: '#22c55e', borderColor: '#22c55e', borderWidth: 1 }}
+                onPress={async () => {
+                  const text = (panicText || '').trim();
+                  try { await panicService.createPanic(text || null); } catch {}
+                  const bucket = matchBucket(text);
+                  setPanicVisible(false);
+                  if (bucket === 'breathe' || bucket === null) {
+                    // Already on breathe - keep user here
+                  } else if (bucket === 'ai') navigation.navigate('AICompanion' as any);
+                  else if (bucket === 'worship') navigation.navigate('WorshipScreen' as any);
+                  else navigation.navigate('AISessions' as any);
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Get Help</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <LinearGradient
         colors={['#0f0c29', '#24243e', '#302b63']}
         style={styles.container}
@@ -513,6 +561,20 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
             <View style={styles.timeContainer}>
               <Text style={styles.timeText}>{formatTime(counter)}</Text>
             </View>
+
+            {/* Panic button in header */}
+            <TouchableOpacity 
+              style={[styles.resetButton, { marginRight: 8 }]} 
+              onPress={() => setPanicVisible(true)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#ef4444', '#dc2626']}
+                style={styles.resetButtonGradient}
+              >
+                <Icon name="alert-circle" size={responsiveFontSizes.iconMedium} color="white" />
+              </LinearGradient>
+            </TouchableOpacity>
 
             {/* Reset button in header */}
             <TouchableOpacity 

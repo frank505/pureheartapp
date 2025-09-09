@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Switch, Platform, Linking } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { ScreenHeader } from '../components';
 import { Colors } from '../constants';
 import { Text, Surface, TextInput, Button, ActivityIndicator } from 'react-native-paper';
+import Icon from '../components/Icon';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { updateProfile, getUserDetails } from '../store/slices/userSlice';
 import { fetchSettings, updateSettings } from '../services/settingsService';
@@ -35,6 +37,51 @@ const SettingsTabScreen: React.FC = () => {
     hasSelection: false,
   });
   const [appBlockingLoading, setAppBlockingLoading] = useState(false);
+
+  // Rate app state
+  const [rating, setRating] = useState<number>(0);
+  const [submittingRating, setSubmittingRating] = useState(false);
+
+  // Store links (update APP_STORE_ID when available)
+  const APP_STORE_ID = '123456789'; // TODO: replace with real App Store ID
+  const PLAY_PACKAGE = 'com.pureheart';
+  const storeUrls = Platform.select({
+    ios: {
+      app: `itms-apps://itunes.apple.com/app/id${APP_STORE_ID}?action=write-review`,
+      web: `https://apps.apple.com/app/id${APP_STORE_ID}?action=write-review`,
+    },
+    android: {
+      app: `market://details?id=${PLAY_PACKAGE}`,
+      web: `https://play.google.com/store/apps/details?id=${PLAY_PACKAGE}`,
+    },
+    default: {
+      app: `https://thepurityapp.com`,
+      web: `https://thepurityapp.com`,
+    }
+  }) as { app: string; web: string };
+
+  const openStoreForReview = async () => {
+    const primary = storeUrls.app;
+    const fallback = storeUrls.web;
+    try {
+      const supported = await Linking.canOpenURL(primary);
+      if (supported) await Linking.openURL(primary);
+      else await Linking.openURL(fallback);
+    } catch {
+      try { await Linking.openURL(fallback); } catch {}
+    }
+  };
+
+  const handleSubmitRating = async () => {
+    if (!rating) { return; }
+    setSubmittingRating(true);
+    try {
+      // Simple flow: always send to store review page
+      await openStoreForReview();
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
 
   useEffect(() => { dispatch(getUserDetails()); }, [dispatch]);
 
@@ -238,7 +285,14 @@ const SettingsTabScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
+      {/* Background gradient to match LibraryScreen vibe */}
+      <LinearGradient
+        colors={["#0f172a", "#1e293b", "#334155", "#475569", "#64748b"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <ScreenHeader title="Settings" navigation={navigation} showGrowthTracker={false} />
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Personal Info */}
@@ -320,13 +374,41 @@ const SettingsTabScreen: React.FC = () => {
           </View>
         )}
 
+        {/* Rate App (iOS & Android) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Rate the App</Text>
+          <Surface style={styles.settingsCard} elevation={2}>
+            <View style={[styles.settingItem, { flexDirection: 'column', alignItems: 'flex-start' }]}>
+              <View style={[styles.settingContent, { width: '100%' }]}> 
+                <Text style={styles.settingTitle}>How are we doing?</Text>
+                <Text style={styles.settingDescription}>Tap to rate and share your love on the store</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+                {[1,2,3,4,5].map((i) => (
+                  <TouchableOpacity key={i} onPress={() => setRating(i)} style={{ padding: 4 }}>
+                    <Icon name={i <= rating ? 'star' : 'star-outline'} size={24} color={i <= rating ? '#fbbf24' : Colors.text.secondary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                <Button mode="contained" onPress={handleSubmitRating} disabled={!rating || submittingRating} loading={submittingRating}>
+                  Submit Rating
+                </Button>
+                <Button mode="text" onPress={openStoreForReview}>
+                  Write a Review
+                </Button>
+              </View>
+            </View>
+          </Surface>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
+  container: { padding: 16, paddingBottom: 32 },
   section: { marginBottom: 24 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: Colors.text.primary, marginBottom: 12 },
   card: { backgroundColor: Colors.background.secondary, borderRadius: 12, padding: 16 },

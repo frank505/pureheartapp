@@ -150,6 +150,17 @@ const ConfigureFastScreen = () => {
     } else {
       setStartTime(selected);
       setHelperMessage(null);
+      // For non-fixed schedules, ensure end time remains after start time
+      if (scheduleType !== 'fixed') {
+        setEndTime((prev) => {
+          if (prev <= selected) {
+            const adjusted = new Date(selected);
+            adjusted.setHours(selected.getHours() + 1, selected.getMinutes(), 0, 0);
+            return adjusted;
+          }
+          return prev;
+        });
+      }
     }
   };
 
@@ -185,10 +196,20 @@ const ConfigureFastScreen = () => {
   };
 
   const handleNext = () => {
+    // Enforce invariant: endTime must be strictly after startTime
+    let safeStart = startTime;
+    let safeEnd = endTime;
+    if (safeEnd <= safeStart) {
+      const adjusted = new Date(safeStart);
+      adjusted.setHours(safeStart.getHours() + 1, safeStart.getMinutes(), 0, 0);
+      setEndTime(adjusted);
+      safeEnd = adjusted;
+    }
+
     const base = {
       fastType,
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
+      startTime: safeStart.toISOString(),
+      endTime: safeEnd.toISOString(),
     } as const;
 
     if (fastType === 'custom') {

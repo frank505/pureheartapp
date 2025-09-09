@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Modal, Alert, TextInput, Animated, Easing, Linking, Platform } from 'react-native';
+import { ToastAndroid } from 'react-native';
 import RNShare from 'react-native-share';
 import messaging, { AuthorizationStatus } from '@react-native-firebase/messaging';
 import LinearGradient from 'react-native-linear-gradient';
@@ -17,6 +18,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchPartners } from '../store/slices/invitationSlice';
 import { ContentFilter } from '../services/contentFilter';
 import userFirstsService, { UserFirstsFlags } from '../services/userFirstsService';
+import panicService from '../services/panicService';
+import { matchBucket } from '../constants/panicKeywords';
 
 const { width, height: winHeight } = Dimensions.get('window');
 
@@ -120,6 +123,8 @@ const HomeScreen: React.FC = () => {
 
   // Daily Reflections modal state
   const [reflectionsVisible, setReflectionsVisible] = useState(false);
+  const [panicVisible, setPanicVisible] = useState(false);
+  const [panicText, setPanicText] = useState('');
   const defaultReflections = useMemo(
     () => [
       'Walk by the Spirit, and you will not gratify the desires of the flesh. (Gal 5:16)',
@@ -154,28 +159,66 @@ const HomeScreen: React.FC = () => {
   const bgTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const orbPulse = useRef(new Animated.Value(0)).current;
   const orbPulse2 = useRef(new Animated.Value(0)).current;
-  // Load daily reflections from API; fallback to defaults
+  // Load daily reflections from API; graceful fallback to defaults (no blocking alerts)
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    const loadReflections = async () => {
       try {
-        // Dynamically import service to avoid cycle if any
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const { default: _ref } = await import('../services/reflectionsService');
-        const items = await _ref.getTodayReflections(tz);
-        if (!mounted) return;
-        if (items && items.length) {
-          const sorted = items.slice().sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
-          setReflections(sorted.map((r: any) => r.body));
-        } else {
-          setReflections(defaultReflections);
+        // Dynamically import to avoid potential circular deps
+        const mod = await import('../services/reflectionsService');
+        const service: any = (mod as any).default ?? mod;
+        if (!service || typeof service.getTodayReflections !== 'function') {
+          console.warn('reflectionsService.getTodayReflections missing; using defaults');
+          if (mounted) setReflections(defaultReflections);
+          return;
         }
-      } catch {
+        // Add a soft timeout so UI isn't blocked if network is slow
+        const timeout = new Promise<any>((resolve) => setTimeout(() => resolve({ ok: false, timeout: true }), 5000));
+        const fetch = service
+          .getTodayReflections(tz)
+          .then((res: any) => ({ ok: true, res }))
+          .catch((err: any) => ({ ok: false, err }));
+        const outcome = await Promise.race<any>([fetch, timeout]);
+        if (!mounted) return;
+
+        if (outcome && outcome.ok === true) {
+          const items: any[] = Array.isArray(outcome.res) ? outcome.res : [];
+          if (items.length > 0) {
+            const sorted = items
+              .filter(Boolean)
+              .slice()
+              .sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0));
+            const bodies = sorted
+              .map((r: any) => (typeof r?.body === 'string' ? r.body : null))
+              .filter((s: any) => typeof s === 'string' && s.trim().length > 0);
+            setReflections(bodies.length ? bodies : defaultReflections);
+          } else {
+            setReflections(defaultReflections);
+          }
+          return;
+        }
+
+        // Failure path: show friendly alert for 404; otherwise silent fallback
+        if (outcome && outcome.ok === false) {
+          const status = outcome?.err?.response?.status;
+          if (status === 404) {
+            try { Alert.alert('Please try again later', 'We seem to have an issue. Please try again later.'); } catch {}
+          } else {
+            console.warn('getTodayReflections failed', outcome?.err);
+          }
+        }
+        // Timeout or non-404 error -> fallback to defaults
+        setReflections(defaultReflections);
+        return;
+      } catch (e) {
+        console.warn('Failed to load reflections; falling back to defaults', e);
         if (mounted) setReflections(defaultReflections);
       }
-    })();
+    };
+    loadReflections();
     return () => { mounted = false; };
-  }, []);
+  }, [defaultReflections]);
   // Falling streak (projectile-like) state/anim
   const dropProg = useRef(new Animated.Value(0)).current;
   const [dropStartX, setDropStartX] = useState(0);
@@ -530,18 +573,6 @@ const HomeScreen: React.FC = () => {
             );
           })}
         </View>
-
-        {/* Progress Bar */}
-        <View style={styles.progressSection}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressHeaderText}>Recâblage cérébral</Text>
-            <Text style={styles.progressHeaderText}>6%</Text>
-          </View>
-          <View style={styles.progressBar}>
-            <View style={styles.progressFill} />
-          </View>
-        </View>
-
   {/* Panic button moved to fixed bottom */}
 
         {/* Motivational text (dynamic by streak range) */}
@@ -972,10 +1003,68 @@ const HomeScreen: React.FC = () => {
         </SafeAreaView>
       </Modal>
 
+      {/* Panic Modal */}
+      <Modal visible={panicVisible} animationType="fade" transparent onRequestClose={() => setPanicVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>In Panic?</Text>
+              <Text style={styles.modalSubtitle}>Tell us how you feel right now. We’ll guide you.</Text>
+            </View>
+            <View style={styles.modalBody}>
+              <Text style={styles.modalLabel}>Your words</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="I feel ..."
+                placeholderTextColor={ColorUtils.withOpacity(Colors.white, 0.6)}
+                value={panicText}
+                onChangeText={setPanicText}
+                autoFocus
+                multiline
+              />
+            </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalCancel]} onPress={() => setPanicVisible(false)}>
+                <Text style={styles.modalBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalPrimary]}
+                onPress={async () => {
+                  const text = panicText.trim();
+                  try {
+                    await panicService.createPanic(text || null);
+                    if (Platform.OS === 'android') {
+                      ToastAndroid.show('Your partners have been notified', ToastAndroid.SHORT);
+                    } else {
+                      Alert.alert('Notified', 'Your partners have been notified.');
+                    }
+                  } catch (e: any) {
+                    Alert.alert('Failed', e?.message || 'Failed to send panic');
+                  }
+                  const bucket = matchBucket(text);
+                  setPanicVisible(false);
+                  if (bucket === 'breathe') {
+                    navigation.navigate('BreatheScreen' as any, { initialText: text } as any);
+                  } else if (bucket === 'ai') {
+                    navigation.navigate('AICompanion' as any);
+                  } else if (bucket === 'worship') {
+                    navigation.navigate('WorshipScreen' as any);
+                  } else {
+                    navigation.navigate('AISessions' as any);
+                  }
+                }}
+              >
+                <Text style={styles.modalBtnText}>Get Help</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Fixed Bottom Panic Button */}
       <View style={[styles.panicContainer, { paddingBottom: insets.bottom + 10 }]}>
-        <TouchableOpacity style={styles.panicButton}>
-          <Text style={styles.panicText}>⏰ Panic Button</Text>
+        <TouchableOpacity style={styles.panicButton} onPress={() => { setPanicText(''); setPanicVisible(true); }}>
+          <Text style={styles.panicText}>⏰ In Panic?</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
