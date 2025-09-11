@@ -5,7 +5,7 @@
  * Features subscription plans, pricing, and upgrade options.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -20,6 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import { Colors, Icons } from '../constants';
+import LinearGradient from 'react-native-linear-gradient';
 
 interface SubscriptionScreenProps {
   navigation?: any;
@@ -28,6 +29,10 @@ interface SubscriptionScreenProps {
 
 const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation }) => {
   const [currentPlan] = useState('Basic Plan');
+  useLayoutEffect(() => {
+    // Hide default header so we use our custom header
+    navigation?.setOptions?.({ headerShown: false });
+  }, [navigation]);
   
   const handleGoBack = () => {
     if (navigation) {
@@ -45,16 +50,23 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation }) =
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Background gradient */}
+      <LinearGradient
+        colors={["#0f172a", "#1e293b", "#334155", "#475569", "#64748b"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       {/* Custom Header */}
-      <View style={styles.header}>
+  <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
           <Icon 
             name={Icons.navigation.back.name} 
-            color={Colors.text.primary} 
+    color={Colors.white} 
             size="md" 
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Subscription</Text>
+    <Text style={styles.headerTitle}>Subscription</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -64,14 +76,14 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation }) =
         showsVerticalScrollIndicator={false}
       >
         {/* Current Plan Section */}
-        <View style={styles.section}>
+  <View style={styles.section}>
           <Text style={styles.sectionTitle}>Current Plan</Text>
           <Surface style={styles.currentPlanCard} elevation={2}>
             <View style={styles.planInfo}>
               <View style={styles.planIcon}>
                 <Icon 
                   name="shield-checkmark-outline" 
-                  color={Colors.text.secondary} 
+      color={Colors.text.secondary} 
                   size="lg" 
                 />
               </View>
@@ -85,7 +97,7 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation }) =
         </View>
 
         {/* Upgrade Banner */}
-        <View style={styles.section}>
+  <View style={styles.section}>
           <Surface style={styles.upgradeBanner} elevation={2}>
             <View style={styles.bannerContent}>
               <View style={styles.bannerIcon}>
@@ -156,47 +168,7 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation }) =
             </View>
           </Surface>
 
-          {/* Couples Plan */}
-          <Surface style={styles.couplesPlan} elevation={2}>
-            <View style={styles.planHeader}>
-              <Text style={styles.couplesTitle}>Couples</Text>
-              <View style={styles.priceContainer}>
-                <Text style={styles.priceAmount}>$14.99</Text>
-                <Text style={styles.pricePeriod}>/month</Text>
-              </View>
-              <Text style={styles.priceDescription}>For couples on the journey together</Text>
-            </View>
-            
-            <TouchableOpacity 
-              style={styles.couplesButton}
-              onPress={() => handleUpgradePlan('Couples')}
-            >
-              <Text style={styles.couplesButtonText}>Choose Plan</Text>
-            </TouchableOpacity>
-            
-            <View style={styles.featuresList}>
-              <View style={styles.feature}>
-                <Icon name="checkmark-circle" color={Colors.primary.main} size="sm" />
-                <Text style={styles.featureText}>All Premium features</Text>
-              </View>
-              <View style={styles.feature}>
-                <Icon name="checkmark-circle" color={Colors.primary.main} size="sm" />
-                <Text style={styles.featureText}>Shared progress tracking</Text>
-              </View>
-              <View style={styles.feature}>
-                <Icon name="checkmark-circle" color={Colors.primary.main} size="sm" />
-                <Text style={styles.featureText}>Couples-specific content</Text>
-              </View>
-              <View style={styles.feature}>
-                <Icon name="checkmark-circle" color={Colors.primary.main} size="sm" />
-                <Text style={styles.featureText}>Enhanced communication tools</Text>
-              </View>
-              <View style={styles.feature}>
-                <Icon name="checkmark-circle" color={Colors.primary.main} size="sm" />
-                <Text style={styles.featureText}>Relationship coaching</Text>
-              </View>
-            </View>
-          </Surface>
+          {/* Couples Plan removed */}
         </View>
 
         {/* Money Back Guarantee */}
@@ -221,26 +193,35 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation }) =
         {/* FAQ Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
-          
           <Surface style={styles.faqCard} elevation={1}>
-            <TouchableOpacity style={styles.faqItem}>
+            <View style={styles.faqItem}>
               <Text style={styles.faqQuestion}>Can I cancel anytime?</Text>
-              <Icon name="chevron-down-outline" color={Colors.text.secondary} size="sm" />
-            </TouchableOpacity>
-            
+            </View>
+            <Text style={styles.faqAnswer}>
+              Yes. You can cancel your subscription at any time from your App Store or Google Play account
+              settings. You’ll keep access to premium features until the end of your current billing period.
+            </Text>
+
             <View style={styles.divider} />
-            
-            <TouchableOpacity style={styles.faqItem}>
+
+            <View style={styles.faqItem}>
               <Text style={styles.faqQuestion}>What's included in the free trial?</Text>
-              <Icon name="chevron-down-outline" color={Colors.text.secondary} size="sm" />
-            </TouchableOpacity>
-            
+            </View>
+            <Text style={styles.faqAnswer}>
+              The free trial unlocks full access to all premium content and features. If you don’t cancel before
+              the trial ends, it will automatically convert to a paid subscription. You can cancel anytime during
+              the trial with no charges.
+            </Text>
+
             <View style={styles.divider} />
-            
-            <TouchableOpacity style={styles.faqItem}>
-              <Text style={styles.faqQuestion}>How does the couples plan work?</Text>
-              <Icon name="chevron-down-outline" color={Colors.text.secondary} size="sm" />
-            </TouchableOpacity>
+
+            <View style={styles.faqItem}>
+              <Text style={styles.faqQuestion}>How do I manage my subscription?</Text>
+            </View>
+            <Text style={styles.faqAnswer}>
+              Manage or update your plan through your device’s subscriptions settings (App Store or Google Play).
+              You can change plans, cancel, or restore purchases from there.
+            </Text>
           </Surface>
         </View>
       </ScrollView>
@@ -251,7 +232,7 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation }) =
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.primary,
+    backgroundColor: 'transparent',
   },
 
   // Header
@@ -261,7 +242,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: Colors.background.primary,
+    backgroundColor: 'transparent',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -274,7 +255,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.white,
     textAlign: 'center',
     flex: 1,
   },
@@ -298,7 +279,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: Colors.white,
     marginBottom: 16,
     paddingHorizontal: 8,
   },
@@ -369,7 +350,7 @@ const styles = StyleSheet.create({
   bannerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.white,
     marginBottom: 4,
   },
   bannerSubtitle: {
@@ -410,7 +391,7 @@ const styles = StyleSheet.create({
   premiumTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: Colors.text.primary,
+    color: Colors.white,
     marginBottom: 8,
   },
   priceContainer: {
@@ -422,13 +403,13 @@ const styles = StyleSheet.create({
   priceAmount: {
     fontSize: 48,
     fontWeight: '900',
-    color: Colors.text.primary,
+    color: Colors.white,
     lineHeight: 56,
   },
   pricePeriod: {
     fontSize: 18,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: Colors.white,
   },
   priceDescription: {
     fontSize: 14,
@@ -462,31 +443,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // Couples Plan
-  couplesPlan: {
-    backgroundColor: Colors.background.secondary,
-    borderRadius: 16,
-    padding: 24,
-  },
-  couplesTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.text.primary,
-    marginBottom: 8,
-  },
-  couplesButton: {
-    backgroundColor: Colors.secondary.main,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  couplesButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.white,
-  },
+  // Couples Plan removed styles
 
   // Guarantee
   guaranteeCard: {
@@ -532,6 +489,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Colors.text.primary,
     flex: 1,
+  },
+  faqAnswer: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
   divider: {
     height: 1,

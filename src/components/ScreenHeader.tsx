@@ -11,7 +11,7 @@ import { Text } from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
 import { Colors, ColorUtils } from '../constants';
 import Icon from './Icon';
-import ProfileDropdown from './ProfileDropdown';
+// Profile dropdown removed from header per design update
 
 interface ScreenHeaderProps {
   title: string;
@@ -65,7 +65,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
           <Text style={styles.headerTitle}>{title}</Text>
         </View>
 
-        <View style={styles.rightIconsContainer}>
+  <View style={styles.rightIconsContainer}>
           {/* Bible/Daily Dose icon - first */}
           <TouchableOpacity
             style={styles.headerIconContainer}
@@ -103,9 +103,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
               size="sm" 
             />
           </TouchableOpacity>
-          
-          {/* Profile dropdown/Settings - fourth */}
-          <ProfileDropdown navigation={navigation} />
+
         </View>
       </View>
     </LinearGradient>

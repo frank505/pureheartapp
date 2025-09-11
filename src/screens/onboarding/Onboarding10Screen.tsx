@@ -1,68 +1,58 @@
-/**
- * Onboarding Screen 5 - Gradient Age Question
- * 
- * Fifth onboarding screen asking the user at what age they first encountered pornography.
- * 
- * Features:
- * - Progress indicator (Step 5 of 7)
- * - Age selection options
- * - Gradient background
- */
-
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import OnboardingButton from '../../components/OnboardingButton';
 import ProgressIndicator from '../../components/ProgressIndicator';
+import OnboardingButton from '../../components/OnboardingButton';
 import { Colors } from '../../constants';
 import { responsiveFontSizes, responsiveSpacing } from '../../utils/responsive';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { saveAdditionalAssessmentData, setCurrentStep } from '../../store/slices/onboardingSlice';
 
-interface Onboarding5ScreenProps { navigation: any }
+interface Onboarding10ScreenProps { navigation: any }
 
-const Onboarding5Screen: React.FC<Onboarding5ScreenProps> = ({ navigation }) => {
+const Onboarding10Screen: React.FC<Onboarding10ScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
-  const pre = useAppSelector((s) => s.onboarding.additionalAssessmentData?.ageFirstEncounteredPornography || '');
-  const [value, setValue] = useState<string>(pre);
+  const existing = useAppSelector((s) => s.onboarding.additionalAssessmentData) || {};
+  const [value, setValue] = useState<string>(existing.hasSpentMoneyOnExplicitContent || '');
 
-  useEffect(() => { dispatch(setCurrentStep(5)); }, [dispatch]);
+  useEffect(() => { dispatch(setCurrentStep(10)); }, [dispatch]);
 
   const options = useMemo(
     () => [
-      { id: 'under_10', label: 'Under 10' },
-      { id: '10_12', label: '10–12' },
-      { id: '13_15', label: '13–15' },
-      { id: '16_18', label: '16–18' },
-      { id: 'over_18', label: 'Over 18' },
+      { id: 'yes_frequently', label: 'Yes, frequently' },
+      { id: 'yes_occasionally', label: 'Yes, occasionally' },
+      { id: 'yes_rarely', label: 'Yes, but rarely' },
+      { id: 'no_never', label: 'No, never' },
       { id: 'prefer_not_say', label: 'Prefer not to say' },
     ],
     []
   );
 
-  const saveAndNext = () => {
-    if (value) dispatch(saveAdditionalAssessmentData({ ageFirstEncounteredPornography: value }));
-    navigation.navigate('Onboarding6');
+  const saveAndFinish = () => {
+    if (value) {
+      dispatch(saveAdditionalAssessmentData({ hasSpentMoneyOnExplicitContent: value }));
+    }
+    navigation.navigate('Onboarding11');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={[Colors.background.primary, Colors.background.secondary, '#10b981']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[Colors.background.primary, Colors.background.secondary, '#ef4444']} style={StyleSheet.absoluteFill} />
 
       <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ width: 40 }}>
           <Text style={{ color: Colors.text.primary, fontSize: 18 }}>←</Text>
         </TouchableOpacity>
         <View style={styles.progressWrapper}>
-          <ProgressIndicator currentStep={5} totalSteps={30} variant="bars" showStepText={false} />
+          <ProgressIndicator currentStep={10} totalSteps={30} variant="bars" showStepText={false} />
         </View>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Question #5</Text>
-        <Text style={styles.subtitle}>At what age did you first encounter pornography?</Text>
+        <Text style={styles.title}>Question #10</Text>
+        <Text style={styles.subtitle}>Have you ever spent money on accessing explicit content?</Text>
 
         <View style={styles.choices}>
           {options.map((opt, idx) => (
@@ -77,8 +67,8 @@ const Onboarding5Screen: React.FC<Onboarding5ScreenProps> = ({ navigation }) => 
       </ScrollView>
 
       <View style={styles.bottomContainer}>
-        <OnboardingButton title="Skip" onPress={saveAndNext} variant="secondary" />
-        <OnboardingButton title="Continue" onPress={saveAndNext} variant="primary" disabled={!value} style={{ marginTop: 12 }} />
+        <OnboardingButton title="Skip" onPress={saveAndFinish} variant="secondary" />
+        <OnboardingButton title="Continue" onPress={saveAndFinish} variant="primary" disabled={!value} style={{ marginTop: 12 }} />
       </View>
     </SafeAreaView>
   );
@@ -102,4 +92,4 @@ const styles = StyleSheet.create({
   bottomContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.background.primary, paddingHorizontal: responsiveSpacing.lg, paddingBottom: 28, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border.primary },
 });
 
-export default Onboarding5Screen;
+export default Onboarding10Screen;

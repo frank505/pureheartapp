@@ -9,7 +9,7 @@ import { Colors } from '../constants';
 import { Text, Surface, TextInput, Button, ActivityIndicator } from 'react-native-paper';
 import Icon from '../components/Icon';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { updateProfile, getUserDetails } from '../store/slices/userSlice';
+import { updateProfile, getUserDetails, logout } from '../store/slices/userSlice';
 import { fetchSettings, updateSettings } from '../services/settingsService';
 import { ContentFilter } from '../services/contentFilter';
 import { AppBlocking, AppBlockingData } from '../services/appBlocking';
@@ -19,7 +19,7 @@ const SettingsTabScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<any>();
   const dispatch = useAppDispatch();
-  const { currentUser, loading, error } = useAppSelector((s) => s.user);
+  const { currentUser, loading } = useAppSelector((s) => s.user);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [enablePushNotifications, setEnablePushNotifications] = useState(false);
   const [weeklyEmailNotifications, setWeeklyEmailNotifications] = useState(false);
@@ -284,6 +284,21 @@ const SettingsTabScreen: React.FC = () => {
     );
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => dispatch(logout()),
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
       {/* Background gradient to match LibraryScreen vibe */}
@@ -293,8 +308,56 @@ const SettingsTabScreen: React.FC = () => {
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <ScreenHeader title="Settings" navigation={navigation} showGrowthTracker={false} />
+      <ScreenHeader title="Account" navigation={navigation} showGrowthTracker={false} />
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Quick account actions moved from profile dropdown */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <Surface style={styles.settingsCard} elevation={2}>
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('NotificationsCenter' as never)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Icon name="notifications-outline" color={Colors.text.primary} size={22} />
+                <View>
+                  <Text style={styles.settingTitle}>Notifications</Text>
+                  <Text style={styles.settingDescription}>View your recent notifications</Text>
+                </View>
+              </View>
+              <Icon name="chevron-forward" color={Colors.text.secondary} size={20} />
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => navigation.navigate('Subscription' as never)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Icon name="diamond-outline" color={Colors.primary.main} size={22} />
+                <View>
+                  <Text style={styles.settingTitle}>Subscription</Text>
+                  <Text style={styles.settingDescription}>Manage your plan and billing</Text>
+                </View>
+              </View>
+              <Icon name="chevron-forward" color={Colors.text.secondary} size={20} />
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Icon name="log-out-outline" color={Colors.error.main} size={22} />
+                <View>
+                  <Text style={[styles.settingTitle, { color: Colors.error.main }]}>Logout</Text>
+                  <Text style={styles.settingDescription}>Sign out of your account</Text>
+                </View>
+              </View>
+              <Icon name="chevron-forward" color={Colors.text.secondary} size={20} />
+            </TouchableOpacity>
+          </Surface>
+        </View>
         {/* Personal Info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Info</Text>
@@ -303,7 +366,7 @@ const SettingsTabScreen: React.FC = () => {
             <TextInput label="Last Name" value={lastName} onChangeText={setLastName} mode="outlined" style={styles.input} />
             <TextInput label="Username" value={username} onChangeText={setUsername} mode="outlined" style={styles.input} />
             <Button mode="contained" onPress={handleSaveChanges} loading={loading} disabled={loading} style={styles.saveButton}>Save Changes</Button>
-            {error ? <Text style={styles.errorText}>{String(error)}</Text> : null}
+            {/* Intentionally not showing global user error here to avoid noisy messages on load. */}
           </Surface>
         </View>
 

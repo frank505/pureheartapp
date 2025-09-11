@@ -11,7 +11,7 @@
  * - Direct social authentication flow
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -21,6 +21,8 @@ import {
   Platform,
   Image,
   ImageBackground,
+  Modal,
+  Linking,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID } from '@env';
@@ -67,6 +69,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector(state => state.user);
   const onboardingData = useAppSelector(state => state.onboarding);
+  const hasCompletedOnboarding = useAppSelector(state => state.app.hasCompletedOnboarding);
+  const [showRatePrompt, setShowRatePrompt] = useState(false);
+  const [ratePromptShown, setRatePromptShown] = useState(false);
 
   useEffect(() => {
     // Configure Google Sign-In
@@ -76,6 +81,32 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
       offlineAccess: true, // if you want to access Google API on behalf of the user FROM YOUR SERVER
     });
   }, []);
+
+  useEffect(() => {
+    if (hasCompletedOnboarding && !ratePromptShown) {
+      const t = setTimeout(() => { setShowRatePrompt(true); setRatePromptShown(true); }, 1200);
+      return () => clearTimeout(t);
+    }
+  }, [hasCompletedOnboarding, ratePromptShown]);
+
+  const APP_STORE_ID = '123456789';
+  const PLAY_PACKAGE = 'com.pureheart';
+  const storeUrls = Platform.select({
+    ios: { app: `itms-apps://itunes.apple.com/app/id${APP_STORE_ID}?action=write-review`, web: `https://apps.apple.com/app/id${APP_STORE_ID}?action=write-review` },
+    android: { app: `market://details?id=${PLAY_PACKAGE}`, web: `https://play.google.com/store/apps/details?id=${PLAY_PACKAGE}` },
+    default: { app: 'https://thepurityapp.com', web: 'https://thepurityapp.com' },
+  }) as { app: string; web: string };
+
+  const openStoreReview = async () => {
+    const primary = storeUrls.app; const fallback = storeUrls.web;
+    try {
+      const supported = await Linking.canOpenURL(primary);
+      if (supported) await Linking.openURL(primary); else await Linking.openURL(fallback);
+    } catch {
+      try { await Linking.openURL(fallback); } catch {}
+    }
+    setShowRatePrompt(false);
+  };
 
   useEffect(() => {
     console.log({onboardingData})
@@ -268,6 +299,23 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
       </View>
         </View>
       </SafeAreaView>
+      {/** Rate Prompt Modal */}
+      <Modal visible={showRatePrompt} transparent animationType="fade" onRequestClose={() => setShowRatePrompt(false)}>
+        <View style={styles.rateOverlay}>
+          <View style={styles.rateCard}>
+            <Text style={styles.rateTitle}>Enjoying PureHeart?</Text>
+            <Text style={styles.rateSubtitle}>Leave a quick review to encourage others on their journey.</Text>
+            <View style={styles.rateActions}>
+              <TouchableOpacity style={[styles.rateButton, styles.ratePrimary]} onPress={openStoreReview}>
+                <Text style={styles.ratePrimaryText}>Rate Now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.rateButton, styles.rateSecondary]} onPress={() => setShowRatePrompt(false)}>
+                <Text style={styles.rateSecondaryText}>Later</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -424,6 +472,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
+  rateOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  rateCard: { width: '100%', maxWidth: 360, backgroundColor: '#1e1e1e', borderRadius: 16, padding: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  rateTitle: { fontSize: 20, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 8 },
+  rateSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.75)', textAlign: 'center', marginBottom: 20, lineHeight: 20 },
+  rateActions: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  rateButton: { flex: 1, paddingVertical: 14, borderRadius: 9999, alignItems: 'center', justifyContent: 'center' },
+  ratePrimary: { backgroundColor: Colors.primary.main },
+  ratePrimaryText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  rateSecondary: { backgroundColor: 'rgba(255,255,255,0.08)' },
+  rateSecondaryText: { color: '#fff', fontWeight: '500', fontSize: 15 },
 });
 
 export default AuthScreen;

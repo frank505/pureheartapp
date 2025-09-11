@@ -129,66 +129,7 @@ const AppContent: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // iOS push notification handling: navigate to group chat when tapped
-  useEffect(() => {
-    const getDevicePlatform = (): DevicePlatform | null => {
-      if (Platform.OS === 'ios') return 'ios';
-      if (Platform.OS === 'android') return 'android';
-      return null;
-    };
-
-    // Request permission on iOS
-    if (Platform.OS === 'ios') {
-      messaging().requestPermission().catch(() => undefined);
-      messaging().getToken().then((token: string) => {
-        if (token) {
-          // Register token with backend
-          deviceTokenService.register(token, 'ios').catch(() => undefined);
-          AsyncStorage.setItem('fcm_token', token).catch(() => undefined);
-        }
-      });
-    }
-
-    // Handle token refresh
-    const unsubscribeTokenRefresh = messaging().onTokenRefresh((token) => {
-      // Register new token with backend
-      const p = getDevicePlatform();
-      if (p) {
-        deviceTokenService.register(token, p).catch(() => undefined);
-      }
-      AsyncStorage.setItem('fcm_token', token).catch(() => undefined);
-    });
-
-    // Foreground message handler (optional preview)
-    const unsubscribeOnMessage = messaging().onMessage(async () => {
-      // no-op; could show in-app banner/toast
-    });
-
-    // When app is opened from a quit state via notification
-    messaging()
-      .getInitialNotification()
-      .then((remoteMessage: FirebaseMessagingTypes.RemoteMessage | null) => {
-        if (remoteMessage?.data?.type === 'group_message') {
-          const groupId = String(remoteMessage.data.groupId);
-          const groupName = remoteMessage.data.groupName ? String(remoteMessage.data.groupName) : undefined;
-          setTimeout(() => navigate('GroupChat', { groupId, groupName }), 300);
-        }
-      });
-
-    // When app is in background and user taps notification
-    const unsubscribeOpened = messaging().onNotificationOpenedApp((remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
-      if (remoteMessage?.data?.type === 'group_message') {
-        const groupId = String(remoteMessage.data.groupId);
-        const groupName = remoteMessage.data.groupName ? String(remoteMessage.data.groupName) : undefined;
-        navigate('GroupChat', { groupId, groupName });
-      }
-    });
-
-    return () => {
-      unsubscribeOnMessage();
-      unsubscribeOpened();
-    };
-  }, []);
+  // Push notification setup moved to Onboarding29Screen after user completes onboarding.
   
   // Get onboarding data state for restoration logic
   const onboardingState = useAppSelector(state => state.onboarding);

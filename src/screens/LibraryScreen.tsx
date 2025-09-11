@@ -111,7 +111,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             { label: 'Daily Word', colors: ['#F97316', '#EA580C'], onPress: () => navigation?.navigate('DailyDose') },
             { label: 'Truth Center', colors: ['#EC4899', '#8B5CF6'], onPress: () => navigation?.navigate('Progress') },
             { label: 'Prayer Requests', colors: ['#10B981', '#059669'], onPress: () => navigation?.navigate('Learn') },
-            { label: 'Victories In Christ', colors: ['#3B82F6', '#1D4ED8'], onPress: () => navigation?.navigate('Podcast') },
+            { label: 'Victories In Christ', colors: ['#3B82F6', '#1D4ED8'], onPress: () => navigation?.navigate('MyVictories') },
           ].map((b, i) => (
             <TouchableOpacity key={i} style={styles.featureButtonWrapper} activeOpacity={0.9} onPress={b.onPress}>
               <LinearGradient colors={b.colors} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.featureButton}>

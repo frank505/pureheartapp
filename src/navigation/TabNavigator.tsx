@@ -201,12 +201,12 @@ const TabNavigator: React.FC = () => {
           headerShown: false,
           tabBarIcon: ({ focused, color }) => (
             <CustomTabIcon 
-              iconName={Icons.tabs.settings ? Icons.tabs.settings.name : 'settings-outline'} 
+        iconName={'person-outline'} 
               focused={focused} 
               color={color} 
             />
           ),
-          tabBarLabel: 'Settings',
+      tabBarLabel: 'Account',
         }}
       />
     </Tab.Navigator>

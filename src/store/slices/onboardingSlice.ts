@@ -65,6 +65,7 @@ export interface FaithData {
   christianInfluences: string;
   bibleTranslation: string;
   spiritualStruggle: string;
+  favorite?: string;
   completedAt?: string;
 }
 
@@ -145,6 +146,7 @@ export interface OnboardingState {
   howTheyHeard: Partial<HowTheyHeard>;
   accountabilityPreferences: Partial<AccountabilityPreferences>;
   recoveryJourneyData: Partial<RecoveryJourneyData>; // Add this line
+  dependencyAssessment?: { score: number; reasoning?: string; fetchedAt: string } | null;
   progress: OnboardingProgress;
   isDataSaved: boolean;
   lastSaveTime: string | null;
@@ -163,6 +165,7 @@ const initialState: OnboardingState = {
   howTheyHeard: {},
   accountabilityPreferences: {},
   recoveryJourneyData: {},
+  dependencyAssessment: null,
   progress: {
     currentStep: 1,
     completedSteps: [],
@@ -416,6 +419,14 @@ const onboardingSlice = createSlice({
       state.progress.currentStep = action.payload;
       state.progress.lastUpdated = new Date().toISOString();
     },
+    /**
+     * Save Dependency Assessment Result
+     * Stores the computed dependency score & reasoning retrieved before screen 12.
+     */
+    saveDependencyAssessmentResult: (state, action: PayloadAction<{ score: number; reasoning?: string }>) => {
+      state.dependencyAssessment = { ...action.payload, fetchedAt: new Date().toISOString() };
+      state.lastSaveTime = new Date().toISOString();
+    },
   },
 });
 
@@ -434,6 +445,7 @@ export const {
   markDataAsTransferred,
   savePartialPersonalInfo,
   setCurrentStep,
+  saveDependencyAssessmentResult,
 } = onboardingSlice.actions;
 
 // Export reducer for store configuration
@@ -471,7 +483,7 @@ export const hasOnboardingData = (state: { onboarding: OnboardingState }) => {
 
 // Get onboarding completion percentage
 export const getOnboardingCompletionPercentage = (state: { onboarding: OnboardingState }) => {
-  const totalSteps = 9; // Onboarding steps 1-9
+  const totalSteps = 30; // Align with current flow
   const completedSteps = state.onboarding.progress.completedSteps.length;
   return Math.round((completedSteps / totalSteps) * 100);
 };
