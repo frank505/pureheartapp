@@ -10,15 +10,6 @@ import SharedVictoriesList from '../components/SharedVictoriesList';
 import { useNavigation } from '@react-navigation/native';
 
 
-/*************  ✨ Windsurf Command ⭐  *************/
-  /**
-   * Screen that displays the user's victories, either those they have entered or
-   * those that have been shared with them.
-   *
-   * @param navigation - The navigation prop.
-   * @returns The JSX for the screen.
-   */
-/*******  6d3c07ee-4b9f-4515-9319-985ed5f4af85  *******/
 const MyVictoriesScreen = ({ navigation }: any) => {
   const [activeTab, setActiveTab] = useState<'myVictories' | 'sharedWithMe'>('myVictories');
   const [myVictoriesSearchQuery, setMyVictoriesSearchQuery] = useState('');
