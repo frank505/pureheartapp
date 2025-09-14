@@ -82,6 +82,22 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
     });
   }, []);
 
+  // Check if rate prompt has been shown before
+  useEffect(() => {
+    const checkRatePromptStatus = async () => {
+      try {
+        const hasSeenRatePrompt = await AsyncStorage.getItem('hasSeenRatePrompt');
+        if (hasSeenRatePrompt === 'true') {
+          setRatePromptShown(true);
+        }
+      } catch (error) {
+        console.error('Error checking rate prompt status:', error);
+      }
+    };
+
+    checkRatePromptStatus();
+  }, []);
+
   useEffect(() => {
     if (hasCompletedOnboarding && !ratePromptShown) {
       const t = setTimeout(() => { setShowRatePrompt(true); setRatePromptShown(true); }, 1200);
@@ -105,7 +121,24 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
     } catch {
       try { await Linking.openURL(fallback); } catch {}
     }
+    // Save that the user has seen the rate prompt
+    await saveRatePromptSeen();
     setShowRatePrompt(false);
+  };
+
+  const handleRateLater = async () => {
+    // Save that the user has seen the rate prompt
+    await saveRatePromptSeen();
+    setShowRatePrompt(false);
+  };
+
+  const saveRatePromptSeen = async () => {
+    try {
+      await AsyncStorage.setItem('hasSeenRatePrompt', 'true');
+      console.log('Rate prompt status saved successfully');
+    } catch (error) {
+      console.error('Error saving rate prompt status:', error);
+    }
   };
 
   useEffect(() => {
@@ -309,7 +342,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
               <TouchableOpacity style={[styles.rateButton, styles.ratePrimary]} onPress={openStoreReview}>
                 <Text style={styles.ratePrimaryText}>Rate Now</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.rateButton, styles.rateSecondary]} onPress={() => setShowRatePrompt(false)}>
+              <TouchableOpacity style={[styles.rateButton, styles.rateSecondary]} onPress={handleRateLater}>
                 <Text style={styles.rateSecondaryText}>Later</Text>
               </TouchableOpacity>
             </View>

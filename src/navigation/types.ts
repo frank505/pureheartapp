@@ -74,5 +74,7 @@ export type RootStackParamList = {
   AddictionSupport: undefined;
   Analytics: undefined;
   PanicHistory: undefined;
+  Articles?: undefined;
+  ArticleDetail?: { slug: string };
   PanicDetail: { id: number };
 };

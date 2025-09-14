@@ -93,30 +93,25 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           {[
             { icon: '⭕', text: 'Breathing\nWith Jesus', onPress: () => navigation?.navigate('BreatheScreen') },
             { icon: '🧠', text: 'Purity AI\nTherapist', onPress: () => navigation?.navigate('AISessions') },
-            { icon: '🧘‍♂️', text: 'Worship', onPress: () => navigation?.navigate('WorshipScreen') },
+            { icon: '🧘‍♂️', text: 'Worship', comingSoon: true, onPress: () => {} },
             { icon: '📰', text: 'Articles', onPress: () => navigation?.navigate('Articles') },
           ].map((item, idx) => (
-            <TouchableOpacity key={idx} style={styles.iconItem} onPress={item.onPress}>
+            <TouchableOpacity
+              key={idx}
+              style={styles.iconItem}
+              onPress={item.onPress}
+              disabled={item.comingSoon}
+              activeOpacity={item.comingSoon ? 1 : 0.7}
+            >
+              {item.comingSoon && (
+                <View style={styles.comingSoonBadge}>
+                  <Text style={styles.comingSoonText}>COMING SOON</Text>
+                </View>
+              )}
               <View style={styles.iconCircle}>
                 <Text style={styles.iconEmoji}>{item.icon}</Text>
               </View>
-              <Text style={styles.iconText}>{item.text}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Button Grid */}
-        <View style={styles.buttonGrid}>
-          {[ 
-            { label: 'Daily Word', colors: ['#F97316', '#EA580C'], onPress: () => navigation?.navigate('DailyDose') },
-            { label: 'Truth Center', colors: ['#EC4899', '#8B5CF6'], onPress: () => navigation?.navigate('Progress') },
-            { label: 'Prayer Requests', colors: ['#10B981', '#059669'], onPress: () => navigation?.navigate('Learn') },
-            { label: 'Victories In Christ', colors: ['#3B82F6', '#1D4ED8'], onPress: () => navigation?.navigate('MyVictories') },
-          ].map((b, i) => (
-            <TouchableOpacity key={i} style={styles.featureButtonWrapper} activeOpacity={0.9} onPress={b.onPress}>
-              <LinearGradient colors={b.colors} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.featureButton}>
-                <Text style={styles.featureButtonText}>{b.label}</Text>
-              </LinearGradient>
+              <Text style={[styles.iconText, item.comingSoon && { opacity: 0.5 }]}>{item.text}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -198,10 +193,12 @@ const styles = StyleSheet.create({
 
   // Icon Grid
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 24 },
-  iconItem: { width: '22%', alignItems: 'center', marginBottom: 16 },
-  iconCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  iconItem: { width: '22%', alignItems: 'center', marginBottom: 16, position: 'relative' },
+  iconCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   iconEmoji: { fontSize: 22 },
   iconText: { marginTop: 8, fontSize: 12, textAlign: 'center', color: '#ffffff', opacity: 0.9 },
+  comingSoonBadge: { position: 'absolute', top: -6, alignSelf: 'center', backgroundColor: '#F59E0B', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, zIndex: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.25, shadowRadius: 2, elevation: 3 },
+  comingSoonText: { fontSize: 9, fontWeight: '800', color: '#ffffff', letterSpacing: 0.6 },
 
   // Button Grid
   buttonGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 5 },

@@ -60,30 +60,27 @@ const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <View style={styles.container}>
+      <ImageBackground
+        source={{
+          uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAhmN_zYCw9ezjTt-o30zHTGxhk_aYEspPWeORup_LReTd5D5QRc8yoyKIz7Nu78hLQVWQWBrr2BHP0aZlyrVASQS9_J6nhsNnK5OoMMHr4FyDx4YcQgjFs3upR9Ke2BC6xxPk_g1h25cV90aJu8exfkUi45FtJFaGwD21ufpkJwbCoD8wuQm_N9qOO04dYFjSwvWWpMfTAy9FnK5Mr-Qdy0Ld7_JLV_1C28hgXJCIj8CiFU55nVwlQtOXMQk7VEsUyX66T8FSOKdKd'
+        }}
+        style={styles.backgroundImage}
+        resizeMode="cover"
       >
-        {/* Hero Background with Gradient Overlay */}
-        <View style={styles.heroContainer}>
-          <ImageBackground
-            source={{
-              uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAhmN_zYCw9ezjTt-o30zHTGxhk_aYEspPWeORup_LReTd5D5QRc8yoyKIz7Nu78hLQVWQWBrr2BHP0aZlyrVASQS9_J6nhsNnK5OoMMHr4FyDx4YcQgjFs3upR9Ke2BC6xxPk_g1h25cV90aJu8exfkUi45FtJFaGwD21ufpkJwbCoD8wuQm_N9qOO04dYFjSwvWWpMfTAy9FnK5Mr-Qdy0Ld7_JLV_1C28hgXJCIj8CiFU55nVwlQtOXMQk7VEsUyX66T8FSOKdKd'
-            }}
-            style={styles.backgroundImage}
-            resizeMode="cover"
+        <LinearGradient
+          colors={[
+            'transparent',
+            'rgba(18, 18, 18, 0.8)',
+            'rgba(18, 18, 18, 1)',
+          ]}
+          style={styles.gradientOverlay}
+        />
+        <SafeAreaView style={styles.safeArea}>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
           >
-            <LinearGradient
-              colors={[
-                'transparent',
-                'rgba(18, 18, 18, 0.8)',
-                'rgba(18, 18, 18, 1)',
-              ]}
-              style={styles.gradientOverlay}
-            />
-          </ImageBackground>
-        </View>
 
         {/* Content Container */}
         <View style={styles.contentContainer}>
@@ -154,15 +151,19 @@ const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ navigation }) => {
             Trusted by thousands on their path to recovery.
           </Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+          </ScrollView>
+        </SafeAreaView>
+      </ImageBackground>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.primary,
+  },
+  safeArea: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,

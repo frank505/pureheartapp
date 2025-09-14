@@ -617,7 +617,7 @@ const HomeScreen: React.FC = () => {
     </TouchableOpacity>
 
         {/* Upgrade */}
-        <View style={styles.upgradeSection}>
+        {/* <View style={styles.upgradeSection}>
           <View style={styles.upgradeHeader}>
             <Text style={styles.upgradeIcon}>🎁</Text>
             <Text style={styles.upgradeTitle}>Upgrade to Lifetime</Text>
@@ -630,7 +630,7 @@ const HomeScreen: React.FC = () => {
             </View>
             <Text style={styles.upgradeIcon}>👥</Text>
           </View>
-        </View>
+        </View> */}
 
         {/* Content blocker */}
         <View style={styles.blocker}>

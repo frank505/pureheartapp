@@ -14,6 +14,7 @@ export type LibraryStackParamList = {
   AISessions: undefined;
   AIChat: { sessionId?: number; title?: string } | undefined;
   Articles: undefined;
+  ArticleDetail: { slug: string };
   Learn: undefined;
   Podcast: undefined;
   Leaderboard: undefined;
@@ -54,6 +55,10 @@ const LibraryStack = () => {
       <Stack.Screen 
         name="Articles" 
         component={require('../screens/ArticlesScreen').default}
+      />
+      <Stack.Screen 
+        name="ArticleDetail" 
+        component={require('../screens/ArticleDetailScreen').default}
       />
       <Stack.Screen 
         name="Learn" 

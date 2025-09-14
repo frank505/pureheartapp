@@ -78,8 +78,8 @@ class AppBlockingManager: NSObject {
             print("AppBlockingManager: Requesting authorization...")
             try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
             print("AppBlockingManager: Authorization granted, presenting picker")
-            DispatchQueue.main.async {
-              self.presentFamilyActivityPicker(resolve: resolve, reject: reject)
+            DispatchQueue.main.async { [weak self] in
+              self?.presentFamilyActivityPicker(resolve: resolve, reject: reject)
             }
           } catch {
             print("AppBlockingManager: Authorization failed: \(error)")
@@ -91,8 +91,8 @@ class AppBlockingManager: NSObject {
       } else {
         // Already authorized, show picker
         print("AppBlockingManager: Already authorized, presenting picker")
-        DispatchQueue.main.async {
-          self.presentFamilyActivityPicker(resolve: resolve, reject: reject)
+        DispatchQueue.main.async { [weak self] in
+          self?.presentFamilyActivityPicker(resolve: resolve, reject: reject)
         }
       }
     } else {
@@ -508,12 +508,12 @@ struct FamilyActivityPickerWrapper: UIViewControllerRepresentable {
     
     func setupConnectionMonitoring(hostingController: UIHostingController<AnyView>) {
       // Monitor for connection interruptions
-      connectionMonitorTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
+      connectionMonitorTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
         // Check if the picker is still responsive
         DispatchQueue.main.async {
           if hostingController.view.subviews.isEmpty {
             print("FamilyActivityPickerWrapper: Detected connection issue")
-            self.parent.onConnectionError()
+            self?.parent.onConnectionError()
           }
         }
       }

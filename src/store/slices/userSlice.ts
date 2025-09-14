@@ -100,9 +100,8 @@ const initialState: UserState = {
  * In a real app, this would make an API call to authenticate.
  */
 import api from '../../services/api';
-import { 
-  OnboardingState,
-} from './onboardingSlice';
+import { OnboardingState } from './onboardingSlice';
+import purchasesService from '../../services/purchasesService';
 
 /**
  * Login User Thunk
@@ -254,6 +253,9 @@ const userSlice = createSlice({
           deviceTokenService.deactivate(token).catch(() => undefined);
         }
       });
+
+  // Logout from RevenueCat
+  purchasesService.logout().catch(() => undefined);
 
       // Clear FCM token from AsyncStorage
       AsyncStorage.removeItem('fcm_token').catch(() => undefined);

@@ -12,7 +12,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 const FastingScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
+    
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>

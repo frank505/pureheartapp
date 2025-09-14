@@ -12,6 +12,7 @@ import baseURL from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { store } from '../store';
 import { logout } from '../store/slices/userSlice';
+import { showPaywall } from '../store/slices/paywallSlice';
 
 // Create an axios instance
 const api = axios.create({
@@ -62,6 +63,14 @@ api.interceptors.response.use(
         }
       }
       
+      // Handle 402 (Payment Required) with paywall payload
+      if (error.response.status === 402 && error.response.data?.paywall) {
+        try {
+          const { feature, trialEndsAt, trialEnded, message } = error.response.data;
+          store.dispatch(showPaywall({ feature, trialEndsAt, trialEnded, message }));
+        } catch {}
+      }
+
       // Handle 403 (Forbidden) errors
       if (error.response.status === 403) {
         const message = error.response.data?.message;

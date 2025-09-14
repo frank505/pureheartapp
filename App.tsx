@@ -33,9 +33,11 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import InvitationAcceptModal from './src/components/InvitationAcceptModal';
 import ShareInvitationModal from './src/components/ShareInvitationModal';
+import PaywallModal from './src/components/PaywallModal';
 
 // Import Redux hooks and actions
-import { useAppSelector } from './src/store/hooks';
+import { useAppSelector, useAppDispatch } from './src/store/hooks';
+import { initSubscription } from './src/store/slices/subscriptionSlice';
 
 // Import centralized theme
 import { Theme } from './src/constants';
@@ -110,8 +112,16 @@ const appTheme = {
 const AppContent: React.FC = () => {
  
   // Get authentication and onboarding state from Redux
-  const { isAuthenticated } = useAppSelector(state => state.user);
+  const { isAuthenticated, currentUser } = useAppSelector(state => state.user);
   const { isFirstLaunch, hasCompletedOnboarding } = useAppSelector(state => state.app);
+  const dispatch = useAppDispatch();
+
+  // Initialize subscription (RevenueCat) when user authenticates
+  useEffect(() => {
+    if (isAuthenticated && currentUser?.id) {
+      dispatch(initSubscription(currentUser.id));
+    }
+  }, [isAuthenticated, currentUser?.id, dispatch]);
 
   // Hide splash screen when app is ready
   useEffect(() => {
@@ -216,6 +226,7 @@ const AppContent: React.FC = () => {
           {/* Global Invitation Accept Modal */}
           <InvitationAcceptModal />
           <ShareInvitationModal />
+          <PaywallModal />
         </NavigationContainer>
       </SafeAreaProvider>
     </PaperProvider>
