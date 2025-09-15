@@ -14,6 +14,8 @@
         <item name="android:windowFullscreen">false</item>
         <item name="android:windowContentOverlay">@null</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <!-- Allow preview so drawable shows instantly; rely on fast BootSplash.hide logic -->
+        <!-- (If white icon flash returns we can revisit) -->
 
         <item name="bootSplashBackground">@color/bootsplash_background</item>
         <item name="bootSplashLogo">@drawable/bootsplash_logo</item>

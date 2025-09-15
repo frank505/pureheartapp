@@ -13,7 +13,7 @@
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StatusBar, useColorScheme, Platform } from 'react-native';
+import { StatusBar, useColorScheme, Platform, Alert, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as StoreProvider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -123,21 +123,34 @@ const AppContent: React.FC = () => {
     }
   }, [isAuthenticated, currentUser?.id, dispatch]);
 
-  // Hide splash screen when app is ready
-  useEffect(() => {
-    const hideSplashScreen = async () => {
-      try {
-        await BootSplash.hide({ fade: true });
-      } catch (error) {
-        console.log('BootSplash hide error:', error);
-      }
-    };
 
-    // Add a small delay to ensure everything is loaded
-    const timer = setTimeout(hideSplashScreen, 1000);
-    
-    return () => clearTimeout(timer);
-  }, []);
+  useEffect(()=> {
+     const hideSplashScreen = async () => {
+        return BootSplash.hide({ fade: true });
+    };
+    hideSplashScreen();
+
+  },[]);
+
+  // Hide splash screen when app state is determined and ready to render
+  // useEffect(() => {
+  //   const hideSplashScreen = async () => {
+  //       return BootSplash.hide({ fade: true });
+  //   };
+
+  //   const isStateReady = typeof isAuthenticated === 'boolean' && 
+  //                        typeof hasCompletedOnboarding === 'boolean' && 
+  //                        typeof isFirstLaunch === 'boolean';
+
+  //   if (isStateReady) {
+  //     hideSplashScreen();
+  //     Alert.alert('is first launch', ""+isFirstLaunch);
+  //     Alert.alert('is authenticated', ""+isAuthenticated);
+  //     Alert.alert("has completed onboarding", ""+hasCompletedOnboarding);
+  //   }
+
+
+  // }, [isAuthenticated, hasCompletedOnboarding, isFirstLaunch]);
 
   // Push notification setup moved to Onboarding29Screen after user completes onboarding.
   
@@ -160,14 +173,6 @@ const AppContent: React.FC = () => {
     if (!hasCompletedOnboarding && !isAuthenticated) {
       // Determine if we're restoring data or starting fresh
       const isRestoring = hasOnboardingData && !isFirstLaunch;
-      
-      if (isRestoring) {
-        console.log('Restoring onboarding data from previous session...');
-        console.log('Onboarding progress:', onboardingState.progress);
-      } else {
-        console.log('Starting fresh onboarding flow...');
-      }
-      
       return (
         <Stack.Navigator
           screenOptions={{
@@ -240,7 +245,9 @@ const AppContent: React.FC = () => {
  * This ensures the app doesn't render until persisted state is loaded.
  */
 const LoadingScreen: React.FC = () => {
-  return null; // You can add a custom loading screen here
+  // Keep splash screen visible while Redux is rehydrating
+  console.log('PersistGate loading - keeping splash screen visible');
+  return null; // Splash screen will remain visible during this time
 };
 
 /**
