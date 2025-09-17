@@ -13,6 +13,7 @@ import PartnerFastingHubScreen from '../screens/PartnerFastingHubScreen';
 import TruthNavigator from './TruthNavigator';
 
 import ProfileSettingsScreen from '../screens/ProfileSettingsScreen';
+import AndroidContentFilterScreen from '../screens/AndroidContentFilterScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import DailyDoseScreen from '../screens/DailyDoseScreen';
 import GrowthTrackerScreen from '../screens/GrowthTrackerScreen';
@@ -67,6 +68,7 @@ const RootNavigator = () => {
 
       {/* Profile Dropdown Screens */}
       <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="AndroidContentFilter" component={AndroidContentFilterScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ headerShown: true }} />
       <Stack.Screen name="DailyDose" component={DailyDoseScreen} options={{ headerShown: true }} />
       <Stack.Screen name="GrowthTracker" component={GrowthTrackerScreen} options={{ headerShown: true }} />

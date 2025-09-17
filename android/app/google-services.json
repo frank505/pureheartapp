@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "50902801210",
+    "project_id": "pureheart-6d2e1",
+    "storage_bucket": "pureheart-6d2e1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:50902801210:android:a79adfb9af0451506a0e03",
+        "android_client_info": {
+          "package_name": "com.pureheart"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "50902801210-02ial464k0corbv43v7tc1fi89a9ghnu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pureheart",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "50902801210-3725v1iojh1b5t7ek66kt4r4ubdaiven.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8eBH7q-0PIzmne5Gx_aucEzjvnmotu-I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "50902801210-3725v1iojh1b5t7ek66kt4r4ubdaiven.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "50902801210-3s5q1625jku1repio9vlk6gjv0t9pgip.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.100klabs.pureheart"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "generate-icons": "node scripts/generate-app-icons.js"
   },
   "dependencies": {
     "@invertase/react-native-apple-authentication": "^2.4.1",
@@ -66,7 +67,7 @@
     "@babel/plugin-transform-runtime": "^7.28.3",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.28.3",
-    "@react-native-community/cli": "^19.1.1",
+    "@react-native-community/cli": "^20.0.2",
     "@react-native-community/cli-platform-android": "19.1.1",
     "@react-native-community/cli-platform-ios": "19.1.1",
     "@react-native/babel-preset": "0.80.2",

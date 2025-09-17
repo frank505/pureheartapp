@@ -1789,7 +1789,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-safe-area-context (5.6.1):
+  - react-native-safe-area-context (5.6.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -1808,8 +1808,8 @@ PODS:
     - React-hermes
     - React-ImageManager
     - React-jsi
-    - react-native-safe-area-context/common (= 5.6.1)
-    - react-native-safe-area-context/fabric (= 5.6.1)
+    - react-native-safe-area-context/common (= 5.6.0)
+    - react-native-safe-area-context/fabric (= 5.6.0)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -1820,7 +1820,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-safe-area-context/common (5.6.1):
+  - react-native-safe-area-context/common (5.6.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -1849,7 +1849,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-safe-area-context/fabric (5.6.1):
+  - react-native-safe-area-context/fabric (5.6.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2030,7 +2030,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-webview (13.16.0):
+  - react-native-webview (13.15.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2536,7 +2536,7 @@ PODS:
   - RevenueCat (5.38.2)
   - RNAppleAuthentication (2.4.1):
     - React-Core
-  - RNBootSplash (6.3.11):
+  - RNBootSplash (6.3.10):
     - boost
     - DoubleConversion
     - fast_float
@@ -2623,7 +2623,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNCPicker (2.11.2):
+  - RNCPicker (2.11.1):
     - boost
     - DoubleConversion
     - fast_float
@@ -2754,7 +2754,7 @@ PODS:
   - RNPurchases (9.4.2):
     - PurchasesHybridCommon (= 17.6.0)
     - React-Core
-  - RNScreens (4.16.0):
+  - RNScreens (4.10.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2782,10 +2782,10 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNScreens/common (= 4.16.0)
+    - RNScreens/common (= 4.10.0)
     - SocketRocket
     - Yoga
-  - RNScreens/common (4.16.0):
+  - RNScreens/common (4.10.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2873,7 +2873,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNSVG (15.13.0):
+  - RNSVG (15.12.1):
     - boost
     - DoubleConversion
     - fast_float
@@ -2900,39 +2900,10 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNSVG/common (= 15.13.0)
+    - RNSVG/common (= 15.12.1)
     - SocketRocket
     - Yoga
-  - RNSVG/common (15.13.0):
-    - boost
-    - DoubleConversion
-    - fast_float
-    - fmt
-    - glog
-    - hermes-engine
-    - RCT-Folly
-    - RCT-Folly/Fabric
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-hermes
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - SocketRocket
-    - Yoga
-  - RNVectorIcons (10.3.0):
+  - RNSVG/common (15.12.1):
     - boost
     - DoubleConversion
     - fast_float
@@ -3062,7 +3033,6 @@ DEPENDENCIES:
   - RNShare (from `../node_modules/react-native-share`)
   - RNSound (from `../node_modules/react-native-sound`)
   - RNSVG (from `../node_modules/react-native-svg`)
-  - RNVectorIcons (from `../node_modules/react-native-vector-icons`)
   - SocketRocket (~> 0.7.1)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -3280,8 +3250,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-sound"
   RNSVG:
     :path: "../node_modules/react-native-svg"
-  RNVectorIcons:
-    :path: "../node_modules/react-native-vector-icons"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -3345,11 +3313,11 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: dcf5321c9a41659a6718df8a5f202af1577c6825
   react-native-blur: ecdc987ab8d8fba95abef14551f033376872d0a6
   react-native-pager-view: c4eb191519def25f8983e636c1d387a7e33a21c4
-  react-native-safe-area-context: 4df6c897ab5bd841a5bba6f734785c0c9ef4c206
+  react-native-safe-area-context: b99449a99a0e45c09050d8557c153ad63492e306
   react-native-slider: 697a1209ffd96f494a003ca19b79fd05d39bafcf
   react-native-track-player: dd56f9948e03756a217c75e0a61aa04aab65b5a1
   react-native-video: 4da16bfca01a02aa2095e40683d74f2d6563207c
-  react-native-webview: 6a11548e3714dbf97a93003f5c95dd6fcc10234b
+  react-native-webview: 44434e525f798a7b35b8b94d9db36cd25a75048f
   React-NativeModulesApple: 342e280bb9fc2aa5f61f6c257b309a86b995e12d
   React-oscompat: 56d6de59f9ae95cd006a1c40be2cde83bc06a4e1
   React-perflogger: 4008bd05a8b6c157b06608c0ea0b8bd5d9c5e6c9
@@ -3383,10 +3351,10 @@ SPEC CHECKSUMS:
   ReactCommon: ec1cdf708729338070f8c4ad746768a782fd9eb1
   RevenueCat: f6b7c7e55f548a2bf304a3abbed0cc2447364427
   RNAppleAuthentication: c3dddf5918126c9aae85dc2e2ce9fb87835e9e04
-  RNBootSplash: 0d3d3123cd07c91b32af06fdbbe772398ddfb560
+  RNBootSplash: 6ff879149fd4438777d6fdf98a860ec94c814636
   RNCAsyncStorage: f30b3a83064e28b0fc46f1fbd3834589ed64c7b9
   RNCMaskedView: 1d6aed6fc41e6f067d1859bb476da2e0b71874c5
-  RNCPicker: 136051b28d193160304e5f137af82d7b630f503b
+  RNCPicker: a5e6459e191fbcfca2b902f41b465418b58068b5
   RNDateTimePicker: 87557c780a44cd2ba53e485898c0dc1cb7abd744
   RNDeviceInfo: d863506092aef7e7af3a1c350c913d867d795047
   RNFBApp: 12884d3bf9b3a0223efe4a0adce516edf72c4102
@@ -3394,11 +3362,10 @@ SPEC CHECKSUMS:
   RNGestureHandler: a52292df4f8fc7daab354ad2c37be401d4c3bed8
   RNGoogleSignin: 0f9deae0357018403a3c34b367456dee09c95b2c
   RNPurchases: 8760b3ac640aeb516104796f58c340362eeb043e
-  RNScreens: 8132b09d1edf29ba411894b19bb05f25277b2c64
+  RNScreens: 49fd658291d2cb457b56aaaa063a0450f57c8ba6
   RNShare: 45af37451c89d3e29db63e0133ce01f45b31a5ec
   RNSound: eb84be084c6f5816807cdba83b394d35e0838350
-  RNSVG: 940dde1beb1ad95699c711596627a663977037be
-  RNVectorIcons: 0567525e0a344458329daa09068cf9e8090ec791
+  RNSVG: 05951f386c4b23c484335dab2346f53e6210e8dc
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   SwiftAudioEx: f6aa653770f3a0d3851edaf8d834a30aee4a7646
   Yoga: ce248fb32065c9b00451491b06607f1c25b2f1ed

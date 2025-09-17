@@ -18,6 +18,7 @@ export type RootStackParamList = {
   Progress: undefined;
   Menu: undefined;
   ProfileSettings: undefined;
+  AndroidContentFilter: undefined;
   Subscription: undefined;
   DailyDose: undefined;
   GrowthTracker: undefined;

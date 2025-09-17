@@ -5,7 +5,7 @@ This guide walks you through how the Safari Content Blocker has been implemented
 ## Implementation Overview
 
 1. ✅ Network Extensions capability added to main app target
-2. ✅ App Group created: `group.com.pureheartapp.contentfilter`
+2. ✅ App Group created: `group.com.pureheart.contentfilter`
 3. ✅ Content Blocker extension structure created
 4. ✅ Entitlements configured for both main app and extension
 5. ✅ Native module bridge implemented
@@ -23,7 +23,7 @@ Since some steps require direct interaction with Xcode's UI, you'll need to comp
 3. Select "Content Blocker Extension"
 4. Name it "SafariContentBlocker"
 5. Set the bundle identifier to match your app's identifier with .SafariContentBlocker appended
-   (e.g., com.pureheartapp.SafariContentBlocker)
+   (e.g., com.pureheart.SafariContentBlocker)
 6. Choose the Swift language and create
 
 ### 2. Replace Generated Files with Our Custom Files
@@ -39,12 +39,12 @@ We've already created these files, but you'll need to manually replace the auto-
 1. Select your main app target
 2. Go to the "Signing & Capabilities" tab
 3. Verify that "App Groups" is in the list of capabilities
-4. Make sure the app group "group.com.pureheartapp.contentfilter" is in the list
+4. Make sure the app group "group.com.pureheart.contentfilter" is in the list
 
 5. Select your SafariContentBlocker extension target
 6. Go to the "Signing & Capabilities" tab
 7. Click "+ Capability" button and add "App Groups"
-8. Add the same app group: "group.com.pureheartapp.contentfilter"
+8. Add the same app group: "group.com.pureheart.contentfilter"
 
 ### 4. Add Files to Main App
 

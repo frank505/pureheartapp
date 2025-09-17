@@ -436,6 +436,49 @@ const SettingsTabScreen: React.FC = () => {
             </Surface>
           </View>
         )}
+    
+     
+       {/* Android Content Filter Section */}
+        {Platform.OS === 'android' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Android Content Filter</Text>
+            <Surface style={styles.settingsCard} elevation={2}>
+              <TouchableOpacity 
+                style={styles.settingItem} 
+                onPress={() => navigation.navigate('AndroidContentFilter')}
+              >
+                <View style={styles.settingContent}>
+                  <Text style={styles.settingTitle}>🛡️ Advanced Content Protection</Text>
+                  <Text style={styles.settingDescription}>
+                    Monitor and block inappropriate content across all browsers and apps
+                  </Text>
+                </View>
+                <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="md" />
+              </TouchableOpacity>
+              
+              <View style={styles.divider} />
+              
+              <View style={styles.settingItem}>
+                <View style={styles.settingContent}>
+                  <Text style={styles.settingTitle}>Content Filter Status</Text>
+                  <Text style={styles.settingDescription}>
+                    {contentFilterEnabled ? 'Active - Monitoring all content' : 'Inactive - No protection active'}
+                  </Text>
+                </View>
+                {contentFilterLoading ? (
+                  <ActivityIndicator color={Colors.primary.main} style={{ marginRight: 8 }} />
+                ) : (
+                  <Icon 
+                    name={contentFilterEnabled ? "shield-checkmark" : "shield-outline"} 
+                    color={contentFilterEnabled ? Colors.secondary.main : Colors.text.secondary} 
+                    size="md" 
+                  />
+                )}
+              </View>
+            </Surface>
+          </View>
+        )}
+
 
         {/* Rate App (iOS & Android) */}
         <View style={styles.section}>
