@@ -8,6 +8,7 @@ import AccountabilityNavigator from './AccountabilityNavigator';
 import FastingNavigator from './FastingNavigator';
 import HubScreen from '../screens/HubScreen';
 import SettingsTabScreen from '../screens/SettingsTabScreen';
+import WebViewBrowserScreen from '../screens/WebViewBrowserScreen';
 
 // These imports will be removed as they'll be moved to root navigator
 // import InvitePartnerScreen from '../screens/InvitePartnerScreen';
@@ -155,6 +156,24 @@ const TabNavigator: React.FC = () => {
           tabBarLabel: 'Fasting',
         }}
       />
+
+      {/* Browse Safely Tab */}
+      <Tab.Screen
+        name="BrowseSafely"
+        component={WebViewBrowserScreen}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ focused, color }) => (
+            <CustomTabIcon 
+              iconName="shield-checkmark-outline"
+              focused={focused} 
+              color={color} 
+            />
+          ),
+          tabBarLabel: 'Browse Safely',
+        }}
+      />
+
       {/* Library Tab */}
       <Tab.Screen
         name="Library"

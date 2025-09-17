@@ -283,6 +283,40 @@ class ContentFilterManager: NSObject {
   }
   
   @objc
+  func isDomainBlocked(_ url: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard let userDefaults = self.userDefaults else {
+      reject("error", "Cannot access shared UserDefaults", nil)
+      return
+    }
+    
+    // Check if filter is enabled
+    let isEnabled = userDefaults.bool(forKey: "contentFilterEnabled")
+    if !isEnabled {
+      resolve(false)
+      return
+    }
+    
+    // Get all blocked domains
+    let customBlockedDomains = userDefaults.stringArray(forKey: blockedDomainsKey) ?? []
+    let predefinedBlockedDomains = [
+      "pornhub.com", "xvideos.com", "xnxx.com", "redtube.com", "youporn.com",
+      "tube8.com", "spankbang.com", "chaturbate.com", "cam4.com", "livejasmin.com",
+      "stripchat.com", "xhamster.com", "beeg.com", "sex.com", "xxx.com",
+      "porn.com", "adult.com", "playboy.com", "penthouse.com"
+    ]
+    
+    let allBlockedDomains = predefinedBlockedDomains + customBlockedDomains
+    let urlLowercase = url.lowercased()
+    
+    // Check if any blocked domain is contained in the URL
+    let isBlocked = allBlockedDomains.contains { domain in
+      urlLowercase.contains(domain.lowercased())
+    }
+    
+    resolve(isBlocked)
+  }
+  
+  @objc
   func openContentBlockerSettings(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     let alert = UIAlertController(
       title: "Content Filter Settings",

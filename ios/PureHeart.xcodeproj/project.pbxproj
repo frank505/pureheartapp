@@ -59,6 +59,8 @@
 		761780F12CA45676006654EE /* ContentFilterManagerBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 761780F02CA45676006654EE /* ContentFilterManagerBridge.m */; };
 		761780F32CA45677006654EE /* AppBlockingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780F22CA45677006654EE /* AppBlockingManager.swift */; };
 		761780F52CA45678006654EE /* AppBlockingManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 761780F42CA45678006654EE /* AppBlockingManager.m */; };
+		761780F72CAB7890006654EE /* WebViewScreenshotManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780F62CAB7890006654EE /* WebViewScreenshotManager.swift */; };
+		761780F92CAB7891006654EE /* WebViewScreenshotManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 761780F82CAB7891006654EE /* WebViewScreenshotManager.m */; };
 		793B516617C34664BF3C60CF /* Inter_24pt-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B16DD2CB30744DAFA4CFD01B /* Inter_24pt-Bold.ttf */; };
 		7BF2BECD3649498994E25D22 /* Inter_24pt-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 76E68FDC748B4D2B822874CD /* Inter_24pt-Black.ttf */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
@@ -190,6 +192,8 @@
 		761780F02CA45676006654EE /* ContentFilterManagerBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ContentFilterManagerBridge.m; path = PureHeart/ContentFilter/ContentFilterManagerBridge.m; sourceTree = "<group>"; };
 		761780F22CA45677006654EE /* AppBlockingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppBlockingManager.swift; path = PureHeart/AppBlocking/AppBlockingManager.swift; sourceTree = "<group>"; };
 		761780F42CA45678006654EE /* AppBlockingManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppBlockingManager.m; path = PureHeart/AppBlocking/AppBlockingManager.m; sourceTree = "<group>"; };
+		761780F62CAB7890006654EE /* WebViewScreenshotManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WebViewScreenshotManager.swift; path = PureHeart/WebViewScreenshotManager.swift; sourceTree = "<group>"; };
+		761780F82CAB7891006654EE /* WebViewScreenshotManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = WebViewScreenshotManager.m; path = PureHeart/WebViewScreenshotManager.m; sourceTree = "<group>"; };
 		7642C802483D45B9A5D5B9AF /* Inter_18pt-Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter_18pt-Italic.ttf"; path = "../assets/fonts/Inter_18pt-Italic.ttf"; sourceTree = "<group>"; };
 		766D1986678D4942ACCB74EE /* Inter_18pt-BlackItalic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter_18pt-BlackItalic.ttf"; path = "../assets/fonts/Inter_18pt-BlackItalic.ttf"; sourceTree = "<group>"; };
 		76C8AB7EAAA4451083B11C8B /* Inter_18pt-MediumItalic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Inter_18pt-MediumItalic.ttf"; path = "../assets/fonts/Inter_18pt-MediumItalic.ttf"; sourceTree = "<group>"; };
@@ -289,6 +293,8 @@
 				761780F02CA45676006654EE /* ContentFilterManagerBridge.m */,
 				761780F22CA45677006654EE /* AppBlockingManager.swift */,
 				761780F42CA45678006654EE /* AppBlockingManager.m */,
+				761780F62CAB7890006654EE /* WebViewScreenshotManager.swift */,
+				761780F82CAB7891006654EE /* WebViewScreenshotManager.m */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
@@ -716,6 +722,8 @@
 				761780F12CA45676006654EE /* ContentFilterManagerBridge.m in Sources */,
 				761780F32CA45677006654EE /* AppBlockingManager.swift in Sources */,
 				761780F52CA45678006654EE /* AppBlockingManager.m in Sources */,
+				761780F72CAB7890006654EE /* WebViewScreenshotManager.swift in Sources */,
+				761780F92CAB7891006654EE /* WebViewScreenshotManager.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

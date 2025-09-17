@@ -127,6 +127,16 @@ class ContentFilterModule(reactContext: ReactApplicationContext) : ReactContextB
     }
 
     @ReactMethod
+    fun isDomainBlocked(url: String, promise: Promise) {
+        try {
+            val isBlocked = contentFilterManager.isDomainBlocked(url)
+            promise.resolve(isBlocked)
+        } catch (e: Exception) {
+            promise.reject("ERROR", "Failed to check if domain is blocked", e)
+        }
+    }
+
+    @ReactMethod
     fun openContentBlockerSettings(promise: Promise) {
         try {
             val result = contentFilterManager.openContentBlockerSettings()
