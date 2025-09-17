@@ -1,7 +1,8 @@
 import React, { useLayoutEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, SegmentedButtons, Searchbar } from 'react-native-paper';
+import { Text, Searchbar } from 'react-native-paper';
+import SegmentedToggle from '../components/SegmentedToggle';
 import Icon from '../components/Icon';
 import { Colors, Icons } from '../constants';
 import UserVictoriesList from '../components/UserVictoriesList';
@@ -59,20 +60,13 @@ const MyVictoriesScreen = ({ navigation }: any) => {
 
       {/* Tab Selector */}
       <View style={styles.tabContainer}>
-        <SegmentedButtons
+        <SegmentedToggle
           value={activeTab}
-          onValueChange={(value) => setActiveTab(value as 'myVictories' | 'sharedWithMe')}
-          buttons={[
-            {
-              value: 'myVictories',
-              label: 'My Victories',
-            },
-            {
-              value: 'sharedWithMe',
-              label: 'Shared With Me',
-            },
+          onChange={(v) => setActiveTab(v)}
+          options={[
+            { value: 'myVictories', label: 'My Victories' },
+            { value: 'sharedWithMe', label: 'Shared With Me' },
           ]}
-          style={styles.segmentedButtons}
         />
       </View>
 
@@ -124,9 +118,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  segmentedButtons: {
-    backgroundColor: Colors.background.secondary,
-  },
+  // segmentedButtons removed in favor of custom SegmentedToggle
   searchBar: {
     margin: 16,
   },

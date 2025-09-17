@@ -1,0 +1,40 @@
+[
+  {
+    "trigger": {
+      "url-filter": ".*",
+      "if-domain": ["*porn*", "*xxx*", "*adult*", "*sex*", "*nude*", "*hot*", "*playboy*", "*xvideos*", "*xhamster*", "*onlyfans*"]
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": ".*",
+      "if-domain": ["*pornhub*", "*brazzers*", "*redtube*", "*youporn*", "*fetish*", "*tnaflix*", "*livejasmin*", "*adultfriendfinder*"]
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": ".*\\.(?:png|jpg|jpeg|gif)",
+      "resource-type": ["image"],
+      "if-domain": ["*porn*", "*xxx*", "*adult*", "*sex*", "*nude*"]
+    },
+    "action": {
+      "type": "block"
+    }
+  },
+  {
+    "trigger": {
+      "url-filter": ".*\\.(?:mp4|avi|mov)",
+      "resource-type": ["media"],
+      "if-domain": ["*porn*", "*xxx*", "*adult*", "*sex*", "*nude*"]
+    },
+    "action": {
+      "type": "block"
+    }
+  }
+]

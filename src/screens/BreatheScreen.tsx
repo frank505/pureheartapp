@@ -1,9 +1,9 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, StatusBar, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, StatusBar, ActivityIndicator, Alert, Platform, Modal, TextInput } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { EmergencyStackParamList } from '../navigation/EmergencyStack';
+import { LibraryStackParamList } from '../navigation/LibraryStack';
 import Icon from '../components/Icon';
 import { IconNames } from '../constants/Icons';
 import { Colors } from '../constants';
@@ -11,13 +11,17 @@ import LinearGradient from 'react-native-linear-gradient';
 import { responsiveFontSizes, responsiveSpacing, scaleFontSize } from '../utils/responsive';
 import Video from 'react-native-video';
 import { analyzeBreathe, BreatheAnalysisResult } from '../services/breatheService';
+import { matchBucket } from '../constants/panicKeywords';
+import panicService from '../services/panicService';
 
-type BreatheScreenProps = NativeStackScreenProps<EmergencyStackParamList, 'BreatheScreen'>;
+type BreatheScreenProps = NativeStackScreenProps<LibraryStackParamList, 'BreatheScreen'>;
 
 const { width, height } = Dimensions.get('window');
 
 const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets?.() ?? { top: 0, bottom: 0 } as any;
+  const [panicVisible, setPanicVisible] = useState(false);
+  const [panicText, setPanicText] = useState(route?.params?.initialText || '');
   
   // Core state
   const [isAnimating, setIsAnimating] = useState(false);
@@ -44,6 +48,7 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
   // Audio state
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioLoaded, setAudioLoaded] = useState(false);
+  const [audioSupported, setAudioSupported] = useState(true); // Track if audio is supported
   
   // Animation refs
   const scaleAnim = useRef(new Animated.Value(0.7)).current;
@@ -55,9 +60,9 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
   const progressAnim = useRef(new Animated.Value(0)).current;
   
   // Refs for cleanup
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const phaseIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const scriptureIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const phaseIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scriptureIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initialTextRef = useRef<string | undefined>(route?.params?.initialText);
 
   // Breathing pattern configuration
@@ -213,11 +218,32 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Validate audio URL
+  // Validate audio URL and format
   const isValidAudioUrl = (url: string) => {
     try {
       new URL(url);
-      return true;
+      // Check for supported audio formats
+      const supportedFormats = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.mp4'];
+      const urlLower = url.toLowerCase();
+      
+      // First check for explicit format extensions
+      const hasValidExtension = supportedFormats.some(format => urlLower.includes(format));
+      
+      // Also check for common audio-related keywords in URL
+      const hasAudioKeywords = urlLower.includes('audio') || 
+                              urlLower.includes('mp3') ||
+                              urlLower.includes('m4a') ||
+                              urlLower.includes('aac') ||
+                              urlLower.includes('wav');
+      
+      // Reject known problematic formats or streaming services that might not work
+      const isProblematicUrl = urlLower.includes('youtube') || 
+                               urlLower.includes('spotify') ||
+                               urlLower.includes('soundcloud') ||
+                               urlLower.includes('.wma') ||
+                               urlLower.includes('.flac');
+      
+      return (hasValidExtension || hasAudioKeywords) && !isProblematicUrl;
     } catch {
       return false;
     }
@@ -253,6 +279,7 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
       setAnalysis(null);
       setAudioUrl(null);
       setAudioError(null);
+      setAudioSupported(true); // Reset audio support flag
       
       // Reset scriptures to default
       setScriptures([
@@ -285,13 +312,14 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
         }
       }
       
-      // Set audio URL if available
-      if (result?.asmrAudioUrl && isValidAudioUrl(result.asmrAudioUrl)) {
-        console.log('Setting new audio URL:', result.asmrAudioUrl);
-        setAudioUrl(result.asmrAudioUrl);
-      }
-      
-      // Auto-start the new session
+        // Set audio URL if available and supported
+        if (result?.asmrAudioUrl && isValidAudioUrl(result.asmrAudioUrl)) {
+          console.log('Setting new audio URL:', result.asmrAudioUrl);
+          setAudioUrl(result.asmrAudioUrl);
+        } else {
+          console.log('No valid/supported audio URL provided:', result?.asmrAudioUrl);
+          setAudioUrl(null);
+        }      // Auto-start the new session
       setIsAnimating(true);
     } catch (error) {
       console.error('Error resetting breathing session:', error);
@@ -314,6 +342,7 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
     try {
       setIsPreparing(true);
       setAudioError(null);
+      setAudioSupported(true); // Reset audio support for new session
       setIsPaused(false);
       
       // Get analysis if not already available
@@ -337,18 +366,22 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
           }
         }
         
-        // Set audio URL if available
+        // Set audio URL if available and supported
         if (result?.asmrAudioUrl && isValidAudioUrl(result.asmrAudioUrl)) {
           console.log('Setting audio URL:', result.asmrAudioUrl);
           setAudioUrl(result.asmrAudioUrl);
         } else {
-          console.log('No valid audio URL provided');
+          console.log('No valid/supported audio URL provided:', result?.asmrAudioUrl);
+          setAudioUrl(null);
         }
       } else {
         // Use existing analysis
         if (analysis.asmrAudioUrl && isValidAudioUrl(analysis.asmrAudioUrl)) {
           console.log('Using existing audio URL:', analysis.asmrAudioUrl);
           setAudioUrl(analysis.asmrAudioUrl);
+        } else {
+          console.log('Existing audio URL not valid/supported:', analysis.asmrAudioUrl);
+          setAudioUrl(null);
         }
       }
       
@@ -402,33 +435,89 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
   // Audio event handlers
   const handleAudioError = (error: any) => {
     console.error('Audio playback error:', error);
-    const errorMsg = error?.error?.errorString || error?.error || 'Audio playback failed';
-    setAudioError(errorMsg);
+    console.log('Audio URL that failed:', audioUrl);
     
-    // Show user-friendly error message
-    if (isAnimating) {
-      Alert.alert(
-        'Audio Notice', 
-        'Background audio could not be played. The breathing session will continue with visual guidance only.',
-        [{ text: 'Continue', style: 'default' }]
-      );
+    const errorMsg = error?.error?.errorString || 
+                     error?.error?.localizedDescription ||
+                     error?.error || 
+                     'Audio playbook failed';
+    
+    setAudioError(errorMsg);
+    setAudioUrl(null); // Clear the problematic URL
+    setAudioSupported(false); // Disable audio for this session
+    
+    // Log more details for debugging
+    if (error?.error?.code) {
+      console.error('Audio error code:', error.error.code);
+      
+      // Handle specific format error codes
+      if (error.error.code === -11828 || error.error.code === '-11828') {
+        console.log('Audio format not supported - disabling audio for this session');
+      }
     }
+    
+    // Continue breathing session without audio
+    console.log('Continuing breathing session without audio due to format error');
   };
 
   return (
     <View style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      {/* Quick Panic Input */}
+      <Modal visible={panicVisible} animationType="fade" transparent onRequestClose={() => setPanicVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: '90%', borderRadius: 16, backgroundColor: 'rgba(15,23,42,0.95)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+            <View style={{ padding: 16, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' }}>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 18 }}>In Panic?</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', marginTop: 4, fontSize: 13, textAlign: 'center' }}>Tell us how you feel right now. We’ll guide you.</Text>
+            </View>
+            <View style={{ padding: 16 }}>
+              <Text style={{ color: '#fff', fontWeight: '600', marginBottom: 8 }}>Your words</Text>
+              <TextInput
+                style={{ minHeight: 80, color: '#fff', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', padding: 12, backgroundColor: 'rgba(15,23,42,0.4)' }}
+                placeholder="I feel ..."
+                placeholderTextColor={'rgba(255,255,255,0.6)'}
+                value={panicText}
+                onChangeText={setPanicText}
+                autoFocus
+                multiline
+              />
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, padding: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
+              <TouchableOpacity style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }} onPress={() => setPanicVisible(false)}>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, backgroundColor: '#22c55e', borderColor: '#22c55e', borderWidth: 1 }}
+                onPress={async () => {
+                  const text = (panicText || '').trim();
+                  try { await panicService.createPanic(text || null); } catch {}
+                  const bucket = matchBucket(text);
+                  setPanicVisible(false);
+                  if (bucket === 'breathe' || bucket === null) {
+                    // Already on breathe - keep user here
+                  } else if (bucket === 'ai') navigation.navigate('AICompanion' as any);
+                  else if (bucket === 'worship') navigation.navigate('WorshipScreen' as any);
+                  else navigation.navigate('AISessions' as any);
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Get Help</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <LinearGradient
         colors={['#0f0c29', '#24243e', '#302b63']}
         style={styles.container}
       >
-        {/* Audio Player - Fixed Implementation */}
-        {audioUrl && !audioError && (
+        {/* Audio Player - Only render if supported and no errors */}
+        {audioUrl && !audioError && audioSupported && (
           <Video
             source={{ uri: audioUrl }}
             audioOnly={true}
             repeat={true}
-            paused={!isAnimating || isPaused} // Pause when not animating or when paused
+            paused={!isAnimating || isPaused}
             playInBackground={true}
             ignoreSilentSwitch="ignore"
             volume={1.0}
@@ -472,6 +561,20 @@ const BreatheScreen: React.FC<BreatheScreenProps> = ({ navigation, route }) => {
             <View style={styles.timeContainer}>
               <Text style={styles.timeText}>{formatTime(counter)}</Text>
             </View>
+
+            {/* Panic button in header */}
+            <TouchableOpacity 
+              style={[styles.resetButton, { marginRight: 8 }]} 
+              onPress={() => setPanicVisible(true)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#ef4444', '#dc2626']}
+                style={styles.resetButtonGradient}
+              >
+                <Icon name="alert-circle" size={responsiveFontSizes.iconMedium} color="white" />
+              </LinearGradient>
+            </TouchableOpacity>
 
             {/* Reset button in header */}
             <TouchableOpacity 

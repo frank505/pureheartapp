@@ -5,7 +5,7 @@ import { Text, Surface, Button, Modal, Portal, TextInput, ActivityIndicator, FAB
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { Colors, Icons } from '../constants';
 import Icon from '../components/Icon';
-import groupService, { GroupMemberDTO, MessageDTO, CommentDTO } from '../services/groupService';
+import groupService, { GroupMemberDTO, MessageDTO, CommentDTO, GroupPrivacy } from '../services/groupService';
 import { useAppSelector } from '../store/hooks';
 
 interface GroupChatScreenProps {
@@ -31,6 +31,8 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
   const [membersPage, setMembersPage] = useState(1);
   const [membersHasMore, setMembersHasMore] = useState(true);
   const [ownerId, setOwnerId] = useState<number | null>(null);
+  const [groupPrivacy, setGroupPrivacy] = useState<GroupPrivacy | null>(null);
+  const [privacyLoading, setPrivacyLoading] = useState(false);
 
   // Post creation modal state
   const [createPostVisible, setCreatePostVisible] = useState(false);
@@ -128,6 +130,24 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
   useEffect(() => {
     loadMessages(true);
   }, [loadMessages]);
+
+  // Fetch group summary (privacy) so we can hide members icon for public groups
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!groupId) return;
+      try {
+        setPrivacyLoading(true);
+        const summary = await groupService.getGroup(groupId);
+        if (!cancelled) setGroupPrivacy(summary.privacy);
+      } catch {
+        if (!cancelled) setGroupPrivacy(null);
+      } finally {
+        if (!cancelled) setPrivacyLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [groupId]);
 
   // Remove navigation.setOptions, use custom header below
 
@@ -233,7 +253,7 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
       setPostText('');
       setCreatePostVisible(false);
     } catch (e) {
-      Alert.alert('Error', 'Failed to create post');
+  Alert.alert('Error', 'Failed to share to the community');
     } finally {
       setSending(false);
     }
@@ -284,17 +304,27 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
   }, [refreshing, loadMessages]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-      {/* Custom Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backButton}>
-          <Icon name={Icons.navigation.back.name} color={Colors.text.primary} size="md" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{groupName || 'Group Feed'}</Text>
-        <TouchableOpacity style={styles.headerIconButton} onPress={openMembers}>
-          <Icon name={Icons.tabs.accountability.name} />
-        </TouchableOpacity>
-      </View>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
+      <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+        {/* Custom Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backButton}>
+            <Icon name={Icons.navigation.back.name} color={Colors.text.primary} size="md" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{groupName || 'Group Feed'}</Text>
+          {groupPrivacy === 'public' ? (
+            // Placeholder to keep title centered when icon hidden
+            <View style={styles.headerIconPlaceholder} />
+          ) : (
+            <TouchableOpacity style={styles.headerIconButton} onPress={openMembers}>
+              <Icon name={Icons.tabs.accountability.name} />
+            </TouchableOpacity>
+          )}
+        </View>
 
       {/* Posts Feed */}
       <FlatList
@@ -366,7 +396,7 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
           loadingMsgs ? (
             <ActivityIndicator style={{ marginTop: 24 }} />
           ) : (
-            <Text style={{ color: Colors.text.secondary, textAlign: 'center', marginTop: 24 }}>No posts yet</Text>
+            <Text style={{ color: Colors.text.secondary, textAlign: 'center', marginTop: 24 }}>No community activity yet</Text>
           )
         }
         style={{ flex: 1 }}
@@ -448,7 +478,7 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
                 loading={sending}
                 style={styles.postButton}
               >
-                Share Post
+                Share to Community
               </Button>
             </View>
           </KeyboardAvoidingView>
@@ -503,7 +533,8 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ navigation, route }) 
           )}
         </Modal>
       </Portal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -532,6 +563,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerIconButton: { padding: 6 },
+  headerIconPlaceholder: { width: 32, height: 32 },
   postContainer: { marginBottom: 12, padding: 12, borderRadius: 8, backgroundColor: Colors.background.secondary },
   postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   postAuthor: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },

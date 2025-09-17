@@ -100,9 +100,8 @@ const initialState: UserState = {
  * In a real app, this would make an API call to authenticate.
  */
 import api from '../../services/api';
-import { 
-  OnboardingState,
-} from './onboardingSlice';
+import { OnboardingState } from './onboardingSlice';
+import purchasesService from '../../services/purchasesService';
 
 /**
  * Login User Thunk
@@ -132,7 +131,7 @@ export const loginUser = createAsyncThunk(
       // Register FCM token if available
       const fcmToken = await AsyncStorage.getItem('fcm_token');
       if (fcmToken) {
-        await deviceTokenService.register(fcmToken, Platform.OS);
+        await deviceTokenService.register(fcmToken, Platform.OS as any);
       }
 
       return user;
@@ -174,7 +173,7 @@ export const loginUserWithApple = createAsyncThunk(
       // Register FCM token if available
       const fcmToken = await AsyncStorage.getItem('fcm_token');
       if (fcmToken) {
-        await deviceTokenService.register(fcmToken, Platform.OS);
+        await deviceTokenService.register(fcmToken, Platform.OS as any);
       }
 
       return user;
@@ -254,6 +253,9 @@ const userSlice = createSlice({
           deviceTokenService.deactivate(token).catch(() => undefined);
         }
       });
+
+  // Logout from RevenueCat
+  purchasesService.logout().catch(() => undefined);
 
       // Clear FCM token from AsyncStorage
       AsyncStorage.removeItem('fcm_token').catch(() => undefined);

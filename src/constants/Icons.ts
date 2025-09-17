@@ -37,10 +37,11 @@ export const IconNames = {
   // Tab Bar Icons
   tabs: {
     home: 'home-outline',
-    emergency: 'warning-outline',
+    library: 'library-outline',
     accountability: 'people-outline',
     truth: 'book-outline',
     progress: 'analytics-outline',
+  settings: 'settings-outline',
     menu: 'menu-outline',
   },
 
@@ -141,15 +142,16 @@ export const IconNames = {
     compass: 'compass-outline',
   },
 
-  // Emergency Screen Specific
-  emergency: {
-    alert: 'alert-circle-outline',
-    breathe: 'spa-outline',
+  // Library Screen Specific
+  library: {
+    alert: 'alert-circle',
+    breathe: 'heart-outline',
     speakTruth: 'book-outline',
     call: 'call-outline',
     worship: 'musical-notes-outline',
-    aiCompanion: 'sparkles-outline',
+    aiCompanion: 'chatbubble-ellipses-outline',
     partners: 'people-outline',
+    help: 'help-circle-outline',
   },
 } as const;
 
@@ -162,15 +164,16 @@ export const IconNames = {
  */
 export const Icons = {
   // Primary icon library (Ionicons)
-  library: 'Ionicons',
+  primaryLibrary: 'Ionicons',
 
   // Tab Navigation Icons
   tabs: {
     home: { name: IconNames.tabs.home, library: 'Ionicons' },
-    emergency: { name: IconNames.tabs.emergency, library: 'Ionicons' },
+    library: { name: IconNames.tabs.library, library: 'Ionicons' },
     accountability: { name: IconNames.tabs.accountability, library: 'Ionicons' },
     truth: { name: IconNames.tabs.truth, library: 'Ionicons' },
     progress: { name: IconNames.tabs.progress, library: 'Ionicons' },
+  settings: { name: IconNames.tabs.settings, library: 'Ionicons' },
   },
 
   // Action Icons
@@ -249,15 +252,15 @@ export const Icons = {
     shield: { name: IconNames.security.shield, library: 'Ionicons' },
   },
 
-  // Emergency Screen Icons
-  emergency: {
-    alert: { name: IconNames.emergency.alert, library: 'Ionicons' },
-    breathe: { name: IconNames.emergency.breathe, library: 'Ionicons' },
-    speakTruth: { name: IconNames.emergency.speakTruth, library: 'Ionicons' },
-    call: { name: IconNames.emergency.call, library: 'Ionicons' },
-    worship: { name: IconNames.emergency.worship, library: 'Ionicons' },
-    aiCompanion: { name: IconNames.emergency.aiCompanion, library: 'Ionicons' },
-    partners: { name: IconNames.emergency.partners, library: 'Ionicons' },
+  // Library Screen Icons
+  library: {
+    alert: { name: IconNames.library.alert, library: 'Ionicons' },
+    breathe: { name: IconNames.library.breathe, library: 'Ionicons' },
+    speakTruth: { name: IconNames.library.speakTruth, library: 'Ionicons' },
+    call: { name: IconNames.library.call, library: 'Ionicons' },
+    worship: { name: IconNames.library.worship, library: 'Ionicons' },
+    aiCompanion: { name: IconNames.library.aiCompanion, library: 'Ionicons' },
+    partners: { name: IconNames.library.partners, library: 'Ionicons' },
   },
 } as const;
 

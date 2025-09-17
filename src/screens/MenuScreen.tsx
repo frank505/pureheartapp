@@ -1,3 +1,4 @@
+// DEPRECATED: MenuScreen has been replaced by HubScreen. This file is kept temporarily for reference.
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Text, Surface, Modal, TextInput, Button, Portal } from 'react-native-paper';
@@ -37,7 +38,7 @@ const MenuScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScreenHeader title="Menu" iconName="menu-outline" navigation={navigation} />
+  <ScreenHeader title="Menu" navigation={navigation} showBackButton={false} />
       <ScrollView>
         {/* Quick Actions Section */}
         <View style={styles.quickActionsSection}>
@@ -59,7 +60,7 @@ const MenuScreen = () => {
               {
                 icon: 'hourglass-outline',
                 label: 'Fasting (Partners)',
-                onPress: () => (navigation as any)?.navigate('MainTabs', { screen: 'Fasting', params: { screen: 'PartnerFastingHub' } }),
+                onPress: () => navigation?.navigate('PartnerFastingHub'),
                 color: Colors.secondary.main
               },
               { 
@@ -87,23 +88,12 @@ const MenuScreen = () => {
                 color: Colors.warning.main
               },
               { 
-                icon: 'trophy-outline', 
-                label: 'Share Victory', 
-                onPress: () => navigation?.navigate('CreateVictory'),
-                color: Colors.primary.main
-              },
-              { 
-                icon: 'medal-outline', 
-                label: 'My Victories', 
-                onPress: () => navigation?.navigate('MyVictories'),
-                color: Colors.secondary.main
-              },
-              { 
                 icon: 'book-outline', 
                 label: 'Truth Center', 
                 onPress: () => navigation?.navigate('Truth', { screen: 'TruthList' }),
                 color: Colors.primary.dark
               },
+              
             ].map((action, index) => (
               <TouchableOpacity
                 key={action.label}
@@ -140,23 +130,35 @@ const MenuScreen = () => {
             </View>
           </View>
           <Surface style={styles.contentCard}>
-            <TouchableOpacity onPress={() => navigation?.navigate('AllGroups')}>
+            <TouchableOpacity onPress={() => navigation?.navigate('NewGroup')} style={styles.communityOption}>
+              <Icon name="add-circle-outline" color={Colors.primary.main} size="sm" />
+              <Text style={styles.linkText}>New Community</Text>
+            </TouchableOpacity>
+            <View style={styles.divider} />
+            <TouchableOpacity onPress={() => navigation?.navigate('AllGroups')} style={styles.communityOption}>
+              <Icon name="list-outline" color={Colors.primary.main} size="sm" />
               <Text style={styles.linkText}>View All Communities</Text>
             </TouchableOpacity>
           </Surface>
         </View>
 
-        {/* Overcomers Stories Section */}
-        <View style={styles.storiesSection}>
-          <View style={styles.sectionHeader}>
+        {/* Victories Section */}
+        <View style={styles.victoriesSection}>
+          <View style={[styles.sectionHeader, isSmall && styles.sectionHeaderSmall]}>
             <View style={styles.sectionTitleContainer}>
-              <Icon name="book" color={Colors.primary.main} size="md" />
-              <Text style={styles.sectionTitle}>Overcomers Stories</Text>
+              <Icon name="trophy" color={Colors.primary.main} size="md" />
+              <Text style={[styles.sectionTitle, isSmall && styles.sectionTitleSmall]}>Victories</Text>
             </View>
           </View>
           <Surface style={styles.contentCard}>
-            <TouchableOpacity onPress={() => navigation?.navigate('MyVictories')}>
-              <Text style={styles.linkText}>View Victory Stories</Text>
+            <TouchableOpacity onPress={() => navigation?.navigate('CreateVictory')} style={styles.communityOption}>
+              <Icon name="trophy-outline" color={Colors.primary.main} size="sm" />
+              <Text style={styles.linkText}>Share Victory</Text>
+            </TouchableOpacity>
+            <View style={styles.divider} />
+            <TouchableOpacity onPress={() => navigation?.navigate('MyVictories')} style={styles.communityOption}>
+              <Icon name="medal-outline" color={Colors.primary.main} size="sm" />
+              <Text style={styles.linkText}>Victories in Christ</Text>
             </TouchableOpacity>
           </Surface>
         </View>
@@ -250,7 +252,7 @@ const styles = StyleSheet.create({
   communitySection: {
     marginVertical: 16,
   },
-  storiesSection: {
+  victoriesSection: {
     marginVertical: 16,
   },
   contentCard: {
@@ -263,6 +265,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.primary.main,
     fontWeight: '500',
+  },
+  communityOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border.primary,
+    marginVertical: 12,
   },
 });
 

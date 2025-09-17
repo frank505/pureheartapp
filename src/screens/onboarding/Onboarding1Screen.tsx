@@ -1,293 +1,92 @@
-/**
- * Onboarding Screen 2 - Struggle Recognition
- * 
- * Second onboarding screen that acknowledges the user's struggle and provides
- * encouragement with statistics and biblical support.
- * 
- * Features:
- * - Progress indicator (Step 1 of 9)
- * - Background image with overlay
- * - Encouraging message about not being alone
- * - Statistics card showing prevalence
- * - Bible verse for comfort
- * - Confidentiality assurance
- */
-
-import React from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  ImageBackground,
-  Dimensions,
-  TouchableOpacity,
-} from 'react-native';
-import { Text } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-
-import OnboardingButton from '../../components/OnboardingButton';
-import OnboardingCard from '../../components/OnboardingCard';
-import ProgressIndicator from '../../components/ProgressIndicator';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants';
+import ProgressIndicator from '../../components/ProgressIndicator';
+import OnboardingButton from '../../components/OnboardingButton';
 import { responsiveFontSizes, responsiveSpacing } from '../../utils/responsive';
+import { useAppDispatch } from '../../store/hooks';
+import { savePartialPersonalInfo, setCurrentStep } from '../../store/slices/onboardingSlice';
 
-interface Onboarding1ScreenProps {
-  navigation: any;
-}
+interface Onboarding1ScreenProps { navigation: any }
 
-const { height: screenHeight } = Dimensions.get('window');
-
-/**
- * Second Onboarding Screen Component
- * 
- * Acknowledges struggle and provides encouragement.
- */
 const Onboarding1Screen: React.FC<Onboarding1ScreenProps> = ({ navigation }) => {
-  
-  const handleContinue = () => {
-    navigation.navigate('Onboarding2');
-  };
+  const dispatch = useAppDispatch();
+  const [gender, setGender] = useState<string>('');
 
-  const handleBack = () => {
-    navigation.goBack();
+  useEffect(() => { dispatch(setCurrentStep(1)); }, [dispatch]);
+
+  const handleContinue = () => {
+    if (!gender) return;
+    dispatch(savePartialPersonalInfo({ gender }));
+    navigation.navigate('Onboarding2');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with Back Button and Progress */}
+      <LinearGradient colors={[Colors.background.primary, Colors.background.secondary, '#3b82f6']} style={StyleSheet.absoluteFill} />
+
       <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        
+        <View style={{ width: 40 }} />
         <View style={styles.progressWrapper}>
-          <ProgressIndicator
-            currentStep={1}
-            totalSteps={9}
-            variant="bars"
-            showStepText={true}
-          />
+          <ProgressIndicator currentStep={1} totalSteps={30} variant="bars" showStepText={false} />
         </View>
-        
-        <View style={styles.headerSpacer} />
+        <View style={styles.langPill}><Text style={styles.langText}>EN</Text></View>
       </View>
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Background Image with Overlay */}
-        <ImageBackground
-          source={{
-            uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCWlBkmCX9EhVIacDadxpdw8mVhN0wdFpj3MA-TweHRfKNbCX7wC4HtVM6rc1XLx1ENYUUbbOBtCTy5jJd2_Q4CodzsncQedSyZHMXUqVJ4JQe5jo8BXmdoAFNv0xc3t-TKqzgz66G3dxzsyJnnaOa9dSx5fFUkSMDiGZh3gfRF4Slit7vGJqj13F7d4Cg6L-jXeL-fAUZ11CkXtq_tWlFNzNvnFDxmY97Ild_IsYg4jPX88_IJcJJftR3EG-pi0CGPgY1yw2E8gvQO'
-          }}
-          style={styles.backgroundImage}
-          resizeMode="cover"
-        >
-          <LinearGradient
-            colors={[
-              'rgba(18, 18, 18, 0.8)',
-              'rgba(18, 18, 18, 1)',
-            ]}
-            style={styles.gradientOverlay}
-          />
-        </ImageBackground>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Question #1</Text>
+        <Text style={styles.subtitle}>What is your gender?</Text>
 
-        {/* Main Content */}
-        <View style={styles.contentContainer}>
-          <Text style={styles.mainTitle}>
-            You Are Not Alone in This Battle
-          </Text>
-          
-          <Text style={styles.subtitle}>
-            It's okay to admit you're struggling. Many Christian men face this
-            challenge, and you're not alone in seeking freedom.
-          </Text>
-
-          {/* Statistics Card */}
-          <OnboardingCard style={styles.statisticsCard} withBorder>
-            <Text style={styles.didYouKnowLabel}>
-              DID YOU KNOW?
-            </Text>
-            <Text style={styles.statisticNumber}>
-              68%
-            </Text>
-            <Text style={styles.statisticDescription}>
-              of Christian men view pornography at least once a month.
-            </Text>
-          </OnboardingCard>
-
-          {/* Bible Verse */}
-          <View style={styles.verseContainer}>
-            <Text style={styles.verseText}>
-              "The Lord is close to the brokenhearted and saves those who are
-              crushed in spirit."
-            </Text>
-            <Text style={styles.verseReference}>
-              Psalm 34:18
-            </Text>
-          </View>
-
-          {/* Confidentiality Message */}
-          <Text style={styles.confidentialityText}>
-            This is a safe, judgment-free space. Your journey is confidential, and
-            we're here to support you.
-          </Text>
+        <View style={styles.choices}>
+          {[
+            { id: 'male', label: 'Male' },
+            { id: 'female', label: 'Female' },
+          ].map((opt) => (
+            <TouchableOpacity key={opt.id} style={[styles.choice, gender === opt.id && styles.choiceSelected]} onPress={() => setGender(opt.id)}>
+              <View style={[styles.bullet, gender === opt.id && styles.bulletSelected]}>
+                <Text style={styles.bulletText}>{opt.id === 'male' ? '1' : '2'}</Text>
+              </View>
+              <Text style={[styles.choiceLabel, gender === opt.id && styles.choiceLabelSelected]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </ScrollView>
 
-      {/* Bottom Action */}
       <View style={styles.bottomContainer}>
-        <OnboardingButton
-          title="Yes, I'm Ready for Freedom"
-          onPress={handleContinue}
-          variant="primary"
-        />
-        <Text style={styles.bottomNote}>
-          Your information is kept strictly confidential.
-        </Text>
+        <OnboardingButton title="Skip for now" onPress={() => navigation.navigate('Onboarding2')} variant="secondary" />
+        <OnboardingButton title="Continue" onPress={handleContinue} variant="primary" disabled={!gender} style={{ marginTop: 12 }} />
       </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
+  container: { flex: 1, backgroundColor: Colors.background.primary },
+  headerContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
+  progressWrapper: { flex: 1, alignItems: 'center' },
+  langPill: { backgroundColor: '#334155', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  langText: { color: Colors.text.primary, fontSize: 12 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: responsiveSpacing.lg, paddingTop: 24, paddingBottom: 140 },
+  title: { fontSize: responsiveFontSizes.mainTitle, fontWeight: '700', color: Colors.text.primary, textAlign: 'center', marginBottom: 12 },
+  subtitle: { fontSize: responsiveFontSizes.headerSubtitle, color: Colors.text.primary, textAlign: 'center', marginBottom: 24 },
+  choices: { gap: 12 },
+  choice: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.background.secondary, borderColor: Colors.border.primary,
+    borderWidth: 1, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 9999,
   },
-  headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: Colors.background.primary,
-    zIndex: 20,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 24,
-    color: Colors.text.primary,
-  },
-  progressWrapper: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 120, // Space for bottom button
-  },
-  backgroundImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: screenHeight,
-    width: '100%',
-  },
-  gradientOverlay: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: responsiveSpacing.lg,
-    paddingTop: 80,
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  mainTitle: {
-    fontSize: responsiveFontSizes.mainTitle,
-    fontWeight: '700',
-    color: Colors.text.primary,
-    textAlign: 'center',
-    lineHeight: 36,
-    marginBottom: 16,
-  },
-  subtitle: {
-    fontSize: responsiveFontSizes.subtitle,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  statisticsCard: {
-    alignItems: 'center',
-    marginBottom: 32,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  didYouKnowLabel: {
-    fontSize: responsiveFontSizes.caption,
-    fontWeight: '500',
-    color: Colors.text.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: 8,
-  },
-  statisticNumber: {
-    fontSize: responsiveFontSizes.statisticNumber,
-    fontWeight: '700',
-    color: Colors.text.primary,
-    marginBottom: 8,
-  },
-  statisticDescription: {
-    fontSize: responsiveFontSizes.body,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  verseContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  verseText: {
-    fontSize: responsiveFontSizes.body,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    lineHeight: 24,
-    marginBottom: 4,
-  },
-  verseReference: {
-    fontSize: responsiveFontSizes.bodySmall,
-    color: Colors.text.secondary,
-    fontStyle: 'italic',
-  },
-  confidentialityText: {
-    fontSize: responsiveFontSizes.bodySmall,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  choiceSelected: { borderColor: Colors.secondary.main, backgroundColor: 'rgba(34,197,94,0.1)' },
+  bullet: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#3b82f6' },
+  bulletSelected: { backgroundColor: Colors.secondary.main },
+  bulletText: { color: 'white', fontWeight: '700' },
+  choiceLabel: { color: Colors.text.primary, fontSize: responsiveFontSizes.body },
+  choiceLabelSelected: { color: Colors.secondary.main, fontWeight: '600' },
   bottomContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Colors.background.primary,
-    paddingHorizontal: responsiveSpacing.lg,
-    paddingBottom: 32,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(74, 74, 74, 0.3)',
-  },
-  bottomNote: {
-    fontSize: responsiveFontSizes.caption,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    marginTop: 16,
+    position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.background.primary,
+    paddingHorizontal: responsiveSpacing.lg, paddingBottom: 28, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border.primary,
   },
 });
 
 export default Onboarding1Screen;
+ 

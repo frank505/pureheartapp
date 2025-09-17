@@ -27,7 +27,28 @@ import {
   Onboarding7Screen,
   Onboarding8Screen,
   Onboarding9Screen,
+  Onboarding10Screen,
+  Onboarding11Screen,
+  Onboarding12Screen,
+  Onboarding13Screen,
+  Onboarding14Screen,
+  Onboarding15Screen,
+  Onboarding16Screen,
+  Onboarding17Screen,
+  Onboarding18Screen,
+  Onboarding19Screen,
+  Onboarding20Screen,
+  Onboarding21Screen,
+  Onboarding22Screen,
+  Onboarding23Screen,
+  Onboarding24Screen,
+  Onboarding25Screen,
+  Onboarding26Screen,
+  Onboarding27Screen,
+  Onboarding28Screen,
+  Onboarding29Screen,
   PersonalizationScreen,
+  OnboardingPersonalizingScreen,
 } from '../screens/onboarding';
 
 import { Colors } from '../constants';
@@ -45,6 +66,7 @@ export type OnboardingStackParamList = {
   Onboarding1: undefined;
   Onboarding2: undefined;
   Onboarding3: undefined;
+  OnboardingPersonalizing: undefined;
   Onboarding4: undefined;
   Onboarding5: {
     userData?: {
@@ -71,6 +93,26 @@ export type OnboardingStackParamList = {
     faithData?: any;
   };
   Onboarding9: undefined;
+  Onboarding10: undefined;
+  Onboarding11: undefined;
+  Onboarding12: undefined;
+  Onboarding13: undefined;
+  Onboarding14: undefined;
+  Onboarding15: undefined;
+  Onboarding16: undefined;
+  Onboarding17: undefined;
+  Onboarding18: undefined;
+  Onboarding19: undefined;
+  Onboarding20: undefined;
+  Onboarding21: undefined;
+  Onboarding22: undefined;
+  Onboarding23: undefined;
+  Onboarding24: undefined;
+  Onboarding25: undefined;
+  Onboarding26: undefined;
+  Onboarding27: undefined;
+  Onboarding28: undefined;
+  Onboarding29: undefined;
   Personalization: undefined;
 };
 
@@ -176,6 +218,14 @@ const OnboardingNavigator: React.FC<{ route?: any }> = ({ route }) => {
       />
 
       <Stack.Screen
+        name="OnboardingPersonalizing"
+        component={OnboardingPersonalizingScreen}
+        options={{
+          title: 'Personalizing',
+        }}
+      />
+
+      <Stack.Screen
         name="Onboarding4"
         component={Onboarding4Screen}
         options={{
@@ -220,6 +270,146 @@ const OnboardingNavigator: React.FC<{ route?: any }> = ({ route }) => {
         component={Onboarding9Screen}
         options={{
           title: 'Additional Questions',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding10"
+        component={Onboarding10Screen}
+        options={{
+          title: 'Additional Questions',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding11"
+        component={Onboarding11Screen}
+        options={{
+          title: 'Calculating',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding12"
+        component={Onboarding12Screen}
+        options={{
+          title: 'Analysis Complete',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding13"
+        component={Onboarding13Screen}
+        options={{
+          title: 'User Info',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding14"
+        component={Onboarding14Screen}
+        options={{
+          title: 'Symptoms',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding15"
+        component={Onboarding15Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding16"
+        component={Onboarding16Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding17"
+        component={Onboarding17Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding18"
+        component={Onboarding18Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding19"
+        component={Onboarding19Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding20"
+        component={Onboarding20Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding21"
+        component={Onboarding21Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding22"
+        component={Onboarding22Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding23"
+        component={Onboarding23Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding24"
+        component={Onboarding24Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding25"
+        component={Onboarding25Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding26"
+        component={Onboarding26Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding27"
+        component={Onboarding27Screen}
+        options={{
+          title: 'Education',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding28"
+        component={Onboarding28Screen}
+        options={{
+          title: 'Goals',
+        }}
+      />
+      <Stack.Screen
+        name="Onboarding29"
+        component={Onboarding29Screen}
+        options={{
+          title: 'Accountability Setup',
         }}
       />
       <Stack.Screen

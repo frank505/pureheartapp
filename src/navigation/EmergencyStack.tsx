@@ -1,22 +1,22 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import EmergencyScreen from '../screens/EmergencyScreen';
+import LibraryScreen from '../screens/LibraryScreen';
 import BreatheScreen from '../screens/BreatheScreen';
 import WorshipScreen from '../screens/WorshipScreen';
 import AISessionsScreen from '../screens/AISessionsScreen';
 import AIChatScreen from '../screens/AIChatScreen';
 
-export type EmergencyStackParamList = {
-  EmergencyMain: undefined;
+export type LibraryStackParamList = {
+  LibraryMain: undefined;
   BreatheScreen: { initialText?: string } | undefined;
   WorshipScreen: undefined;
   AISessions: undefined;
   AIChat: { sessionId?: number; title?: string } | undefined;
 };
 
-const Stack = createStackNavigator<EmergencyStackParamList>();
+const Stack = createStackNavigator<LibraryStackParamList>();
  
-const EmergencyStack = () => {
+const LibraryStack = () => {
   return (
     <Stack.Navigator
       screenOptions={{
@@ -24,8 +24,8 @@ const EmergencyStack = () => {
       }}
     >
       <Stack.Screen 
-        name="EmergencyMain" 
-        component={EmergencyScreen}
+        name="LibraryMain" 
+        component={LibraryScreen}
       />
       <Stack.Screen 
         name="BreatheScreen" 
@@ -49,4 +49,4 @@ const EmergencyStack = () => {
   );
 };
 
-export default EmergencyStack;
+export default LibraryStack;

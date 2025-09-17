@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ThePurityApp</string>
+    <string name="accessibility_service_description">PureHeart Content Filter monitors browser activity and blocks inappropriate content to help maintain accountability. This service scans web pages, detects inappropriate content, and provides overlays when needed. It helps protect your digital wellness by filtering harmful content across all browsers and apps.</string>
 </resources>

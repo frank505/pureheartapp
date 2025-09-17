@@ -20,8 +20,7 @@ import {
 } from 'react-native-paper';
 import Icon from './Icon';
 import { Colors } from '../constants';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { logout } from '../store/slices/userSlice';
+// Redux hooks no longer needed here after simplification
 
 interface ProfileDropdownProps {
   navigation?: any;
@@ -30,12 +29,6 @@ interface ProfileDropdownProps {
 const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
   const [isVisible, setIsVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const dispatch = useAppDispatch();
-  const unreadCount = useAppSelector((s) => s.notifications.unreadCount);
-  const handleNotifications = () => {
-    hideDropdown();
-    navigation?.navigate('NotificationsCenter');
-  };
 
   const showDropdown = () => {
     setIsVisible(true);
@@ -56,76 +49,15 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
     });
   };
 
-  const handleProfileSettings = () => {
+  const handleAccount = () => {
     hideDropdown();
-    navigation?.navigate('ProfileSettings');
-  };
-
-  const handleSubscription = () => {
-    hideDropdown();
-    navigation?.navigate('Subscription');
-  };
-
-  const handleDailyDose = () => {
-    hideDropdown();
-    navigation?.navigate('DailyDose');
-  };
-
-  const handleGrowthTracker = () => {
-    hideDropdown();
-    navigation?.navigate('GrowthTracker');
-  };
-
-  const handleLogout = () => {
-    hideDropdown();
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
-          style: 'destructive',
-          onPress: () => {
-            // Dispatch logout action to Redux
-            // This will clear the authentication state and cause the app to re-render
-            // showing the Auth screen since isAuthenticated will become false
-            dispatch(logout());
-            
-            // Clear any stored tokens from AsyncStorage
-            // AsyncStorage.removeItem('userToken');
-            // AsyncStorage.removeItem('refreshToken');
-          }
-        }
-      ]
-    );
+    // Navigate to the Account tab (was Settings)
+    navigation?.navigate('Settings');
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.headerIcons}>
-        <TouchableOpacity 
-          style={styles.iconButton}
-          onPress={handleDailyDose}
-        >
-          <Icon 
-            name="book-outline" 
-            color={Colors.text.primary} 
-            size="sm" 
-          />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.iconButton}
-          onPress={handleGrowthTracker}
-        >
-          <Icon 
-            name="leaf-outline" 
-            color={Colors.text.primary} 
-            size="sm" 
-          />
-        </TouchableOpacity>
-        
         <TouchableOpacity 
           style={styles.profileButton}
           onPress={showDropdown}
@@ -168,67 +100,14 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ navigation }) => {
             <Surface style={styles.dropdown} elevation={4}>
               <TouchableOpacity 
                 style={styles.dropdownItem}
-                onPress={handleNotifications}
+                onPress={handleAccount}
               >
                 <Icon 
-                  name="notifications-outline" 
+                  name="person-outline" 
                   color={Colors.text.primary} 
                   size="sm" 
                 />
-                <Text style={styles.dropdownText}>Notifications</Text>
-                {unreadCount > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{unreadCount}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              <View style={styles.divider} />
-
-            
-
-              <View style={styles.divider} />
-
-           
-              <View style={styles.divider} />
-              <TouchableOpacity 
-                style={styles.dropdownItem}
-                onPress={handleProfileSettings}
-              >
-                <Icon 
-                  name="settings-outline" 
-                  color={Colors.text.primary} 
-                  size="sm" 
-                />
-                <Text style={styles.dropdownText}>Profile & Settings</Text>
-              </TouchableOpacity>
-              
-              <View style={styles.divider} />
-              
-              <TouchableOpacity 
-                style={styles.dropdownItem}
-                onPress={handleSubscription}
-              >
-                <Icon 
-                  name="diamond-outline" 
-                  color={Colors.primary.main} 
-                  size="sm" 
-                />
-                <Text style={styles.subscriptionText}>Subscription</Text>
-              </TouchableOpacity>
-              
-              <View style={styles.divider} />
-              
-              <TouchableOpacity 
-                style={styles.dropdownItem}
-                onPress={handleLogout}
-              >
-                <Icon 
-                  name="log-out-outline" 
-                  color={Colors.error.main} 
-                  size="sm" 
-                />
-                <Text style={styles.logoutText}>Logout</Text>
+                <Text style={styles.dropdownText}>Account</Text>
               </TouchableOpacity>
             </Surface>
           </Animated.View>

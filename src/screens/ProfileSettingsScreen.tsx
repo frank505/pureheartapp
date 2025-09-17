@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
+  Platform,
 } from 'react-native';
 import {
   Text,
@@ -27,6 +28,10 @@ import { Colors, Icons } from '../constants';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { updateProfile, getUserDetails } from '../store/slices/userSlice';
 import { fetchSettings, updateSettings } from '../services/settingsService';
+import { ContentFilter } from '../services/contentFilter';
+import { AppBlocking, AppBlockingData } from '../services/appBlocking';
+import { BrowserBlocking } from '../services/browserBlocking';
+import { URLValidator } from '../utils/urlValidator';
 
 interface ProfileSettingsScreenProps {
   navigation?: any;
@@ -44,7 +49,24 @@ const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigatio
   const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');
 
- 
+  // Content Filter States
+  const [contentFilterEnabled, setContentFilterEnabled] = useState<boolean>(false);
+  const [contentFilterLoading, setContentFilterLoading] = useState<boolean>(true);
+  
+  // Custom Website Blocking States
+  const [blockedWebsites, setBlockedWebsites] = useState<string[]>([]);
+  const [newWebsiteUrl, setNewWebsiteUrl] = useState<string>('');
+  const [addingWebsite, setAddingWebsite] = useState<boolean>(false);
+  const [websitesLoading, setWebsitesLoading] = useState<boolean>(true);
+
+  // App Blocking States
+  const [appBlockingData, setAppBlockingData] = useState<AppBlockingData>({
+    applicationCount: 0,
+    categoryCount: 0,
+    totalCount: 0,
+    hasSelection: false,
+  });
+  const [appBlockingLoading, setAppBlockingLoading] = useState<boolean>(false);
 
 
   useEffect(() => {
@@ -68,6 +90,65 @@ const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigatio
       }
     };
     loadSettings();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Content Filter Effects
+  useEffect(() => {
+    let mounted = true;
+    const loadContentFilterStatus = async () => {
+      if (Platform.OS !== 'ios') {
+        setContentFilterLoading(false);
+        setWebsitesLoading(false);
+        return;
+      }
+      
+      try {
+        const status = await ContentFilter.isFilterEnabled();
+        if (!mounted) return;
+        setContentFilterEnabled(status);
+        
+        // Load blocked websites
+        const websites = await ContentFilter.getCustomBlockedDomains();
+        if (mounted) {
+          setBlockedWebsites(websites);
+        }
+      } catch (error) {
+        console.error('Failed to get content filter status:', error);
+      } finally {
+        if (mounted) {
+          setContentFilterLoading(false);
+          setWebsitesLoading(false);
+        }
+      }
+    };
+    
+    loadContentFilterStatus();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // App Blocking Effects
+  useEffect(() => {
+    let mounted = true;
+    const loadAppBlockingData = async () => {
+      if (Platform.OS !== 'ios') {
+        return;
+      }
+      
+      try {
+        const data = await AppBlocking.getBlockedApps();
+        if (!mounted) return;
+        setAppBlockingData(data);
+      } catch (error) {
+        console.error('Failed to get blocked apps:', error);
+      }
+    };
+    
+    loadAppBlockingData();
     return () => {
       mounted = false;
     };
@@ -116,6 +197,229 @@ const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigatio
     } finally {
       setSettingsLoading(false);
     }
+  };
+
+  // Content Filter Functions
+  const toggleContentFilter = async () => {
+    if (contentFilterEnabled) {
+      // If currently enabled, disable it
+      try {
+        setContentFilterLoading(true);
+        const result = await ContentFilter.disableFilter();
+        if (result) {
+          setContentFilterEnabled(false);
+          Alert.alert('Content Filter Disabled', 'Content filtering has been turned off.');
+        }
+      } catch (error) {
+        console.error('Failed to disable content filter:', error);
+        Alert.alert('Error', 'Failed to disable content filter');
+      } finally {
+        setContentFilterLoading(false);
+      }
+    } else {
+      // If currently disabled, enable it
+      try {
+        setContentFilterLoading(true);
+        const result = await ContentFilter.enableFilter();
+        if (result) {
+          // Wait a bit then check the status
+          setTimeout(async () => {
+            try {
+              const status = await ContentFilter.isFilterEnabled();
+              setContentFilterEnabled(status);
+            } catch (error) {
+              console.error('Failed to check content filter status:', error);
+            } finally {
+              setContentFilterLoading(false);
+            }
+          }, 1000);
+        } else {
+          setContentFilterLoading(false);
+        }
+      } catch (error) {
+        console.error('Failed to toggle content filter:', error);
+        setContentFilterLoading(false);
+      }
+    }
+  };
+
+  // Custom Website Blocking Functions
+  const validateWebsiteUrl = (url: string): string | null => {
+    const result = URLValidator.validateAndNormalize(url);
+    return result.isValid ? null : (result.error || 'Invalid URL');
+  };
+
+  const addWebsiteToBlocklist = async () => {
+    const validationResult = URLValidator.validateAndNormalize(newWebsiteUrl);
+    
+    if (!validationResult.isValid) {
+      Alert.alert('Invalid URL', validationResult.error || 'Invalid URL format');
+      return;
+    }
+
+    const cleanUrl = validationResult.normalizedUrl!;
+
+    // Check if already blocked
+    if (blockedWebsites.includes(cleanUrl)) {
+      Alert.alert('Already Blocked', 'This website is already in your blocklist.');
+      return;
+    }
+
+    try {
+      setAddingWebsite(true);
+      const success = await ContentFilter.addBlockedDomain(cleanUrl);
+      
+      if (success) {
+        setBlockedWebsites(prev => [...prev, cleanUrl]);
+        setNewWebsiteUrl('');
+        
+        // Reload content blocker to apply changes
+        await ContentFilter.reloadContentBlocker();
+        
+        Alert.alert('Website Blocked', `${cleanUrl} has been added to your blocklist.`);
+      } else {
+        Alert.alert('Error', 'Failed to add website to blocklist.');
+      }
+    } catch (error) {
+      console.error('Failed to add blocked domain:', error);
+      Alert.alert('Error', 'Failed to add website to blocklist.');
+    } finally {
+      setAddingWebsite(false);
+    }
+  };
+
+  const removeWebsiteFromBlocklist = async (domain: string) => {
+    Alert.alert(
+      'Remove Website',
+      `Are you sure you want to unblock ${domain}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await ContentFilter.removeBlockedDomain(domain);
+              
+              if (success) {
+                setBlockedWebsites(prev => prev.filter(site => site !== domain));
+                
+                // Reload content blocker to apply changes
+                await ContentFilter.reloadContentBlocker();
+                
+                Alert.alert('Website Unblocked', `${domain} has been removed from your blocklist.`);
+              } else {
+                Alert.alert('Error', 'Failed to remove website from blocklist.');
+              }
+            } catch (error) {
+              console.error('Failed to remove blocked domain:', error);
+              Alert.alert('Error', 'Failed to remove website from blocklist.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const blockAllBrowsersExceptSafari = async () => {
+    Alert.alert(
+      'Block All Browsers',
+      `This will show you a picker to block browser apps and force all browsing through Safari with content filtering.
+
+${BrowserBlocking.getBrowserBlockingInstructions()}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          onPress: async () => {
+            try {
+              setAppBlockingLoading(true);
+              
+              // First enable content filter if not already enabled
+              if (!contentFilterEnabled) {
+                setContentFilterLoading(true);
+                await ContentFilter.enableFilter();
+                setTimeout(async () => {
+                  try {
+                    const status = await ContentFilter.isFilterEnabled();
+                    setContentFilterEnabled(status);
+                  } catch (error) {
+                    console.error('Failed to check content filter status:', error);
+                  } finally {
+                    setContentFilterLoading(false);
+                  }
+                }, 1000);
+              }
+
+              // Use the specialized browser blocking service
+              const result = await BrowserBlocking.blockAllBrowsersExceptSafari();
+              
+              if (result) {
+                setAppBlockingData(result);
+              }
+            } catch (error: any) {
+              console.error('Failed to block browsers:', error);
+              // Error handling is done in the service
+            } finally {
+              setAppBlockingLoading(false);
+            }
+          }
+        }
+      ],
+      { cancelable: true }
+    );
+  };
+
+  // App Blocking Functions
+  const handleBlockApps = async () => {
+    try {
+      setAppBlockingLoading(true);
+      const result = await AppBlocking.showFamilyActivityPicker();
+      if (result) {
+        setAppBlockingData(result);
+        const message = result.totalCount > 0 
+          ? `${result.totalCount} app${result.totalCount !== 1 ? 's' : ''} and categories are now blocked.`
+          : 'App restrictions have been updated.';
+        Alert.alert('Apps Updated', message);
+      }
+    } catch (error: any) {
+      console.error('Failed to show app picker:', error);
+      // Error handling is done in the service, no need to show additional alerts here
+    } finally {
+      setAppBlockingLoading(false);
+    }
+  };
+
+  const handleClearBlockedApps = async () => {
+    Alert.alert(
+      'Clear Blocked Apps',
+      'Are you sure you want to remove all app restrictions?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setAppBlockingLoading(true);
+              await AppBlocking.clearAllBlockedApps();
+              setAppBlockingData({
+                applicationCount: 0,
+                categoryCount: 0,
+                totalCount: 0,
+                hasSelection: false,
+              });
+              Alert.alert('Success', 'All app restrictions have been removed.');
+            } catch (error) {
+              console.error('Failed to clear blocked apps:', error);
+              Alert.alert('Error', 'Failed to clear app restrictions.');
+            } finally {
+              setAppBlockingLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleDeleteAccount = () => {
@@ -226,7 +530,208 @@ const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({ navigatio
           </Surface>
         </View>
 
-        {/* Privacy Settings removed for now */}
+        {/* Content Filter Section - iOS Only */}
+        {Platform.OS === 'ios' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Safari Content Filter</Text>
+            <Surface style={styles.settingsCard} elevation={2}>
+              <View style={styles.settingItem}>
+                <View style={styles.settingContent}>
+                  <Text style={styles.settingTitle}>Content Filter</Text>
+                  <Text style={styles.settingDescription}>Block adult content in Safari</Text>
+                </View>
+                {contentFilterLoading ? (
+                  <ActivityIndicator color={Colors.primary.main} style={{ marginRight: 8 }} />
+                ) : (
+                  <Switch
+                    value={contentFilterEnabled}
+                    onValueChange={toggleContentFilter}
+                    trackColor={{ false: '#767577', true: Colors.primary.main }}
+                    thumbColor={contentFilterEnabled ? '#ffffff' : '#f4f3f4'}
+                    disabled={contentFilterLoading}
+                  />
+                )}
+              </View>
+              
+              {/* Custom Website Blocking */}
+              <View style={styles.divider} />
+              <View style={styles.websiteBlockingContainer}>
+                <Text style={styles.subsectionTitle}>Block Custom Websites</Text>
+                <Text style={styles.subsectionDescription}>
+                  Add specific websites to block in Safari
+                </Text>
+                
+                {/* Add Website Input */}
+                <View style={styles.addWebsiteContainer}>
+                  <TextInput
+                    label="Website to block (e.g., example.com)"
+                    value={newWebsiteUrl}
+                    onChangeText={setNewWebsiteUrl}
+                    mode="outlined"
+                    style={styles.websiteInput}
+                    placeholder="Enter website domain"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                  />
+                  <Button
+                    mode="contained"
+                    onPress={addWebsiteToBlocklist}
+                    loading={addingWebsite}
+                    disabled={addingWebsite || !newWebsiteUrl.trim()}
+                    style={styles.addButton}
+                    compact
+                  >
+                    Add
+                  </Button>
+                </View>
+                
+                {/* Blocked Websites List */}
+                {websitesLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator color={Colors.primary.main} />
+                    <Text style={styles.loadingText}>Loading blocked websites...</Text>
+                  </View>
+                ) : blockedWebsites.length > 0 ? (
+                  <View style={styles.blockedWebsitesList}>
+                    <Text style={styles.blockedWebsitesTitle}>
+                      Blocked Websites ({blockedWebsites.length})
+                    </Text>
+                    {blockedWebsites.map((website, index) => (
+                      <View key={index} style={styles.blockedWebsiteItem}>
+                        <Text style={styles.blockedWebsiteUrl}>{website}</Text>
+                        <TouchableOpacity
+                          onPress={() => removeWebsiteFromBlocklist(website)}
+                          style={styles.removeWebsiteButton}
+                        >
+                          <Icon name="close-circle" color={Colors.error.main} size="sm" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.noWebsitesText}>No custom websites blocked</Text>
+                )}
+              </View>
+            </Surface>
+          </View>
+        )}
+
+        {/* Android Content Filter Section */}
+        {Platform.OS === 'android' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Android Content Filter</Text>
+            <Surface style={styles.settingsCard} elevation={2}>
+              <TouchableOpacity 
+                style={styles.settingItem} 
+                onPress={() => navigation.navigate('AndroidContentFilter')}
+              >
+                <View style={styles.settingContent}>
+                  <Text style={styles.settingTitle}>🛡️ Advanced Content Protection</Text>
+                  <Text style={styles.settingDescription}>
+                    Monitor and block inappropriate content across all browsers and apps
+                  </Text>
+                </View>
+                <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="md" />
+              </TouchableOpacity>
+              
+              <View style={styles.divider} />
+              
+              <View style={styles.settingItem}>
+                <View style={styles.settingContent}>
+                  <Text style={styles.settingTitle}>Content Filter Status</Text>
+                  <Text style={styles.settingDescription}>
+                    {contentFilterEnabled ? 'Active - Monitoring all content' : 'Inactive - No protection active'}
+                  </Text>
+                </View>
+                {contentFilterLoading ? (
+                  <ActivityIndicator color={Colors.primary.main} style={{ marginRight: 8 }} />
+                ) : (
+                  <Icon 
+                    name={contentFilterEnabled ? "shield-checkmark" : "shield-outline"} 
+                    color={contentFilterEnabled ? Colors.secondary.main : Colors.text.secondary} 
+                    size="md" 
+                  />
+                )}
+              </View>
+            </Surface>
+          </View>
+        )}
+
+        {/* App Blocking Section - iOS Only */}
+        {Platform.OS === 'ios' && AppBlocking.isAppBlockingSupported() && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>App Restrictions</Text>
+            <Surface style={styles.settingsCard} elevation={2}>
+              <TouchableOpacity 
+                style={styles.settingItem} 
+                onPress={handleBlockApps}
+                disabled={appBlockingLoading}
+              >
+                <View style={styles.settingContent}>
+                  <Text style={styles.settingTitle}>Block Apps</Text>
+                  <Text style={styles.settingDescription}>
+                    {appBlockingData.hasSelection
+                      ? `${appBlockingData.totalCount} app${appBlockingData.totalCount !== 1 ? 's' : ''} and categories blocked`
+                      : 'Choose apps and categories to block'
+                    }
+                  </Text>
+                </View>
+                {appBlockingLoading ? (
+                  <ActivityIndicator color={Colors.primary.main} style={{ marginRight: 8 }} />
+                ) : (
+                  <Icon name="chevron-forward-outline" color={Colors.text.secondary} size="md" />
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.divider} />
+              
+              {/* Block All Browsers Except Safari */}
+              <TouchableOpacity 
+                style={styles.settingItem} 
+                onPress={blockAllBrowsersExceptSafari}
+                disabled={appBlockingLoading}
+              >
+                <View style={styles.settingContent}>
+                  <Text style={styles.settingTitle}>Block All Browsers</Text>
+                  <Text style={styles.settingDescription}>
+                    Force all browsing through Safari with content filter
+                  </Text>
+                </View>
+                {appBlockingLoading ? (
+                  <ActivityIndicator color={Colors.primary.main} style={{ marginRight: 8 }} />
+                ) : (
+                  <Icon name="shield-checkmark-outline" color={Colors.primary.main} size="md" />
+                )}
+              </TouchableOpacity>
+
+              {appBlockingData.hasSelection && (
+                <>
+                  <View style={styles.divider} />
+                  <TouchableOpacity 
+                    style={styles.settingItem} 
+                    onPress={handleClearBlockedApps}
+                    disabled={appBlockingLoading}
+                  >
+                    <View style={styles.settingContent}>
+                      <Text style={[styles.settingTitle, { color: Colors.error.main }]}>
+                        Clear All Restrictions
+                      </Text>
+                      <Text style={styles.settingDescription}>
+                        Remove all app and category blocks
+                      </Text>
+                    </View>
+                    {appBlockingLoading ? (
+                      <ActivityIndicator color={Colors.error.main} style={{ marginRight: 8 }} />
+                    ) : (
+                      <Icon name="chevron-forward-outline" color={Colors.error.main} size="md" />
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
+            </Surface>
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support</Text>
@@ -408,6 +913,82 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: Colors.error.main,
+  },
+
+  // Website Blocking Styles
+  websiteBlockingContainer: {
+    padding: 16,
+  },
+  subsectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    marginBottom: 4,
+  },
+  subsectionDescription: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    marginBottom: 16,
+  },
+  addWebsiteContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 12,
+    marginBottom: 16,
+  },
+  websiteInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  addButton: {
+    minWidth: 60,
+    height: 56,
+    justifyContent: 'center',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+  },
+  blockedWebsitesList: {
+    marginTop: 8,
+  },
+  blockedWebsitesTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    marginBottom: 8,
+  },
+  blockedWebsiteItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: Colors.background.primary,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  blockedWebsiteUrl: {
+    fontSize: 14,
+    color: Colors.text.primary,
+    flex: 1,
+  },
+  removeWebsiteButton: {
+    padding: 4,
+  },
+  noWebsitesText: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    paddingVertical: 16,
+    fontStyle: 'italic',
   },
 });
 

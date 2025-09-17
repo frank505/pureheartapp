@@ -7,7 +7,6 @@ import Svg, { Circle } from 'react-native-svg';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { Colors } from '../../constants';
 import { useAppDispatch } from '../../store/hooks';
-import { completeOnboarding } from '../../store/slices/appSlice';
 import OnboardingButton from '../../components/OnboardingButton';
 
 interface CircularProgressProps {
@@ -60,7 +59,7 @@ const PersonalizationScreen = () => {
   const navigation = useNavigation();
 
   useEffect(() => {
-    const interval = setInterval(() => {
+  const interval = setInterval(() => {
       setProgress(prev => {
         if (prev < 100) {
           return prev + 1;
@@ -75,8 +74,11 @@ const PersonalizationScreen = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleComplete = () => {
-    dispatch(completeOnboarding());
+  // Notification permission is now requested earlier (Onboarding29Screen) – removed from here.
+
+  const handleContinue = () => {
+    // Move to final accountability setup screen (Onboarding29) where we finalize & submit.
+    navigation.navigate('Onboarding29' as never);
   };
 
   return (
@@ -84,16 +86,12 @@ const PersonalizationScreen = () => {
       {!isComplete ? (
         <>
           <CircularProgress progress={progress} size={200} strokeWidth={15} />
-          <Text style={styles.loadingText}>Personalizing your account...</Text>
+          <Text style={styles.loadingText}>Final personalization of profile...</Text>
         </>
       ) : (
         <>
           <Text style={styles.completeText}>Personalization Complete</Text>
-          <OnboardingButton
-            title="Continue"
-            onPress={handleComplete}
-            style={styles.button}
-          />
+          <OnboardingButton title="Continue" onPress={handleContinue} style={styles.button} disabled={!isComplete} />
         </>
       )}
       {showConfetti && (

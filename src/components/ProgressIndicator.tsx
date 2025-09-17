@@ -25,7 +25,7 @@ interface ProgressIndicatorProps {
   currentStep: number;
   totalSteps: number;
   variant?: 'dots' | 'bars';
-  showStepText?: boolean;
+  showStepText?: boolean; // if true, shows "Step X of Y"; we'll default to false in usage per new requirement
   style?: ViewStyle;
 }
 

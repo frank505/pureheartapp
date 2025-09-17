@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, FlatList, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Surface, TextInput, Button, Chip } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
@@ -36,21 +36,26 @@ const PrayerRequestDetailScreen = ({ route, navigation }: any) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.topHeader}>
-        <TouchableOpacity onPress={() => (navigation ? navigation.goBack() : null)} style={styles.backButton}>
-          <Icon name={Icons.navigation.back.name} color={Colors.text.primary} size="md" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Prayer Request</Text>
-        {currentUser && selectedPrayerRequest && Number(currentUser.id) === selectedPrayerRequest.userId ? (
-          <TouchableOpacity onPress={() => navigation.navigate('EditPrayerRequest', { prayerRequestId })} style={styles.editButton}>
-            <Text style={{ color: Colors.text.primary }}>Edit</Text>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
+      <SafeAreaView style={styles.container}>
+        {/* Header */}
+        <View style={styles.topHeader}>
+          <TouchableOpacity onPress={() => (navigation ? navigation.goBack() : null)} style={styles.backButton}>
+            <Icon name={Icons.navigation.back.name} color={Colors.text.primary} size="md" />
           </TouchableOpacity>
-        ) : (
-          <View style={styles.headerSpacer} />
-        )}
-      </View>
+          <Text style={styles.headerTitle}>Prayer Request</Text>
+          {currentUser && selectedPrayerRequest && Number(currentUser.id) === selectedPrayerRequest.userId ? (
+            <TouchableOpacity onPress={() => navigation.navigate('EditPrayerRequest', { prayerRequestId })} style={styles.editButton}>
+              <Text style={{ color: Colors.text.primary }}>Edit</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.headerSpacer} />
+          )}
+        </View>
 
       {loading && <Text style={{ padding: 16, color: Colors.text.secondary }}>Loading…</Text>}
       {error && (
@@ -97,7 +102,8 @@ const PrayerRequestDetailScreen = ({ route, navigation }: any) => {
           </View>
         </>
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 };
 

@@ -18,6 +18,7 @@ export type RootStackParamList = {
   Progress: undefined;
   Menu: undefined;
   ProfileSettings: undefined;
+  AndroidContentFilter: undefined;
   Subscription: undefined;
   DailyDose: undefined;
   GrowthTracker: undefined;
@@ -33,7 +34,11 @@ export type RootStackParamList = {
   CheckInHistory: undefined;
   PrayerRequests: undefined;
   NotificationsCenter: undefined;
-  AIChat: undefined;
+  AISessions: undefined;
+  AIChat: { sessionId?: number; title?: string } | undefined;
+  // Global access to emergency/library tools
+  BreatheScreen: { initialText?: string } | undefined;
+  WorshipScreen: undefined;
   EditPartnerPhone: {
     partner: {
       id: string;
@@ -48,6 +53,7 @@ export type RootStackParamList = {
   MyVictories: undefined;
   AllGroups: undefined;
   NewGroup: undefined;
+  PartnerFastingHub: undefined;
   PublicVictories: undefined;
   StartFast: undefined;
   ConfigureFast: { 
@@ -67,4 +73,9 @@ export type RootStackParamList = {
   EditVictory: { victoryId: string };
   CheckInDetail: { checkInId: string };
   AddictionSupport: undefined;
+  Analytics: undefined;
+  PanicHistory: undefined;
+  Articles?: undefined;
+  ArticleDetail?: { slug: string };
+  PanicDetail: { id: number };
 };

@@ -1,12 +1,9 @@
 <resources>
-
-    <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
     </style>
 
-    <!-- BootTheme should inherit from AppTheme and should have transparent background -->
     <style name="BootTheme" parent="AppTheme">
         <item name="android:background">@drawable/bootsplash</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
@@ -17,6 +14,11 @@
         <item name="android:windowFullscreen">false</item>
         <item name="android:windowContentOverlay">@null</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-    </style>
+        <!-- Allow preview so drawable shows instantly; rely on fast BootSplash.hide logic -->
+        <!-- (If white icon flash returns we can revisit) -->
 
+        <item name="bootSplashBackground">@color/bootsplash_background</item>
+        <item name="bootSplashLogo">@drawable/bootsplash_logo</item>
+        <item name="postBootSplashTheme">@style/AppTheme</item>
+    </style>
 </resources>

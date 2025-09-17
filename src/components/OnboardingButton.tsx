@@ -31,6 +31,11 @@ interface OnboardingButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   fullWidth?: boolean;
+  // Optional right icon to display after the text
+  rightIconName?: string;
+  rightIconLibrary?: 'Ionicons' | 'MaterialIcons' | 'MaterialCommunityIcons' | 'Feather' | 'FontAwesome' | 'AntDesign';
+  rightIconColor?: string;
+  rightIconSize?: number;
 }
 
 /**
@@ -47,6 +52,10 @@ const OnboardingButton: React.FC<OnboardingButtonProps> = ({
   style,
   textStyle,
   fullWidth = true,
+  rightIconName,
+  rightIconLibrary = 'Ionicons',
+  rightIconColor,
+  rightIconSize,
 }) => {
   const buttonStyle = [
     styles.button,
@@ -75,15 +84,35 @@ const OnboardingButton: React.FC<OnboardingButtonProps> = ({
           color={textColor}
         />
       ) : (
-        <Text
-          style={[
-            styles.buttonText,
-            { color: textColor },
-            textStyle,
-          ]}
-        >
-          {title}
-        </Text>
+        <>
+          <Text
+            style={[
+              styles.buttonText,
+              { color: textColor },
+              textStyle,
+            ]}
+          >
+            {title}
+          </Text>
+          {rightIconName ? (
+            // Use centralized Icon component for consistency
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            require('../components/Icon') &&
+            // Dynamic import pattern for type safety without circular import issues
+            (() => {
+              const Icon = require('../components/Icon').default as any;
+              return (
+                <Icon
+                  name={rightIconName}
+                  library={rightIconLibrary}
+                  size={typeof rightIconSize === 'number' ? rightIconSize : 20}
+                  color={rightIconColor || textColor}
+                  style={{ marginLeft: 8 }}
+                />
+              );
+            })()
+          ) : null}
+        </>
       )}
     </TouchableOpacity>
   );

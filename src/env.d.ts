@@ -2,6 +2,10 @@ declare module '@env' {
   export const GOOGLE_WEB_CLIENT_ID: string;
   export const GOOGLE_IOS_CLIENT_ID: string;
   export const REVERSED_GOOGLE_IOS_CLIENT_ID: string;
+  export const REVENUECAT_API_KEY_IOS: string;
+  export const REVENUECAT_API_KEY_ANDROID: string;
+  export const REVENUECAT_DEBUG_LOGS: string;
+  export const REVENUECAT_DEBUG_EXPOSE_KEY: string;
 }
 
 // Ambient module declarations for vector icons to satisfy TypeScript

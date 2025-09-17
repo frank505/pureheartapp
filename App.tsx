@@ -13,7 +13,7 @@
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StatusBar, useColorScheme, Platform } from 'react-native';
+import { StatusBar, useColorScheme, Platform, Alert, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as StoreProvider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -33,9 +33,11 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import InvitationAcceptModal from './src/components/InvitationAcceptModal';
 import ShareInvitationModal from './src/components/ShareInvitationModal';
+import PaywallModal from './src/components/PaywallModal';
 
 // Import Redux hooks and actions
-import { useAppSelector } from './src/store/hooks';
+import { useAppSelector, useAppDispatch } from './src/store/hooks';
+import { initSubscription } from './src/store/slices/subscriptionSlice';
 
 // Import centralized theme
 import { Theme } from './src/constants';
@@ -110,85 +112,47 @@ const appTheme = {
 const AppContent: React.FC = () => {
  
   // Get authentication and onboarding state from Redux
-  const { isAuthenticated } = useAppSelector(state => state.user);
+  const { isAuthenticated, currentUser } = useAppSelector(state => state.user);
   const { isFirstLaunch, hasCompletedOnboarding } = useAppSelector(state => state.app);
+  const dispatch = useAppDispatch();
 
-  // Hide splash screen when app is ready
+  // Initialize subscription (RevenueCat) when user authenticates
   useEffect(() => {
-    const hideSplashScreen = async () => {
-      try {
-        await BootSplash.hide({ fade: true });
-      } catch (error) {
-        console.log('BootSplash hide error:', error);
-      }
-    };
-
-    // Add a small delay to ensure everything is loaded
-    const timer = setTimeout(hideSplashScreen, 1000);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  // iOS push notification handling: navigate to group chat when tapped
-  useEffect(() => {
-    const getDevicePlatform = (): DevicePlatform | null => {
-      if (Platform.OS === 'ios') return 'ios';
-      if (Platform.OS === 'android') return 'android';
-      return null;
-    };
-
-    // Request permission on iOS
-    if (Platform.OS === 'ios') {
-      messaging().requestPermission().catch(() => undefined);
-      messaging().getToken().then((token: string) => {
-        if (token) {
-          // Register token with backend
-          deviceTokenService.register(token, 'ios').catch(() => undefined);
-          AsyncStorage.setItem('fcm_token', token).catch(() => undefined);
-        }
-      });
+    if (isAuthenticated && currentUser?.id) {
+      dispatch(initSubscription(currentUser.id));
     }
+  }, [isAuthenticated, currentUser?.id, dispatch]);
 
-    // Handle token refresh
-    const unsubscribeTokenRefresh = messaging().onTokenRefresh((token) => {
-      // Register new token with backend
-      const p = getDevicePlatform();
-      if (p) {
-        deviceTokenService.register(token, p).catch(() => undefined);
-      }
-      AsyncStorage.setItem('fcm_token', token).catch(() => undefined);
-    });
 
-    // Foreground message handler (optional preview)
-    const unsubscribeOnMessage = messaging().onMessage(async () => {
-      // no-op; could show in-app banner/toast
-    });
-
-    // When app is opened from a quit state via notification
-    messaging()
-      .getInitialNotification()
-      .then((remoteMessage: FirebaseMessagingTypes.RemoteMessage | null) => {
-        if (remoteMessage?.data?.type === 'group_message') {
-          const groupId = String(remoteMessage.data.groupId);
-          const groupName = remoteMessage.data.groupName ? String(remoteMessage.data.groupName) : undefined;
-          setTimeout(() => navigate('GroupChat', { groupId, groupName }), 300);
-        }
-      });
-
-    // When app is in background and user taps notification
-    const unsubscribeOpened = messaging().onNotificationOpenedApp((remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
-      if (remoteMessage?.data?.type === 'group_message') {
-        const groupId = String(remoteMessage.data.groupId);
-        const groupName = remoteMessage.data.groupName ? String(remoteMessage.data.groupName) : undefined;
-        navigate('GroupChat', { groupId, groupName });
-      }
-    });
-
-    return () => {
-      unsubscribeOnMessage();
-      unsubscribeOpened();
+  useEffect(()=> {
+     const hideSplashScreen = async () => {
+        return BootSplash.hide({ fade: true });
     };
-  }, []);
+    hideSplashScreen();
+
+  },[]);
+
+  // Hide splash screen when app state is determined and ready to render
+  // useEffect(() => {
+  //   const hideSplashScreen = async () => {
+  //       return BootSplash.hide({ fade: true });
+  //   };
+
+  //   const isStateReady = typeof isAuthenticated === 'boolean' && 
+  //                        typeof hasCompletedOnboarding === 'boolean' && 
+  //                        typeof isFirstLaunch === 'boolean';
+
+  //   if (isStateReady) {
+  //     hideSplashScreen();
+  //     Alert.alert('is first launch', ""+isFirstLaunch);
+  //     Alert.alert('is authenticated', ""+isAuthenticated);
+  //     Alert.alert("has completed onboarding", ""+hasCompletedOnboarding);
+  //   }
+
+
+  // }, [isAuthenticated, hasCompletedOnboarding, isFirstLaunch]);
+
+  // Push notification setup moved to Onboarding29Screen after user completes onboarding.
   
   // Get onboarding data state for restoration logic
   const onboardingState = useAppSelector(state => state.onboarding);
@@ -209,14 +173,6 @@ const AppContent: React.FC = () => {
     if (!hasCompletedOnboarding && !isAuthenticated) {
       // Determine if we're restoring data or starting fresh
       const isRestoring = hasOnboardingData && !isFirstLaunch;
-      
-      if (isRestoring) {
-        console.log('Restoring onboarding data from previous session...');
-        console.log('Onboarding progress:', onboardingState.progress);
-      } else {
-        console.log('Starting fresh onboarding flow...');
-      }
-      
       return (
         <Stack.Navigator
           screenOptions={{
@@ -275,6 +231,7 @@ const AppContent: React.FC = () => {
           {/* Global Invitation Accept Modal */}
           <InvitationAcceptModal />
           <ShareInvitationModal />
+          <PaywallModal />
         </NavigationContainer>
       </SafeAreaProvider>
     </PaperProvider>
@@ -288,7 +245,9 @@ const AppContent: React.FC = () => {
  * This ensures the app doesn't render until persisted state is loaded.
  */
 const LoadingScreen: React.FC = () => {
-  return null; // You can add a custom loading screen here
+  // Keep splash screen visible while Redux is rehydrating
+  console.log('PersistGate loading - keeping splash screen visible');
+  return null; // Splash screen will remain visible during this time
 };
 
 /**

@@ -6,9 +6,10 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
-import { Text, Searchbar, SegmentedButtons } from 'react-native-paper';
+import { Text, Searchbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Icons } from '../constants';
+import SegmentedToggle from '../components/SegmentedToggle';
 import Icon from '../components/Icon';
 import groupService, { GroupSummary } from '../services/groupService';
 import { useNavigation } from '@react-navigation/native';
@@ -262,20 +263,13 @@ const AllGroupsScreen = () => {
 
       {/* Tab Selector */}
       <View style={styles.tabContainer}>
-        <SegmentedButtons
+        <SegmentedToggle
           value={activeTab}
-          onValueChange={(value) => setActiveTab(value as 'my' | 'public')}
-          buttons={[
-            {
-              value: 'my',
-              label: 'My Communities',
-            },
-            {
-              value: 'public',
-              label: 'Public Communities',
-            },
+          onChange={(v) => setActiveTab(v)}
+          options={[
+            { value: 'my', label: 'My Communities' },
+            { value: 'public', label: 'Public Communities' },
           ]}
-          style={styles.segmentedButtons}
         />
       </View>
 
@@ -330,9 +324,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  segmentedButtons: {
-    backgroundColor: Colors.background.secondary,
-  },
+  // segmentedButtons removed in favor of custom SegmentedToggle
   searchBar: {
     margin: 16,
   },
