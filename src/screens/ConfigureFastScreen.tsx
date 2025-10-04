@@ -471,7 +471,7 @@ const ConfigureFastScreen = () => {
           activeOpacity={0.7}
           hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
         >
-          <Icon name="close" size={24} color={Colors.white} />
+          <Icon name="close" size={24} color="#1a1a1a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Configure Your Fast</Text>
         <View style={styles.headerSpacer} />
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     zIndex: 1000,
     elevation: 1000,
   },
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.white,
+    color: '#1a1a1a',
     textAlign: 'center',
     marginLeft: -48,
   },
@@ -530,13 +530,14 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: Colors.white,
+    color: '#1a1a1a',
     marginBottom: 8,
     marginTop: 16,
+    fontWeight: '500',
   },
   input: {
-    backgroundColor: Colors.background.tertiary,
-    color: Colors.white,
+    backgroundColor: '#F8F9FA',
+    color: '#1a1a1a',
     height: 50,
     justifyContent: 'center',
   },
@@ -546,20 +547,23 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   dayButton: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.primary.main,
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 8,
+    backgroundColor: '#FFFFFF',
   },
   dayButtonSelected: {
     backgroundColor: Colors.primary.main,
   },
   dayText: {
     color: Colors.primary.main,
+    fontWeight: '500',
   },
   dayTextSelected: {
-    color: Colors.white,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   switchContainer: {
     flexDirection: 'row',
@@ -570,14 +574,18 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   nextButton: {
-    height: 48,
+    backgroundColor: Colors.primary.main,
+    borderRadius: 12,
+    height: 56,
     justifyContent: 'center',
   },
   pickerContainer: {
     marginTop: 8,
-    backgroundColor: Colors.background.tertiary,
+    backgroundColor: '#F8F9FA',
     borderRadius: 8,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
   },
   pickerActions: {
     flexDirection: 'row',

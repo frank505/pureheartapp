@@ -87,7 +87,7 @@ const StartFastScreen = () => {
           activeOpacity={0.7}
           hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
         >
-          <Icon name="close" size={24} color={Colors.white} />
+          <Icon name="close" size={24} color="#1a1a1a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Select a Fast Type</Text>
         <View style={styles.headerSpacer} />
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     // Add some visual feedback and ensure it's touchable
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Subtle background to see the button area
+    backgroundColor: 'rgba(0, 0, 0, 0.05)', // Subtle background to see the button area
     // Remove any potential blocking styles
     zIndex: 1000,
     elevation: 1000, // For Android
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.white,
+    color: '#1a1a1a',
     textAlign: 'center',
     marginLeft: -48, // To center the title accounting for the close button
   },
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: Colors.white,
+    color: '#1a1a1a',
     paddingHorizontal: 16,
     paddingBottom: 12,
     paddingTop: 20,
@@ -217,12 +217,12 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: Colors.white,
+    color: '#1a1a1a',
     marginBottom: 4,
   },
   optionDescription: {
     fontSize: 14,
-    color: Colors.inactiveTab,
+    color: '#6a6a6a',
     lineHeight: 20,
   },
   footer: {
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   nextButtonText: {
-    color: Colors.white,
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     color: Colors.primary.main,
   },
   selectedDescription: {
-    color: Colors.white,
+    color: '#2a2a2a',
   },
   nextButtonDisabled: {
     backgroundColor: Colors.background.tertiary,

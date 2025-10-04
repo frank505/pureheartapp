@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
   // legacy scrollContent removed in favor of slider
   scrollContent: { flexGrow: 1 },
   title: { fontSize: responsiveFontSizes.mainTitle, fontWeight: '800', color: Colors.text.primary, textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: responsiveFontSizes.headerSubtitle, color: 'rgba(255,255,255,0.85)', textAlign: 'center', marginBottom: 16 },
+  subtitle: { fontSize: responsiveFontSizes.headerSubtitle, color: Colors.text.secondary, textAlign: 'center', marginBottom: 16 },
   // slide container for each question
   slide: { paddingHorizontal: responsiveSpacing.lg, justifyContent: 'center' },
   questionTitle: { fontSize: 18, fontWeight: '700', color: Colors.text.primary, marginBottom: 12, textAlign: 'center' },

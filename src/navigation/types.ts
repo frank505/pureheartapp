@@ -78,4 +78,27 @@ export type RootStackParamList = {
   Articles?: undefined;
   ArticleDetail?: { slug: string };
   PanicDetail: { id: number };
+  // Screenshots & Reports screens
+  ScreenshotsMain: undefined;
+  SensitiveImages: { userId?: number };
+  ImageDetail: { imageId: number };
+  
+  // Commitment System Screens
+  ChooseCommitmentType: undefined;
+  BrowseActions: undefined;
+  ActionDetails: { actionId: string };
+  SetTargetDate: { financialAmount?: number };
+  ReviewCommitment: undefined;
+  CommitmentSuccess: undefined;
+  ActiveCommitmentDashboard: undefined;
+  ActionPending: undefined;
+  UploadProof: undefined;
+  ProofSubmitted: undefined;
+  PartnerVerification: undefined;
+  DeadlineMissed: undefined;
+  CreateCustomAction: undefined;
+  SetFinancialAmount: undefined;
+  SetHybridCommitment: undefined;
+  ServiceStats: undefined;
+  RedemptionWall: undefined;
 };

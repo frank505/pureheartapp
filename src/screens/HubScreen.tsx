@@ -1,23 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Text, Surface, Modal, TextInput, Button, Portal } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { Icon, ScreenHeader } from '../components';
 import { Colors, Icons } from '../constants';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { useAppDispatch } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchPartners, acceptByCode } from '../store/slices/invitationSlice';
+import { getUserType } from '../utils/userTypeUtils';
 
 const HubScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const dispatch = useAppDispatch();
+  const currentUser = useAppSelector((s) => s.user.currentUser);
+  const onboardingUserType = useAppSelector((s) => s.onboarding.userType);
+  
   const isSmall = false; // You can implement responsive design logic here if needed
   const [acceptVisible, setAcceptVisible] = useState(false);
   const [partnerCode, setPartnerCode] = useState('');
   const [accepting, setAccepting] = useState(false);
-  const dispatch = useAppDispatch();
+  const [asyncStorageUserType, setAsyncStorageUserType] = useState<'partner' | 'user' | null>(null);
+
+  // Load user type from AsyncStorage on mount and when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadUserType = async () => {
+        const userType = await getUserType();
+        console.log('[HubScreen] Loaded user type from AsyncStorage:', userType);
+        setAsyncStorageUserType(userType);
+      };
+      loadUserType();
+    }, [])
+  );
+  
+  // Also reload when Redux state changes (from toggle)
+  useEffect(() => {
+    const loadUserType = async () => {
+      const userType = await getUserType();
+      console.log('[HubScreen] Redux changed, reloading from AsyncStorage:', userType);
+      setAsyncStorageUserType(userType);
+    };
+    loadUserType();
+  }, [currentUser?.userType, onboardingUserType]);
+
+  // Determine if user is a partner/accountability buddy
+  // Priority: 1) AsyncStorage (most reliable), 2) currentUser.userType, 3) onboarding store
+  const isPartner = asyncStorageUserType === 'partner' || 
+                    (!asyncStorageUserType && currentUser?.userType === 'partner') ||
+                    (!asyncStorageUserType && !currentUser?.userType && onboardingUserType === 'partner');
+  
+  // Debug log to track isPartner changes
+  useEffect(() => {
+    console.log('[HubScreen] isPartner changed to:', isPartner, '{ asyncStorage:', asyncStorageUserType, 'redux:', currentUser?.userType, 'onboarding:', onboardingUserType, '}');
+  }, [isPartner, asyncStorageUserType, currentUser?.userType, onboardingUserType]);
 
   const handleAcceptPartner = async () => {
     const code = partnerCode.trim();
@@ -38,15 +76,7 @@ const HubScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Background gradient to match LibraryScreen vibe */}
-      <LinearGradient
-        colors={["#0f172a", "#1e293b", "#334155", "#475569", "#64748b"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
-  <ScreenHeader title="Hub" navigation={navigation} showBackButton={false} />
+      <ScreenHeader title="Hub" navigation={navigation} showBackButton={false} />
       <ScrollView>
         {/* Quick Actions Section */}
         <View style={styles.quickActionsSection}>
@@ -58,31 +88,51 @@ const HubScreen = () => {
           </View>
           <View style={styles.quickActionsGrid}>
             {[
-              { 
-                icon: 'person-add-outline', 
-                label: 'Invite Partner', 
-                onPress: () => navigation?.navigate('InvitePartner'),
-                color: Colors.primary.main,
-                special: 'invite'
-              },
-              {
-                icon: 'hourglass-outline',
-                label: 'Fasting (Partners)',
-                onPress: () => navigation?.navigate('PartnerFastingHub'),
-                color: Colors.secondary.main
-              },
-              { 
-                icon: 'people-outline', 
-                label: 'Partners', 
-                onPress: () => navigation?.navigate('PartnersList'),
-                color: Colors.secondary.main
-              },
-              { 
-                icon: Icons.security.key.name, 
-                label: 'Accept Partner Invite Code',
-                onPress: () => setAcceptVisible(true),
-                color: Colors.primary.dark
-              },
+              // Partner-related actions - hidden for partners
+              ...(!isPartner ? [
+                { 
+                  icon: 'person-add-outline', 
+                  label: 'Invite Partner', 
+                  onPress: () => navigation?.navigate('InvitePartner'),
+                  color: Colors.primary.main,
+                  special: 'invite'
+                },
+                { 
+                  icon: 'people-outline', 
+                  label: 'Partners', 
+                  onPress: () => navigation?.navigate('PartnersList'),
+                  color: Colors.secondary.main
+                },
+                { 
+                  icon: Icons.security.key.name, 
+                  label: 'Accept Partner Invite Code',
+                  onPress: () => setAcceptVisible(true),
+                  color: Colors.primary.dark
+                },
+              ] : []),
+              // Commitment System Actions - NEW
+              ...(!isPartner ? [
+                { 
+                  icon: 'shield-checkmark-outline', 
+                  label: 'Create Commitment', 
+                  onPress: () => navigation?.navigate('ChooseCommitmentType'),
+                  color: Colors.primary.main,
+                  special: 'commitment'
+                },
+                { 
+                  icon: 'trending-up-outline', 
+                  label: 'My Commitment', 
+                  onPress: () => navigation?.navigate('ActiveCommitmentDashboard'),
+                  color: Colors.secondary.main
+                },
+              ] : []),
+               {
+                  icon: 'hourglass-outline',
+                  label: 'Fasting (Partners)',
+                  onPress: () => navigation?.navigate('PartnerFastingHub'),
+                  color: Colors.secondary.main
+                },
+              // Common actions - visible for all users
               { 
                 icon: 'list-outline', 
                 label: 'Prayer Requests', 
@@ -101,17 +151,25 @@ const HubScreen = () => {
                 onPress: () => navigation?.navigate('PanicHistory'),
                 color: Colors.error.main
               },
+                 ...(!isPartner ? [
               { 
                 icon: 'stats-chart-outline', 
                 label: 'Analytics', 
                 onPress: () => navigation?.navigate('Analytics'),
                 color: Colors.secondary.main
-              },
-              { 
+               },
+               { 
                 icon: 'book-outline', 
                 label: 'Truth Center', 
                 onPress: () => navigation?.navigate('Truth', { screen: 'TruthList' }),
                 color: Colors.primary.dark
+              }
+                 ] : []),
+              { 
+                icon: 'camera-outline', 
+                label: 'Screenshots & Reports', 
+                onPress: () => navigation?.navigate('ScreenshotsMain'),
+                color: Colors.warning.dark
               },
               
             ].map((action) => (
@@ -119,20 +177,24 @@ const HubScreen = () => {
                 key={action.label}
                 style={[
                   styles.quickActionItem,
-                  { backgroundColor: action.special === 'invite' ? Colors.primary.main : 'rgba(255,255,255,0.12)' }
+                  { 
+                    backgroundColor: (action.special === 'invite' || action.special === 'commitment') 
+                      ? Colors.primary.main 
+                      : 'rgba(255,255,255,0.12)' 
+                  }
                 ]}
                 onPress={action.onPress}
                 activeOpacity={0.9}
               >
                 <Icon
                   name={action.icon}
-                  color={action.special === 'invite' ? Colors.white : action.color}
+                  color={(action.special === 'invite' || action.special === 'commitment') ? Colors.white : action.color}
                   size="md"
                 />
                 <Text
                   style={[
                     styles.quickActionLabel,
-                    action.special === 'invite' && styles.inviteLabel
+                    (action.special === 'invite' || action.special === 'commitment') && styles.inviteLabel
                   ]}
                 >
                   {action.label}
@@ -215,7 +277,7 @@ const HubScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: Colors.background.primary,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -254,11 +316,13 @@ const styles = StyleSheet.create({
   quickActionItem: {
     width: '48%',
     height: 96,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border.primary,
   },
   quickActionLabel: {
     fontSize: 14,

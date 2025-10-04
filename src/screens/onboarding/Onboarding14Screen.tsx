@@ -125,13 +125,13 @@ const styles = StyleSheet.create({
   progressWrapper: { flex: 1, alignItems: 'center' },
   content: { flexGrow: 1, paddingHorizontal: responsiveSpacing.lg, paddingBottom: 32 },
   title: { fontSize: responsiveFontSizes.mainTitle, fontWeight: '700', color: Colors.text.primary, textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: responsiveFontSizes.headerSubtitle, color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginBottom: 16 },
+  subtitle: { fontSize: responsiveFontSizes.headerSubtitle, color: Colors.text.secondary, textAlign: 'center', marginBottom: 16 },
   sectionTitle: { fontSize: responsiveFontSizes.headerSubtitle, fontWeight: '600', color: Colors.text.primary, marginBottom: 8, marginTop: 12 },
-  checkboxItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.background.secondary, borderColor: Colors.border.primary, borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 12 },
+  checkboxItem: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: Colors.background.secondary, borderColor: Colors.border.primary, borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 12 },
   checkboxItemOn: { borderColor: Colors.secondary.main, backgroundColor: 'rgba(34,197,94,0.1)' },
-  checkCircle: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#9ca3af', marginRight: 12 },
+  checkCircle: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#9ca3af', marginRight: 12, marginTop: 2 },
   checkCircleOn: { backgroundColor: Colors.secondary.main, borderColor: Colors.secondary.main },
-  checkboxLabel: { color: Colors.text.primary, fontSize: responsiveFontSizes.body },
+  checkboxLabel: { flex: 1, color: Colors.text.primary, fontSize: responsiveFontSizes.body, flexWrap: 'wrap' },
 });
 
 export default Onboarding14Screen;

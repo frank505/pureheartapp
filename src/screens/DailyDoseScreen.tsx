@@ -84,7 +84,7 @@ const DailyDoseScreen = ({ navigation }: any) => {
           
           <View style={styles.introContainer}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonAlt}>
-              <Icon name="arrow-back" size="lg" color={Colors.white} />
+              <Icon name="arrow-back" size="lg" color={Colors.text.primary} />
             </TouchableOpacity>
             <Text style={styles.mainTitle}>Your Daily Dose</Text>
             <Text style={styles.subtitle}>Renew your mind and heart with God's word today</Text>
@@ -116,7 +116,7 @@ const DailyDoseScreen = ({ navigation }: any) => {
             {/* Scripture Section */}
             <View style={styles.scriptureContainer}>
               <ImageBackground
-                source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDJ87m37g4Nzqol-5HwrAqG5tuz0iLsPn6SlN35g7W0m2rmY8KkqJlTjnc1A7Q-zJbqa6R3MC9cS-3-_VoMJmZwvNw8-6voNswPtWixjoA1u4DTs_1QOXXUj0vKfxcSVm3QAuzhRSo_VkjTCc0qkgWXkQRnKhG1_7GxhxY3602QraOfB2RjNFdz7Id7Q1Y-BAMTF3Q9tjV_aNoAypAWaV2tuPszKiclQGk60gOhMsDuKJ9XcKnI4Ts41zKaYl5wVpxkw3GonWSgnp47' }}
+                source={require('../../assets/images/appbackgroundimage.png')}
                 style={styles.scriptureCard}
                 imageStyle={styles.scriptureImage}
               >
@@ -268,20 +268,20 @@ const styles = StyleSheet.create({
   backButtonAlt: {
     padding: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: Colors.background.secondary,
     alignSelf: 'flex-start',
     marginBottom: 16,
   },
   mainTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: Colors.white,
+    color: Colors.text.primary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: Colors.white,
-    opacity: 0.8,
+    color: Colors.text.secondary,
+    opacity: 1,
   },
   // Loading State
   loadingContainer: {

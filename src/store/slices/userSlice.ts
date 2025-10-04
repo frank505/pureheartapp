@@ -46,6 +46,7 @@ export interface User {
   joinDate: string;
   currentStreak?: number;
   mostRecentBadge?: Badge | null;
+  userType?: 'partner' | 'user' | null; // User type: accountability buddy or regular user
   preferences: {
     notifications: boolean;
     darkMode: boolean;

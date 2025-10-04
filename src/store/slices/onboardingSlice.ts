@@ -147,6 +147,7 @@ export interface OnboardingState {
   accountabilityPreferences: Partial<AccountabilityPreferences>;
   recoveryJourneyData: Partial<RecoveryJourneyData>; // Add this line
   dependencyAssessment?: { score: number; reasoning?: string; fetchedAt: string } | null;
+  userType?: 'partner' | 'user' | null; // User type selection from GetStartedScreen
   progress: OnboardingProgress;
   isDataSaved: boolean;
   lastSaveTime: string | null;
@@ -159,17 +160,23 @@ export interface OnboardingState {
  */
 const initialState: OnboardingState = {
   personalInfo: {},
-  assessmentData: {},
+  assessmentData: {
+    questions: [],
+  },
   additionalAssessmentData: {},
   faithData: {},
   howTheyHeard: {},
-  accountabilityPreferences: {},
+  accountabilityPreferences: {
+    preferredType: null,
+    hasSelectedOption: false,
+  },
   recoveryJourneyData: {},
   dependencyAssessment: null,
+  userType: null,
   progress: {
-    currentStep: 1,
+    currentStep: 0,
     completedSteps: [],
-    lastUpdated: '',
+    lastUpdated: new Date().toISOString(),
   },
   isDataSaved: false,
   lastSaveTime: null,
@@ -427,6 +434,17 @@ const onboardingSlice = createSlice({
       state.dependencyAssessment = { ...action.payload, fetchedAt: new Date().toISOString() };
       state.lastSaveTime = new Date().toISOString();
     },
+    
+    /**
+     * Save User Type
+     * 
+     * Saves user type selection (partner or user) from GetStartedScreen.
+     * This is saved early in the onboarding flow.
+     */
+    saveUserType: (state, action: PayloadAction<'partner' | 'user'>) => {
+      state.userType = action.payload;
+      state.lastSaveTime = new Date().toISOString();
+    },
   },
 });
 
@@ -446,6 +464,7 @@ export const {
   savePartialPersonalInfo,
   setCurrentStep,
   saveDependencyAssessmentResult,
+  saveUserType,
 } = onboardingSlice.actions;
 
 // Export reducer for store configuration

@@ -11,6 +11,7 @@ export interface CheckInDTO {
   partnerId?: number | null;
   groupId?: string | null;
   status?: 'victory' | 'relapse'; // Status of the check-in
+  isAutomatic?: boolean; // Whether this check-in was created automatically
   createdAt: string;
   updatedAt: string;
 }
@@ -60,12 +61,14 @@ const checkinService = {
     partnerIds?: Array<number | string>;
     groupIds?: string[];
     status?: 'victory' | 'relapse';
+    isAutomatic?: boolean;
   }): Promise<CheckInDTO> {
     const payload: any = {
       mood: input.mood,
       note: input.note,
       visibility: input.visibility,
       status: input.status || 'victory', // Default to victory if not specified
+      isAutomatic: input.isAutomatic ?? false, // Default to false for manual check-ins
     };
     if (input.partnerIds && input.partnerIds.length > 0) {
       payload.partnerIds = input.partnerIds; // backend accepts array under partnerId

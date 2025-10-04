@@ -39,6 +39,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { loginUser, loginUserWithApple } from '../store/slices/userSlice';
 
+// Import user type utilities
+import { getUserType } from '../utils/userTypeUtils';
 
 // Import centralized colors and icons
 import { Colors, Icons } from '../constants';
@@ -91,8 +93,14 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
+    // Only show rate prompt once per installation - check AsyncStorage flag
     if (hasCompletedOnboarding && !hasShownRatePrompt && !ratePromptShown) {
-      const t = setTimeout(() => { setShowRatePrompt(true); setRatePromptShown(true); }, 1200);
+      const t = setTimeout(() => { 
+        setShowRatePrompt(true); 
+        setRatePromptShown(true);
+        // Immediately mark as shown in AsyncStorage to prevent any race conditions
+        AsyncStorage.setItem('hasShownRatePrompt', 'true').catch(() => {});
+      }, 1200);
       return () => clearTimeout(t);
     }
   }, [hasCompletedOnboarding, hasShownRatePrompt, ratePromptShown]);
@@ -133,7 +141,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   /**
    * Handle Google Login
    * 
-   * Handles Google authentication integration.
+   * Handles Google authentication integration with user type detection.
    */
   const handleGoogleLogin = async () => {
     try {
@@ -141,14 +149,23 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
       const data: any = await GoogleSignin.signIn();
       if (data && data.data?.idToken) {
         const { idToken } = data.data;
-        // this one is the id that is initially sent as invitation
+        
+        // Get user type from AsyncStorage as fallback if not in Redux
+        const userTypeFromStorage = await getUserType();
+        
+        // Get accountability IDs
         const init_sent_accountability_id = await AsyncStorage.getItem('init_sent_accountability_id');
-        // this is the one the user uses when he opens the app from a link
         const init_reciever_sent_accountablity_id = await AsyncStorage.getItem('init_reciever_sent_accountablity_id');
   
+        // Merge onboarding data with userType (prioritize Redux, fallback to AsyncStorage)
+        const completeOnboardingData = {
+          ...onboardingData,
+          userType: onboardingData.userType || userTypeFromStorage,
+        };
+
         await dispatch(loginUser({ 
           idToken, 
-          onboardingData, 
+          onboardingData: completeOnboardingData,
           init_sent_accountability_id, 
           init_reciever_sent_accountablity_id 
         })).unwrap();
@@ -184,12 +201,22 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
       const { identityToken } = appleAuthRequestResponse;
 
       if (identityToken) {
+        // Get user type from AsyncStorage as fallback if not in Redux
+        const userTypeFromStorage = await getUserType();
+        
+        // Get accountability IDs
         const init_sent_accountability_id = await AsyncStorage.getItem('init_sent_accountability_id');
         const init_reciever_sent_accountablity_id = await AsyncStorage.getItem('init_reciever_sent_accountablity_id');
 
+        // Merge onboarding data with userType (prioritize Redux, fallback to AsyncStorage)
+        const completeOnboardingData = {
+          ...onboardingData,
+          userType: onboardingData.userType || userTypeFromStorage,
+        };
+
         await dispatch(loginUserWithApple({ 
           identityToken, 
-          onboardingData, 
+          onboardingData: completeOnboardingData,
           init_sent_accountability_id, 
           init_reciever_sent_accountablity_id 
         })).unwrap();
@@ -233,7 +260,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <Image
-                source={require('../../store-assets/final_form_image_101_cropped_to_be_used.png')}
+                source={require('../../assets/images/logo.png')}
                 style={styles.appLogo}
                 resizeMode="contain"
               />

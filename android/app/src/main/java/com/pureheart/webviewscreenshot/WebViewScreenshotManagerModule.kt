@@ -36,8 +36,25 @@ class WebViewScreenshotManagerModule(reactContext: ReactApplicationContext) : Re
     fun setWebView(webViewTag: Int) {
         UiThreadUtil.runOnUiThread {
             try {
-                val webView = reactApplicationContext.getCurrentActivity()?.findViewById<WebView>(webViewTag)
-                currentWebView = webView
+                if (webViewTag == -1) {
+                    // Auto-detect WebView in current activity
+                    val activity = reactApplicationContext.getCurrentActivity()
+                    if (activity != null) {
+                        val webView = findWebViewInActivity(activity.findViewById(android.R.id.content))
+                        currentWebView = webView
+                        if (webView != null) {
+                            sendEvent("screenshot_captured", "WebView auto-detected successfully")
+                        } else {
+                            sendEvent("screenshot_error", "Failed to auto-detect WebView")
+                        }
+                    }
+                } else {
+                    val webView = reactApplicationContext.getCurrentActivity()?.findViewById<WebView>(webViewTag)
+                    currentWebView = webView
+                    if (webView != null) {
+                        sendEvent("screenshot_captured", "WebView reference set successfully")
+                    }
+                }
             } catch (e: Exception) {
                 sendEvent("screenshot_error", "Failed to set WebView: ${e.message}")
             }

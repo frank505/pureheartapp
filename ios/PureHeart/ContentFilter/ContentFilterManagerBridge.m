@@ -61,8 +61,6 @@ RCT_EXPORT_METHOD(isDomainBlocked:(NSString *)url
     [[self getContentFilterManager] isDomainBlocked:url resolver:resolve rejecter:reject];
 }
 
-@end
-
 RCT_EXPORT_METHOD(openContentBlockerSettings:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject) {
     [[self getContentFilterManager] openContentBlockerSettings:resolve rejecter:reject];

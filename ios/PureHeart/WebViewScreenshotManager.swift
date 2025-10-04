@@ -8,7 +8,7 @@ class WebViewScreenshotManager: RCTEventEmitter {
     
     private var screenshotQueue: [String] = []
     private let batchSize = 5
-    private let apiEndpoint = "https://your-api-endpoint.com/api/screenshots/scrutinized"
+    private let apiEndpoint = "https://api.thepurityapp.com/api/screenshots/scrutinized"
     private weak var currentWebView: WKWebView?
     private let queueSerialQueue = DispatchQueue(label: "screenshot.queue", qos: .utility)
     
@@ -28,15 +28,43 @@ class WebViewScreenshotManager: RCTEventEmitter {
     @objc(setWebView:)
     func setWebView(_ webViewTag: NSNumber) {
         DispatchQueue.main.async {
-            if let bridge = self.bridge,
-               let uiManager = bridge.module(for: RCTUIManager.self) as? RCTUIManager {
-                uiManager.addUIBlock { (uiManager, viewRegistry) in
-                    if let webView = viewRegistry?[webViewTag] as? WKWebView {
-                        self.currentWebView = webView
+            if webViewTag.intValue == -1 {
+                // Auto-detect WebView in current view hierarchy
+                if let rootViewController = UIApplication.shared.windows.first?.rootViewController {
+                    self.currentWebView = self.findWebViewInViewController(rootViewController)
+                    if self.currentWebView != nil {
+                        self.sendEvent(withName: "screenshot_captured", body: "WebView auto-detected successfully")
+                    } else {
+                        self.sendEvent(withName: "screenshot_error", body: "Failed to auto-detect WebView")
+                    }
+                }
+            } else {
+                if let bridge = self.bridge,
+                   let uiManager = bridge.module(for: RCTUIManager.self) as? RCTUIManager {
+                    uiManager.addUIBlock { (uiManager, viewRegistry) in
+                        if let webView = viewRegistry?[webViewTag] as? WKWebView {
+                            self.currentWebView = webView
+                            self.sendEvent(withName: "screenshot_captured", body: "WebView reference set successfully")
+                        }
                     }
                 }
             }
         }
+    }
+    
+    private func findWebViewInViewController(_ viewController: UIViewController) -> WKWebView? {
+        if let webView = findWebViewInView(view: viewController.view) {
+            return webView
+        }
+        
+        // Check child view controllers
+        for child in viewController.children {
+            if let webView = findWebViewInViewController(child) {
+                return webView
+            }
+        }
+        
+        return nil
     }
     
     @objc(captureWebViewScreenshot:withRejecter:)

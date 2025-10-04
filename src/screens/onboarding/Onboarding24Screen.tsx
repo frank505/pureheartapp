@@ -68,7 +68,7 @@ const Onboarding24Screen: React.FC<Props> = ({ navigation }) => {
               width: s.size,
               height: s.size,
               borderRadius: s.size / 2,
-              backgroundColor: 'rgba(255,255,255,0.9)',
+              backgroundColor: 'rgba(255,255,255,0.2)',
               opacity: starOpacities[i],
             }}
           />
@@ -90,7 +90,7 @@ const Onboarding24Screen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         {/* Icon divider */}
-        <Icon name="trophy" size={36} color="#ffffff" style={styles.iconDivider} />
+        <Icon name="trophy" size={36} color="#fbbf24" style={styles.iconDivider} />
 
         <Text style={styles.title}>Conquer yourself</Text>
         <Text style={styles.subtitle}>
@@ -98,7 +98,12 @@ const Onboarding24Screen: React.FC<Props> = ({ navigation }) => {
           {' '}<Text style={styles.emphasis}>strengths and weaknesses</Text>, earn medals, and track
           {' '}your <Text style={styles.emphasis}>progress</Text> — all by grace, not striving alone.
         </Text>
-  <MiniSectionDots total={9} active={5} />
+  <MiniSectionDots 
+    total={9} 
+    active={5} 
+    inactiveColor="rgba(34, 197, 94, 0.3)" 
+    activeColor="#22c55e" 
+  />
   <OnboardingButton title="Continue" onPress={() => navigation.navigate('Onboarding25')} variant="primary" style={{ marginTop: 12 }} />
       </View>
     </SafeAreaView>
@@ -113,8 +118,8 @@ const styles = StyleSheet.create({
   content: { flex: 1, paddingHorizontal: responsiveSpacing.lg, justifyContent: 'center' },
   scriptureBox: {
     alignSelf: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderColor: 'rgba(255,255,255,0.08)',
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -122,12 +127,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   scriptureText: {
-    color: 'rgba(255,255,255,0.95)',
+    color: Colors.text.secondary,
     fontStyle: 'italic',
     fontSize: responsiveFontSizes.body,
     textAlign: 'center',
   },
-  iconDivider: { alignSelf: 'center', marginBottom: 16, opacity: 0.95 },
+  iconDivider: { alignSelf: 'center', marginBottom: 16, opacity: 0.85 },
   title: {
     fontSize: responsiveFontSizes.mainTitle,
     fontWeight: '800',
@@ -137,11 +142,11 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: responsiveFontSizes.body,
-    color: 'rgba(255,255,255,0.9)',
+    color: Colors.text.secondary,
     textAlign: 'center',
     lineHeight: 22,
   },
-  emphasis: { fontWeight: '700', color: '#ffffff' },
+  emphasis: { fontWeight: '700', color: Colors.text.primary },
 });
 
 export default Onboarding24Screen;

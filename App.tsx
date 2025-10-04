@@ -17,7 +17,7 @@ import { StatusBar, useColorScheme, Platform, Alert, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as StoreProvider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
-import { Provider as PaperProvider, DefaultTheme, MD3DarkTheme } from 'react-native-paper';
+import { Provider as PaperProvider, DefaultTheme, MD3LightTheme } from 'react-native-paper';
 import deviceTokenService from './src/services/deviceTokenService';
 import type { DevicePlatform } from './src/types/device';
 import BootSplash from 'react-native-bootsplash';
@@ -56,9 +56,9 @@ const Stack = createNativeStackNavigator();
  */
 // App Theme Configuration using centralized colors
 const appTheme = {
-  ...MD3DarkTheme,
+  ...MD3LightTheme,
   fonts: {
-    ...MD3DarkTheme.fonts,
+    ...MD3LightTheme.fonts,
     regular: {
       fontFamily: 'Poppins-Regular',
       fontWeight: '400',
@@ -77,7 +77,7 @@ const appTheme = {
     },
   },
   colors: {
-    ...MD3DarkTheme.colors,
+    ...MD3LightTheme.colors,
     primary: Theme.primary,
     primaryContainer: Theme.primaryContainer,
     secondary: Theme.secondary,
@@ -131,6 +131,29 @@ const AppContent: React.FC = () => {
     hideSplashScreen();
 
   },[]);
+
+  // Setup push notification handlers for screenshot notifications
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Handle app opened from notification when app was in background/quit
+    messaging().getInitialNotification().then((remoteMessage: FirebaseMessagingTypes.RemoteMessage | null) => {
+      if (remoteMessage?.data?.type === 'sensitive_content' && remoteMessage?.data?.sensitiveImageId) {
+        const imageId = Number(remoteMessage.data.sensitiveImageId);
+        setTimeout(() => navigate('ImageDetail', { imageId }), 500);
+      }
+    });
+
+    // Handle app opened from notification when app was in foreground/background
+    const unsubscribe = messaging().onNotificationOpenedApp((remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
+      if (remoteMessage?.data?.type === 'sensitive_content' && remoteMessage?.data?.sensitiveImageId) {
+        const imageId = Number(remoteMessage.data.sensitiveImageId);
+        navigate('ImageDetail', { imageId });
+      }
+    });
+
+    return unsubscribe;
+  }, [isAuthenticated]);
 
   // Hide splash screen when app state is determined and ready to render
   // useEffect(() => {
@@ -223,8 +246,8 @@ const AppContent: React.FC = () => {
       <SafeAreaProvider>
         <NavigationContainer ref={navigationRef}>
           <StatusBar 
-            barStyle="light-content" // Always light for dark theme
-            backgroundColor={Theme.screen} // Dark background from theme
+            barStyle="dark-content" // Dark content for light theme
+            backgroundColor={Theme.screen} // White background from theme
           />
           {renderScreen()}
           

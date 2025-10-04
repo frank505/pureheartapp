@@ -472,7 +472,7 @@ const NewFastScreen = () => {
       <View style={styles.safeArea}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Icon name="close" size={24} color={Colors.white} />
+            <Icon name="close" size={24} color="#1a1a1a" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>New Fast</Text>
           <View style={styles.headerSpacer} />
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.white,
+    color: '#1a1a1a',
     textAlign: 'center',
     marginRight: 48,
   },
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
   backgroundColor: Colors.primary.main,
   },
   inactiveDot: {
-  backgroundColor: Colors.background.tertiary,
+  backgroundColor: '#E5E5E5',
   },
   content: {
     flex: 1,
@@ -551,30 +551,30 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: Colors.white,
+    color: '#1a1a1a',
     marginTop: 20,
     marginBottom: 12,
   },
   description: {
     fontSize: 16,
-    color: Colors.white,
+    color: '#4a4a4a',
     marginBottom: 12,
     lineHeight: 24,
   },
   windowHint: {
     fontSize: 14,
-    color: '#93acc8',
+    color: '#6a6a6a',
     marginBottom: 8,
   },
   inputContainer: {
     marginVertical: 12,
   },
   input: {
-    backgroundColor: '#1a2532',
-    borderWidth: 1,
-    borderColor: '#344b65',
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1.5,
+    borderColor: '#E5E5E5',
     borderRadius: 8,
-    color: Colors.white,
+    color: '#1a1a1a',
     paddingHorizontal: 15,
     height: 56,
     fontSize: 16,
@@ -586,10 +586,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   chip: {
-    backgroundColor: '#243447',
+    backgroundColor: '#E8F0FE',
   },
   chipText: {
-    color: Colors.white,
+    color: '#1a1a1a',
   },
   textArea: {
     height: 144,
@@ -606,7 +606,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
-    backgroundColor: '#243447',
+    backgroundColor: '#F8F9FA',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -615,12 +615,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reminderTitle: {
-    color: Colors.white,
+    color: '#1a1a1a',
     fontSize: 16,
     fontWeight: '500',
   },
   reminderDescription: {
-    color: '#93acc8',
+    color: '#6a6a6a',
     fontSize: 14,
   },
   prayerItem: {
@@ -633,14 +633,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: '#243447',
+    backgroundColor: '#F8F9FA',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
   prayerText: {
     flex: 1,
-    color: Colors.white,
+    color: '#1a1a1a',
     fontSize: 16,
   },
   errorText: {
@@ -665,34 +665,34 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   backButton: {
-    height: 40,
+    height: 48,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background.secondary,
-    borderWidth: 1,
-    borderColor: Colors.border?.primary || '#344b65',
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1.5,
+    borderColor: '#E5E5E5',
     flexGrow: 1,
   },
   backButtonText: {
-    color: Colors.text.primary,
-    fontSize: 14,
-    fontWeight: 'bold',
+    color: '#1a1a1a',
+    fontSize: 16,
+    fontWeight: '600',
   },
   nextButton: {
-    height: 40,
+    height: 48,
     backgroundColor: Colors.primary.main,
-    borderRadius: 8,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
     flexGrow: 1,
   },
   nextButtonText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   nextButtonDisabled: {
     opacity: 0.6,

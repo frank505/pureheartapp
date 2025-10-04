@@ -40,6 +40,30 @@ import WorshipScreen from '../screens/WorshipScreen';
 import PanicHistoryScreen from '../screens/PanicHistoryScreen';
 import PanicDetailScreen from '../screens/PanicDetailScreen';
 
+// Screenshots & Reports screens
+import ScreenshotsMainScreen from '../screens/ScreenshotsMainScreen';
+import SensitiveImagesScreen from '../screens/SensitiveImagesScreen';
+import ImageDetailScreen from '../screens/ImageDetailScreen';
+
+// Action Commitments screens
+import {
+  ChooseCommitmentTypeScreen,
+  BrowseActionsScreen,
+  ActionDetailsScreen,
+  SetTargetDateScreen,
+  ReviewCommitmentScreen,
+  CommitmentSuccessScreen,
+  ActiveCommitmentDashboardScreen,
+  ActionPendingScreen,
+  UploadProofScreen,
+  ProofSubmittedScreen,
+  PartnerVerificationScreen,
+  DeadlineMissedScreen,
+  CreateCustomActionScreen,
+  SetFinancialAmountScreen,
+  SetHybridCommitmentScreen
+} from '../screens/commitments';
+
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -129,6 +153,28 @@ const RootNavigator = () => {
           animation: 'slide_from_right'
         }} 
       />
+
+      {/* Screenshots & Reports screens */}
+      <Stack.Screen name="ScreenshotsMain" component={ScreenshotsMainScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="SensitiveImages" component={SensitiveImagesScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ImageDetail" component={ImageDetailScreen} options={{ headerShown: false }} />
+
+      {/* Action Commitments screens */}
+      <Stack.Screen name="ChooseCommitmentType" component={ChooseCommitmentTypeScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="BrowseActions" component={BrowseActionsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ActionDetails" component={ActionDetailsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="SetTargetDate" component={SetTargetDateScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ReviewCommitment" component={ReviewCommitmentScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="CommitmentSuccess" component={CommitmentSuccessScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ActiveCommitmentDashboard" component={ActiveCommitmentDashboardScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ActionPending" component={ActionPendingScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="UploadProof" component={UploadProofScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ProofSubmitted" component={ProofSubmittedScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="PartnerVerification" component={PartnerVerificationScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="DeadlineMissed" component={DeadlineMissedScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="CreateCustomAction" component={CreateCustomActionScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="SetFinancialAmount" component={SetFinancialAmountScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="SetHybridCommitment" component={SetHybridCommitmentScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 };

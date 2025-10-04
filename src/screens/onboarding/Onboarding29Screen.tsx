@@ -171,6 +171,9 @@ const Onboarding29Screen: React.FC<Props> = ({ navigation, route }) => {
           const groupId = String(remoteMessage.data.groupId);
           const groupName = remoteMessage.data.groupName ? String(remoteMessage.data.groupName) : undefined;
           setTimeout(() => navigate('GroupChat', { groupId, groupName }), 300);
+        } else if (remoteMessage?.data?.type === 'sensitive_content' && remoteMessage?.data?.sensitiveImageId) {
+          const imageId = Number(remoteMessage.data.sensitiveImageId);
+          setTimeout(() => navigate('ImageDetail', { imageId }), 300);
         }
       });
 
@@ -179,6 +182,9 @@ const Onboarding29Screen: React.FC<Props> = ({ navigation, route }) => {
           const groupId = String(remoteMessage.data.groupId);
           const groupName = remoteMessage.data.groupName ? String(remoteMessage.data.groupName) : undefined;
           navigate('GroupChat', { groupId, groupName });
+        } else if (remoteMessage?.data?.type === 'sensitive_content' && remoteMessage?.data?.sensitiveImageId) {
+          const imageId = Number(remoteMessage.data.sensitiveImageId);
+          navigate('ImageDetail', { imageId });
         }
       });
     }
@@ -253,7 +259,8 @@ const Onboarding29Screen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={styles.verseReference}>- Proverbs 27:17</Text>
 
           <View style={styles.optionsContainer}>
-            <Text style={styles.sectionTitle}>Personalized Accountability Matching</Text>
+            <Text style={styles.sectionTitle}>Choose Your Path</Text>
+            <Text style={styles.trustEmphasis}>⚠️ Important: Only invite someone you trust with your life — someone who genuinely wants to see you grow and succeed.</Text>
             <View style={styles.optionsList}>
               <TouchableOpacity onPress={handleInviteTrusted} style={selectedOption === 'trusted-person' ? [styles.optionCard, styles.selectedOptionCard] : styles.optionCard} activeOpacity={0.7}>
                 <OnboardingCard style={[styles.optionCardInner, selectedOption === 'trusted-person' && styles.selectedOptionCardInner] as any}>
@@ -262,8 +269,8 @@ const Onboarding29Screen: React.FC<Props> = ({ navigation, route }) => {
                       <Text style={styles.iconText}>👤</Text>
                     </View>
                     <View style={styles.optionTextContainer}>
-                      <Text style={selectedOption === 'trusted-person' ? [styles.optionTitle, styles.selectedOptionTitle] : styles.optionTitle}>Invite Someone You Trust</Text>
-                      <Text style={styles.optionDescription}>Guide on how they can support</Text>
+                      <Text style={selectedOption === 'trusted-person' ? [styles.optionTitle, styles.selectedOptionTitle] : styles.optionTitle}>Invite Someone You Trust 100%</Text>
+                      <Text style={styles.optionDescription}>They'll receive a guide on how to support you</Text>
                     </View>
                     {selectedOption === 'trusted-person' ? <Text style={styles.checkIcon}>✓</Text> : <Text style={styles.chevronIcon}>›</Text>}
                   </View>
@@ -278,24 +285,9 @@ const Onboarding29Screen: React.FC<Props> = ({ navigation, route }) => {
                     </View>
                     <View style={styles.optionTextContainer}>
                       <Text style={selectedOption === 'solo' ? [styles.optionTitle, styles.selectedOptionTitle] : styles.optionTitle}>Start Solo</Text>
-                      <Text style={styles.optionDescription}>Emergency support available</Text>
+                      <Text style={styles.optionDescription}>Emergency support available anytime</Text>
                     </View>
                     {selectedOption === 'solo' ? <Text style={styles.checkIcon}>✓</Text> : <Text style={styles.chevronIcon}>›</Text>}
-                  </View>
-                </OnboardingCard>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => pickOption('ai-accountability')} style={selectedOption === 'ai-accountability' ? [styles.optionCard, styles.selectedOptionCard] : styles.optionCard} activeOpacity={0.7}>
-                <OnboardingCard style={[styles.optionCardInner, selectedOption === 'ai-accountability' && styles.selectedOptionCardInner] as any}>
-                  <View style={styles.optionContent}>
-                    <View style={selectedOption === 'ai-accountability' ? [styles.iconContainer, styles.selectedIconContainer] : styles.iconContainer}>
-                      <Text style={styles.iconText}>🤖</Text>
-                    </View>
-                    <View style={styles.optionTextContainer}>
-                      <Text style={selectedOption === 'ai-accountability' ? [styles.optionTitle, styles.selectedOptionTitle] : styles.optionTitle}>AI Accountability Partner</Text>
-                      <Text style={styles.optionDescription}>24/7 intelligent support & guidance</Text>
-                    </View>
-                    {selectedOption === 'ai-accountability' ? <Text style={styles.checkIcon}>✓</Text> : <Text style={styles.chevronIcon}>›</Text>}
                   </View>
                 </OnboardingCard>
               </TouchableOpacity>
@@ -370,7 +362,8 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 16, color: Colors.text.secondary, textAlign: 'center', fontStyle: 'italic', marginBottom: 4 },
   verseReference: { fontSize: 14, color: Colors.text.secondary, textAlign: 'center', fontStyle: 'italic', marginBottom: 32 },
   optionsContainer: { marginBottom: 32 },
-  sectionTitle: { fontSize: 20, fontWeight: '700', color: Colors.text.primary, marginBottom: 16 },
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: Colors.text.primary, marginBottom: 12 },
+  trustEmphasis: { fontSize: 14, color: '#f5993d', textAlign: 'center', marginBottom: 20, lineHeight: 20, paddingHorizontal: 8, fontWeight: '600' },
   optionsList: { gap: 16 },
   optionCard: { transform: [{ scale: 1 }] },
   optionCardInner: { margin: 0, padding: 16 },

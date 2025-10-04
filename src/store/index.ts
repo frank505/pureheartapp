@@ -31,6 +31,7 @@ import recommendationsSlice from './slices/recommendationsSlice';
 import progressSlice from './slices/progressSlice';
 import subscriptionSlice from './slices/subscriptionSlice';
 import paywallSlice from './slices/paywallSlice';
+import commitmentsSlice from './slices/commitmentsSlice';
 
 /**
  * Redux Persist Configuration
@@ -44,7 +45,7 @@ const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
   // Whitelist: only persist these reducers
-  whitelist: ['user', 'app', 'onboarding', 'invitation', 'notifications', 'checkins', 'prayerRequests', 'victories', 'streaks', 'recommendations', 'subscription', 'paywall'],
+  whitelist: ['user', 'app', 'onboarding', 'invitation', 'notifications', 'checkins', 'prayerRequests', 'victories', 'streaks', 'recommendations', 'subscription', 'paywall', 'commitments'],
   // Blacklist: don't persist these reducers (posts will be fetched fresh)
   blacklist: ['posts'],
   version: 1,
@@ -71,6 +72,7 @@ const rootReducer = combineReducers({
   progress: progressSlice,
   subscription: subscriptionSlice,
   paywall: paywallSlice,
+  commitments: commitmentsSlice,
 });
 
 /**

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { ScreenHeader, Icon } from '../components';
 import { Colors } from '../constants';
@@ -56,7 +55,6 @@ const PanicHistoryScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.root}>
-      <LinearGradient colors={["#0f172a", "#1e293b", "#334155", "#475569", "#64748b"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
       <ScreenHeader title="Panic History" navigation={navigation} showBackButton />
       <View style={styles.tabs}>
         {[
@@ -74,7 +72,7 @@ const PanicHistoryScreen: React.FC = () => {
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator animating color={Colors.primary.main} />
-          <Text style={{ marginTop: 8, color: Colors.text.primary }}>Loading...</Text>
+          <Text style={{ marginTop: 8, color: '#1a1a1a' }}>Loading...</Text>
         </View>
       ) : (
         <FlatList
@@ -83,7 +81,7 @@ const PanicHistoryScreen: React.FC = () => {
           renderItem={renderItem}
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          ListEmptyComponent={<Text style={{ color: Colors.white, textAlign: 'center', marginTop: 24 }}>No panic history yet.</Text>}
+          ListEmptyComponent={<Text style={{ color: '#6a6a6a', textAlign: 'center', marginTop: 24 }}>No panic history yet.</Text>}
         />
       )}
     </SafeAreaView>
@@ -91,17 +89,39 @@ const PanicHistoryScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
-  tab: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  tabActive: { backgroundColor: 'rgba(255,255,255,0.15)' },
-  tabText: { color: Colors.text.secondary, fontWeight: '600' },
-  tabTextActive: { color: Colors.white },
-  card: { backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  cardTitle: { color: Colors.white, fontWeight: '700', marginLeft: 8 },
-  cardMeta: { color: Colors.text.secondary, marginLeft: 6, fontSize: 12 },
-  cardBody: { color: Colors.white, marginTop: 6 },
-  cardBodyMuted: { color: Colors.text.secondary, marginTop: 6 },
+  tab: { 
+    paddingVertical: 8, 
+    paddingHorizontal: 12, 
+    borderRadius: 16, 
+    borderWidth: 1.5, 
+    borderColor: '#E5E5E5',
+    backgroundColor: '#FFFFFF',
+  },
+  tabActive: { 
+    backgroundColor: Colors.primary.main,
+    borderColor: Colors.primary.main,
+  },
+  tabText: { color: '#6a6a6a', fontWeight: '600' },
+  tabTextActive: { color: '#FFFFFF' },
+  card: { 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 12, 
+    padding: 16, 
+    marginBottom: 12, 
+    borderWidth: 1.5, 
+    borderColor: '#E5E5E5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardTitle: { color: '#1a1a1a', fontWeight: '700', marginLeft: 8 },
+  cardMeta: { color: '#6a6a6a', marginLeft: 6, fontSize: 12 },
+  cardBody: { color: '#1a1a1a', marginTop: 6, lineHeight: 20 },
+  cardBodyMuted: { color: '#6a6a6a', marginTop: 6, fontStyle: 'italic' },
   cardFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
 });
 
