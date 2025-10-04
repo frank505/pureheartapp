@@ -38,23 +38,8 @@ class ContentFilterManager(private val context: Context) {
         private const val FLAGGED_CONTENT_KEY = "flagged_content"
         private const val LAST_ACTIVITY_KEY = "last_activity"
         
-        private val DEFAULT_BLOCKED_DOMAINS = listOf(
-            // Adult content domains
-            "pornhub.com", "xvideos.com", "xnxx.com", "redtube.com", "youporn.com",
-            "tube8.com", "spankbang.com", "chaturbate.com", "cam4.com", "livejasmin.com",
-            "stripchat.com", "xhamster.com", "beeg.com", "sex.com", "xxx.com",
-            "porn.com", "adult.com", "playboy.com", "penthouse.com", "bangbros.com",
-            "brazzers.com", "realitykings.com", "naughtyamerica.com", "mofos.com",
-            "digitalplayground.com", "twistys.com", "evilangel.com", "kink.com",
-            
-            // Gambling domains
-            "bet365.com", "pokerstars.com", "888casino.com", "williamhill.com",
-            "ladbrokes.com", "betfair.com", "paddy-power.com", "coral.co.uk",
-            
-            // Dating/hookup domains  
-            "tinder.com", "bumble.com", "ashleymadison.com", "adultfriendfinder.com",
-            "match.com", "eharmony.com", "plenty-of-fish.com", "okcupid.com"
-        )
+        private val DEFAULT_BLOCKED_DOMAINS = BlockedContent.domains
+        private val DEFAULT_BLOCKED_URLS = BlockedContent.urls
         
         private val SOCIAL_MEDIA_PACKAGES = listOf(
             "com.instagram.android",
@@ -493,9 +478,34 @@ class ContentFilterManager(private val context: Context) {
         if (!isFilterEnabled()) return false
         
         val blockedDomains = getBlockedDomains()
-        val isBlocked = blockedDomains.any { domain ->
-            url.lowercase().contains(domain.lowercase())
+        val blockedUrls = DEFAULT_BLOCKED_URLS
+        val urlLowercase = url.lowercase()
+        
+        // Special handling for Reddit - only block specific subreddits, not the main site
+        if (urlLowercase.contains("reddit.com")) {
+            // Only block if it's a specific subreddit URL that's in our blocked list
+            val isBlockedRedditSubreddit = blockedUrls.any { blockedUrl ->
+                urlLowercase.contains(blockedUrl.lowercase()) && 
+                blockedUrl.lowercase().contains("reddit.com/r/")
+            }
+            
+            if (isBlockedRedditSubreddit) {
+                accountabilityLogger.logDomainBlock(url, "Reddit subreddit blocked by filter")
+            }
+            
+            return isBlockedRedditSubreddit
         }
+        
+        // Check against both URLs and domains for comprehensive blocking
+        val isBlockedByUrl = blockedUrls.any { blockedUrl ->
+            urlLowercase.contains(blockedUrl.lowercase())
+        }
+        
+        val isBlockedByDomain = blockedDomains.any { domain ->
+            urlLowercase.contains(domain.lowercase())
+        }
+        
+        val isBlocked = isBlockedByUrl || isBlockedByDomain
         
         if (isBlocked) {
             // Log the blocked domain

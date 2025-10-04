@@ -10,11 +10,11 @@ interface FractalTreeProps {
 const { width } = Dimensions.get('window');
 const INITIAL_LENGTH = 120; // Increased initial length
 const ANGLE = Math.PI / 5; // 36 degrees
-const BARK_COLOR = '#795548'; // Rich brown for trunk and branches
-const BARK_HIGHLIGHT = '#8D6E63'; // Lighter brown for highlights
-const LEAF_COLOR = '#2E7D32'; // Rich forest green for leaves
-const LEAF_DARK = '#1B5E20'; // Darker green for veins and outlines
-const LEAF_HIGHLIGHT = '#43A047'; // Lighter green for highlights
+const BARK_COLOR = '#5D4037'; // Darker, more visible brown for trunk and branches
+const BARK_HIGHLIGHT = '#6D4C41'; // Darker brown for highlights
+const LEAF_COLOR = '#1B5E20'; // Darker, more visible green for leaves
+const LEAF_DARK = '#0D4A14'; // Even darker green for veins and outlines
+const LEAF_HIGHLIGHT = '#2E7D32'; // Medium green for highlights
 
 interface Branch {
   start: [number, number];

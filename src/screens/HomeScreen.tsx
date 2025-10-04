@@ -389,7 +389,7 @@ const HomeScreen: React.FC = () => {
           onPress: async () => {
             try {
               await dispatch(
-                createCheckIn({ mood: 0.25, note: 'I struggled today and relapsed.', visibility: 'private', status: 'relapse' } as any)
+                createCheckIn({ mood: 0.25, note: 'I struggled today and relapsed.', visibility: 'private', status: 'relapse', isAutomatic: false } as any)
               ).unwrap();
               try { await AsyncStorage.removeItem('ph_milestones_celebrated'); } catch {}
               Alert.alert('Streak Reset', 'Your relapse has been recorded and your streak has been reset to 0. Tomorrow is a fresh start.');
@@ -477,13 +477,6 @@ const HomeScreen: React.FC = () => {
 
   return (
   <SafeAreaView style={styles.root}>
-      <LinearGradient
-        colors={['#0f172a', '#1e293b', '#334155', '#475569', '#64748b']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-    
       {/* Fixed Screen Header (outside scroll) */}
       <ScreenHeader title="Home" navigation={navigation} showBackButton={false} />
 
@@ -512,10 +505,11 @@ const HomeScreen: React.FC = () => {
                   : mark === '✓'
                   ? styles.dayCompleted
                   : styles.dayInactive;
+              const symbolColor = mark === '-' ? Colors.text.primary : Colors.white;
               return (
                 <View key={String(date)} style={styles.dayItem}>
                   <View style={[styles.dayCircle, circleStyle]}>
-                    <Text style={styles.daySymbol}>{mark}</Text>
+                    <Text style={[styles.daySymbol, { color: symbolColor }]}>{mark}</Text>
                   </View>
                   <Text style={styles.dayLabel}>{label}</Text>
                   <Text style={styles.dateLabel}>{dayNum}</Text>
@@ -566,7 +560,7 @@ const HomeScreen: React.FC = () => {
             return (
               <TouchableOpacity key={b.label} style={[styles.actionBtn, active && styles.actionBtnActive]} onPress={b.onPress}>
                 <View style={[styles.btnIcon, active && styles.btnIconActive]}>
-                  <TabIcon name={b.icon} focused={active} color={Colors.white} />
+                  <TabIcon name={b.icon} focused={active} color={Colors.text.primary} />
                 </View>
                 <Text style={styles.btnLabel}>{b.label}</Text>
               </TouchableOpacity>
@@ -649,8 +643,15 @@ const HomeScreen: React.FC = () => {
             }
             navigation.navigate('Settings' as any);
           }}>
-            <Text style={styles.blockerText}>Visit Content Blocker ➤</Text>
-            <View style={styles.blockerIcon}><Text style={styles.blockerBolt}>⚡</Text></View>
+            <View style={styles.blockerContent}>
+              <Text style={styles.blockerText}>Manage Content Filter</Text>
+              <Text style={styles.blockerStatus}>
+                {contentFilterOn ? '🟢 Active' : '🔴 Inactive'}
+              </Text>
+            </View>
+            <View style={styles.blockerIcon}>
+              <Text style={styles.blockerBolt}>⚡</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -793,10 +794,10 @@ const HomeScreen: React.FC = () => {
   {/* Tap in Modal */}
       <Modal visible={checkinVisible} animationType="slide" transparent={false} onRequestClose={() => setCheckinVisible(false)}>
         <SafeAreaView style={styles.fullscreenModalRoot}>
-          <LinearGradient colors={['#0f172a', '#1e293b']} style={styles.fullscreenModalHeader}>
+          <View style={[styles.fullscreenModalHeader, { paddingTop: Math.max(14, insets.top + 10) }]}>
             <Text style={styles.modalTitle}>Today’s Tap in</Text>
             <Text style={styles.modalSubtitle}>Record how you feel and choose visibility.</Text>
-          </LinearGradient>
+          </View>
 
           <ScrollView contentContainerStyle={styles.fullscreenModalBody} showsVerticalScrollIndicator={false}>
             <Text style={styles.modalSectionTitle}>How are you feeling?</Text>
@@ -881,7 +882,7 @@ const HomeScreen: React.FC = () => {
               onPress={async () => {
                 try {
                   setCreating(true);
-                  const payload: any = { mood: Math.max(0, Math.min(1, moodValue)), note: note?.trim() || undefined, status: 'victory' };
+                  const payload: any = { mood: Math.max(0, Math.min(1, moodValue)), note: note?.trim() || undefined, status: 'victory', isAutomatic: false };
                   if (visibilityOption === 'private') {
                     payload.visibility = 'private';
                   } else if (visibilityOption === 'group') {
@@ -917,7 +918,7 @@ const HomeScreen: React.FC = () => {
                 }
               }}
             >
-              <Text style={styles.modalBtnText}>Save Tap in</Text>
+              <Text style={styles.modalBtnTextPrimary}>Save Tap in</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -997,7 +998,7 @@ const HomeScreen: React.FC = () => {
           </Animated.View>
           <View style={styles.modalActions}>
             <TouchableOpacity style={[styles.modalBtn, styles.modalPrimary]} onPress={() => setReflectionsVisible(false)}>
-              <Text style={styles.modalBtnText}>Done</Text>
+              <Text style={styles.modalBtnTextPrimary}>Done</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -1054,7 +1055,7 @@ const HomeScreen: React.FC = () => {
                   }
                 }}
               >
-                <Text style={styles.modalBtnText}>Get Help</Text>
+                <Text style={styles.modalBtnTextPrimary}>Get Help</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1104,10 +1105,10 @@ const styles = StyleSheet.create({
   dayCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   dayCompleted: { backgroundColor: Colors.secondary.main, borderWidth: 2, borderColor: Colors.secondary.main },
   dayFailed: { backgroundColor: Colors.error.main, borderWidth: 2, borderColor: Colors.error.main },
-  dayInactive: { backgroundColor: ColorUtils.withOpacity(Colors.white, 0.1), borderWidth: 2, borderColor: ColorUtils.withOpacity(Colors.white, 0.3) },
+  dayInactive: { backgroundColor: Colors.background.secondary, borderWidth: 2, borderColor: Colors.border.primary },
   daySymbol: { color: Colors.white, fontWeight: '700' },
-  dayLabel: { marginTop: 6, color: ColorUtils.withOpacity(Colors.white, 0.8), fontSize: 11 },
-  dateLabel: { marginTop: 2, color: ColorUtils.withOpacity(Colors.white, 0.9), fontSize: 11, fontWeight: '600' },
+  dayLabel: { marginTop: 6, color: Colors.text.secondary, fontSize: 11 },
+  dateLabel: { marginTop: 2, color: Colors.text.primary, fontSize: 11, fontWeight: '600' },
 
   orbOuter: { alignItems: 'center', marginTop: 10, marginBottom: 24 },
   orbOuterGradient: { width: 200, height: 200, borderRadius: 100, padding: 8, shadowColor: Colors.secondary.main, shadowOpacity: 0.3, shadowRadius: 12 },
@@ -1127,37 +1128,37 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: Colors.primary.main,
   },
-  scriptureRef: { color: Colors.white, fontWeight: '700', textAlign: 'center', marginBottom: 6 },
+  scriptureRef: { color: Colors.text.primary, fontWeight: '700', textAlign: 'center', marginBottom: 6 },
   scriptureBody: { color: Colors.primary.main, textAlign: 'center', lineHeight: 20, fontStyle: 'italic', fontWeight: '500' },
-  scriptureFocus: { marginTop: 8, color: ColorUtils.withOpacity(Colors.white, 0.85), fontStyle: 'italic' },
+  scriptureFocus: { marginTop: 8, color: Colors.text.secondary, fontStyle: 'italic' },
 
   progressText: { alignItems: 'center', marginVertical: 24 },
-  progressLabel: { fontSize: 18, color: ColorUtils.withOpacity(Colors.white, 0.8), marginBottom: 8 },
-  daysCount: { fontSize: 48, fontWeight: '900', color: Colors.white, marginBottom: 10 },
+  progressLabel: { fontSize: 18, color: Colors.text.secondary, marginBottom: 8 },
+  daysCount: { fontSize: 48, fontWeight: '900', color: Colors.text.primary, marginBottom: 10 },
   timeCounter: { 
-    backgroundColor: ColorUtils.withOpacity(Colors.white, 0.12), 
+    backgroundColor: Colors.background.secondary, 
     borderWidth: 1, 
-    borderColor: ColorUtils.withOpacity(Colors.white, 0.35), 
+    borderColor: Colors.border.primary, 
     borderRadius: 28, 
     paddingVertical: 12, 
     paddingHorizontal: 22, 
     fontSize: 20, 
     fontWeight: '700', 
     letterSpacing: 0.5,
-    color: Colors.white 
+    color: Colors.text.primary 
   },
 
   actionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 24 },
   actionBtn: { alignItems: 'center' },
   actionBtnActive: { },
-  btnIcon: { width: 50, height: 50, borderRadius: 25, borderWidth: 2, borderColor: ColorUtils.withOpacity(Colors.white, 0.3), alignItems: 'center', justifyContent: 'center' },
+  btnIcon: { width: 50, height: 50, borderRadius: 25, borderWidth: 2, borderColor: Colors.border.primary, alignItems: 'center', justifyContent: 'center' },
   btnIconActive: { borderColor: Colors.secondary.main, backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.1) },
-  btnLabel: { fontSize: 12, color: Colors.white, marginTop: 8 },
+  btnLabel: { fontSize: 12, color: Colors.text.primary, marginTop: 8 },
 
   progressSection: { marginVertical: 16 },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  progressHeaderText: { color: Colors.white },
-  progressBar: { height: 6, backgroundColor: ColorUtils.withOpacity(Colors.white, 0.1), borderRadius: 3, overflow: 'hidden' },
+  progressHeaderText: { color: Colors.text.primary },
+  progressBar: { height: 6, backgroundColor: Colors.background.secondary, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', width: '6%', backgroundColor: Colors.secondary.main, borderRadius: 3 },
 
   panicContainer: { position: 'absolute', left: 20, right: 20, bottom: 0 },
@@ -1165,24 +1166,24 @@ const styles = StyleSheet.create({
   panicText: { color: Colors.white, fontSize: 16, fontWeight: '600' },
 
   motivational: { backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.1), borderWidth: 1, borderColor: ColorUtils.withOpacity(Colors.secondary.main, 0.2), borderRadius: 20, padding: 20, marginVertical: 20 },
-  motivationalText: { color: Colors.white, lineHeight: 22, fontSize: 15, textAlign: 'center' },
+  motivationalText: { color: Colors.text.primary, lineHeight: 22, fontSize: 15, textAlign: 'center' },
 
   analytics: { marginVertical: 20 },
-  analyticsTitle: { color: ColorUtils.withOpacity(Colors.white, 0.9), fontWeight: '600', fontSize: 18, marginBottom: 12 },
-  chartCard: { backgroundColor: ColorUtils.withOpacity('#0f172a', 0.3), borderWidth: 1, borderColor: ColorUtils.withOpacity(Colors.secondary.main, 0.2), borderRadius: 20, padding: 20, height: 120, alignSelf: 'center', overflow: 'hidden' },
+  analyticsTitle: { color: Colors.text.primary, fontWeight: '600', fontSize: 18, marginBottom: 12 },
+  chartCard: { backgroundColor: Colors.background.secondary, borderWidth: 1, borderColor: Colors.border.primary, borderRadius: 20, padding: 20, height: 120, alignSelf: 'center', overflow: 'hidden' },
 
   challengeRow: { flexDirection: 'row', gap: 15 as any, marginVertical: 20 },
-  challengeCard: { flex: 1, backgroundColor: ColorUtils.withOpacity('#ffffff', 0.08), borderRadius: 20, padding: 20, borderWidth: 1, borderColor: ColorUtils.withOpacity('#ffffff', 0.1) },
-  challengePurple: { backgroundColor: ColorUtils.withOpacity('#a855f7', 0.2), borderColor: ColorUtils.withOpacity('#a855f7', 0.3) },
-  challengeGreen: { backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.2), borderColor: ColorUtils.withOpacity(Colors.secondary.main, 0.3) },
-  challengeTitle: { color: Colors.white, fontWeight: '600', fontSize: 14 },
-  challengeNumber: { color: Colors.white, fontWeight: '900', fontSize: 40, marginTop: 6 },
+  challengeCard: { flex: 1, backgroundColor: Colors.background.secondary, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: Colors.border.primary },
+  challengePurple: { backgroundColor: ColorUtils.withOpacity('#a855f7', 0.1), borderColor: ColorUtils.withOpacity('#a855f7', 0.3) },
+  challengeGreen: { backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.1), borderColor: ColorUtils.withOpacity(Colors.secondary.main, 0.3) },
+  challengeTitle: { color: Colors.text.primary, fontWeight: '600', fontSize: 14 },
+  challengeNumber: { color: Colors.text.primary, fontWeight: '900', fontSize: 40, marginTop: 6 },
   treeBox: { marginTop: 10, height: 80, borderRadius: 10, backgroundColor: Colors.secondary.dark },
 
-  therapist: { flexDirection: 'row', alignItems: 'center', gap: 12 as any, backgroundColor: ColorUtils.withOpacity('#0f172a', 0.4), borderWidth: 1, borderColor: ColorUtils.withOpacity(Colors.secondary.main, 0.2), borderRadius: 20, padding: 20, marginVertical: 20 },
+  therapist: { flexDirection: 'row', alignItems: 'center', gap: 12 as any, backgroundColor: Colors.background.secondary, borderWidth: 1, borderColor: Colors.border.primary, borderRadius: 20, padding: 20, marginVertical: 20 },
   therapistInfo: { flex: 1 },
-  therapistTitle: { color: Colors.white, fontWeight: '600', fontSize: 18, marginBottom: 4 },
-  therapistDesc: { color: ColorUtils.withOpacity(Colors.white, 0.8), fontSize: 14, lineHeight: 20 },
+  therapistTitle: { color: Colors.text.primary, fontWeight: '600', fontSize: 18, marginBottom: 4 },
+  therapistDesc: { color: Colors.text.secondary, fontSize: 14, lineHeight: 20 },
   therapistAvatar: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.secondary.main },
   therapistEmoji: { fontSize: 28 },
 
@@ -1197,82 +1198,85 @@ const styles = StyleSheet.create({
 
   blocker: { marginVertical: 20 },
   blockerHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 as any, marginBottom: 10 },
-  blockerTitle: { color: Colors.white, fontWeight: '600', fontSize: 18 },
-  blockerSubtitle: { color: ColorUtils.withOpacity(Colors.white, 0.7), fontSize: 14, marginBottom: 15 },
-  blockerCard: { backgroundColor: ColorUtils.withOpacity('#0f172a', 0.4), borderWidth: 1, borderColor: ColorUtils.withOpacity('#f97316', 0.3), borderRadius: 20, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  blockerText: { color: Colors.white, fontWeight: '600', fontSize: 16 },
+  blockerTitle: { color: Colors.text.primary, fontWeight: '600', fontSize: 18 },
+  blockerSubtitle: { color: Colors.text.secondary, fontSize: 14, marginBottom: 15 },
+  blockerCard: { backgroundColor: Colors.background.secondary, borderWidth: 1, borderColor: ColorUtils.withOpacity('#f97316', 0.6), borderRadius: 20, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  blockerContent: { flex: 1 },
+  blockerText: { color: Colors.text.primary, fontWeight: '600', fontSize: 16 },
+  blockerStatus: { color: Colors.text.secondary, fontSize: 14, marginTop: 4 },
   blockerIcon: { width: 40, height: 40, backgroundColor: '#f97316', borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   blockerBolt: { fontSize: 18 },
 
   quote: { marginVertical: 20 },
   quoteHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 as any, marginBottom: 10 },
-  quoteTitle: { color: Colors.white, fontWeight: '600', fontSize: 18 },
-  quoteCard: { backgroundColor: ColorUtils.withOpacity('#0f172a', 0.4), borderWidth: 1, borderColor: ColorUtils.withOpacity(Colors.secondary.main, 0.3), borderRadius: 20, padding: 20, alignItems: 'center' },
+  quoteTitle: { color: Colors.text.primary, fontWeight: '600', fontSize: 18 },
+  quoteCard: { backgroundColor: Colors.background.secondary, borderWidth: 1, borderColor: Colors.border.primary, borderRadius: 20, padding: 20, alignItems: 'center' },
   quoteIcon: { fontSize: 22, marginBottom: 8 },
-  quoteText: { color: Colors.white, fontStyle: 'italic', textAlign: 'center' },
-  quoteMeta: { marginTop: 8, color: ColorUtils.withOpacity(Colors.white, 0.85) },
+  quoteText: { color: Colors.text.primary, fontStyle: 'italic', textAlign: 'center' },
+  quoteMeta: { marginTop: 8, color: Colors.text.secondary },
 
   todo: { marginVertical: 20 },
   todoHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 as any, marginBottom: 12 },
-  todoTitle: { color: Colors.white, fontWeight: '600', fontSize: 18 },
-  todoItem: { backgroundColor: ColorUtils.withOpacity('#0f172a', 0.4), borderWidth: 1, borderColor: ColorUtils.withOpacity('#ffffff', 0.1), borderRadius: 15, padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  todoItemTitle: { color: Colors.white, fontWeight: '600', fontSize: 16, marginBottom: 4 },
-  todoItemDesc: { color: ColorUtils.withOpacity(Colors.white, 0.7), fontSize: 14 },
-  toggle: { width: 50, height: 28, backgroundColor: ColorUtils.withOpacity(Colors.white, 0.2), borderRadius: 14, borderWidth: 1, borderColor: ColorUtils.withOpacity(Colors.white, 0.3) },
-  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: ColorUtils.withOpacity(Colors.white, 0.35), alignItems: 'center', justifyContent: 'center' },
-  checkboxOn: { borderColor: Colors.secondary.main, backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.25) },
+  todoTitle: { color: Colors.text.primary, fontWeight: '600', fontSize: 18 },
+  todoItem: { backgroundColor: Colors.background.secondary, borderWidth: 1, borderColor: Colors.border.primary, borderRadius: 15, padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  todoItemTitle: { color: Colors.text.primary, fontWeight: '600', fontSize: 16, marginBottom: 4 },
+  todoItemDesc: { color: Colors.text.secondary, fontSize: 14 },
+  toggle: { width: 50, height: 28, backgroundColor: Colors.background.secondary, borderRadius: 14, borderWidth: 1, borderColor: Colors.border.primary },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: Colors.border.primary, alignItems: 'center', justifyContent: 'center' },
+  checkboxOn: { borderColor: Colors.secondary.main, backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.1) },
   checkboxMark: { color: Colors.white, fontWeight: '900' },
 
   newSession: { backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.2), borderWidth: 1, borderColor: ColorUtils.withOpacity(Colors.secondary.main, 0.3), borderRadius: 15, padding: 16, alignItems: 'center', marginTop: 10 },
-  newSessionText: { color: Colors.white, fontWeight: '600', fontSize: 16 },
+  newSessionText: { color: Colors.text.primary, fontWeight: '600', fontSize: 16 },
 
   // Modal styles
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
-  modalCard: { width: '90%', borderRadius: 16, backgroundColor: ColorUtils.withOpacity('#0f172a', 0.95), borderWidth: 1, borderColor: ColorUtils.withOpacity(Colors.white, 0.1), overflow: 'hidden' },
-  modalHeader: { padding: 16, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: ColorUtils.withOpacity(Colors.white, 0.08) },
-  modalTitle: { color: Colors.white, fontWeight: '700', fontSize: 18 },
-  modalSubtitle: { color: ColorUtils.withOpacity(Colors.white, 0.8), marginTop: 4, fontSize: 13, textAlign: 'center' },
+  modalCard: { width: '90%', borderRadius: 16, backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border.primary, overflow: 'hidden' },
+  modalHeader: { padding: 16, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Colors.border.secondary },
+  modalTitle: { color: Colors.text.primary, fontWeight: '700', fontSize: 18 },
+  modalSubtitle: { color: Colors.text.secondary, marginTop: 4, fontSize: 13, textAlign: 'center' },
   modalBody: { padding: 16 },
-  modalLabel: { color: Colors.white, fontWeight: '600', marginBottom: 8 },
-  modalInput: { minHeight: 80, color: Colors.white, borderRadius: 12, borderWidth: 1, borderColor: ColorUtils.withOpacity(Colors.white, 0.2), padding: 12, backgroundColor: ColorUtils.withOpacity('#0f172a', 0.4) },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 as any, padding: 12, borderTopWidth: 1, borderTopColor: ColorUtils.withOpacity(Colors.white, 0.08) },
-  modalBtn: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1 },
-  modalCancel: { borderColor: ColorUtils.withOpacity(Colors.white, 0.25) },
+  modalLabel: { color: Colors.text.primary, fontWeight: '600', marginBottom: 8 },
+  modalInput: { minHeight: 80, color: Colors.text.primary, borderRadius: 12, borderWidth: 1, borderColor: Colors.border.primary, padding: 12, backgroundColor: Colors.background.secondary },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 as any, padding: 16, marginHorizontal: 8, borderTopWidth: 1, borderTopColor: Colors.border.secondary },
+  modalBtn: { flex: 1, maxWidth: 120, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  modalCancel: { backgroundColor: Colors.background.secondary, borderColor: Colors.border.primary },
   modalPrimary: { backgroundColor: Colors.secondary.main, borderColor: Colors.secondary.main },
-  modalBtnText: { color: Colors.white, fontWeight: '700' },
+  modalBtnText: { color: Colors.text.primary, fontWeight: '700' },
+  modalBtnTextPrimary: { color: Colors.white, fontWeight: '700' },
 
   // Reflections modal
-  reflectionHeader: { padding: 16, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: ColorUtils.withOpacity(Colors.white, 0.08) },
-  reflectionBody: { padding: 24, alignItems: 'center', justifyContent: 'center', minHeight: 160, backgroundColor: ColorUtils.withOpacity('#0f172a', 0.2) },
-  reflectionText: { color: Colors.white, textAlign: 'center', fontSize: 16, lineHeight: 22, fontStyle: 'italic' },
+  reflectionHeader: { padding: 16, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: Colors.border.secondary },
+  reflectionBody: { padding: 24, alignItems: 'center', justifyContent: 'center', minHeight: 160, backgroundColor: Colors.background.secondary },
+  reflectionText: { color: Colors.text.primary, textAlign: 'center', fontSize: 16, lineHeight: 22, fontStyle: 'italic' },
   reflectionsBgContainer: { ...StyleSheet.absoluteFillObject },
   orb: { position: 'absolute', width: 160, height: 160, borderRadius: 80 },
   reflectionCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  reflectionTextBig: { color: Colors.white, textAlign: 'center', fontSize: 20, lineHeight: 28, fontWeight: '800' },
+  reflectionTextBig: { color: Colors.text.primary, textAlign: 'center', fontSize: 20, lineHeight: 28, fontWeight: '800' },
   dropContainer: { position: 'absolute', top: 0, width: 2, height: 140 },
   dropStreak: { width: 2, height: 140, borderRadius: 1 },
 
   // Fullscreen modal layout
-  fullscreenModalRoot: { flex: 1, backgroundColor: '#0f172a' },
-  fullscreenModalHeader: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: ColorUtils.withOpacity(Colors.white, 0.08) },
+  fullscreenModalRoot: { flex: 1, backgroundColor: Colors.white },
+  fullscreenModalHeader: { backgroundColor: Colors.white, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border.secondary },
   fullscreenModalBody: { padding: 16, paddingBottom: 24 },
-  modalSectionTitle: { color: Colors.white, fontWeight: '700', fontSize: 16, marginBottom: 8 },
+  modalSectionTitle: { color: Colors.text.primary, fontWeight: '700', fontSize: 16, marginBottom: 8 },
   moodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 as any },
-  moodChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: ColorUtils.withOpacity(Colors.white, 0.25), backgroundColor: ColorUtils.withOpacity('#0f172a', 0.3) },
-  moodChipActive: { backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.25), borderColor: Colors.secondary.main },
-  moodChipText: { color: Colors.white },
-  moodChipTextActive: { fontWeight: '700', color: Colors.white },
+  moodChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: Colors.border.primary, backgroundColor: Colors.background.secondary },
+  moodChipActive: { backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.1), borderColor: Colors.secondary.main },
+  moodChipText: { color: Colors.text.primary },
+  moodChipTextActive: { fontWeight: '700', color: Colors.text.primary },
   visibilityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 as any },
-  visChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: ColorUtils.withOpacity(Colors.white, 0.25), backgroundColor: ColorUtils.withOpacity('#0f172a', 0.3) },
-  visChipActive: { backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.25), borderColor: Colors.secondary.main },
-  visChipText: { color: Colors.white, fontSize: 12 },
-  visChipTextActive: { color: Colors.white, fontWeight: '700' },
+  visChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: Colors.border.primary, backgroundColor: Colors.background.secondary },
+  visChipActive: { backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.1), borderColor: Colors.secondary.main },
+  visChipText: { color: Colors.text.primary, fontSize: 12 },
+  visChipTextActive: { color: Colors.text.primary, fontWeight: '700' },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 as any, marginTop: 8 },
-  entityChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: ColorUtils.withOpacity(Colors.white, 0.25), backgroundColor: ColorUtils.withOpacity('#0f172a', 0.3) },
-  entityChipOn: { backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.25), borderColor: Colors.secondary.main },
-  entityChipText: { color: Colors.white },
-  entityChipTextOn: { color: Colors.white, fontWeight: '700' },
-  emptyText: { color: ColorUtils.withOpacity(Colors.white, 0.7), fontStyle: 'italic' },
+  entityChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: Colors.border.primary, backgroundColor: Colors.background.secondary },
+  entityChipOn: { backgroundColor: ColorUtils.withOpacity(Colors.secondary.main, 0.1), borderColor: Colors.secondary.main },
+  entityChipText: { color: Colors.text.primary },
+  entityChipTextOn: { color: Colors.text.primary, fontWeight: '700' },
+  emptyText: { color: Colors.text.secondary, fontStyle: 'italic' },
 });
 
 export default HomeScreen;

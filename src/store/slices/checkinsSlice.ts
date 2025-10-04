@@ -42,6 +42,7 @@ export const createCheckIn = createAsyncThunk(
       partnerIds?: Array<number | string>; 
       groupIds?: string[];
       status?: 'victory' | 'relapse';
+      isAutomatic?: boolean;
     },
     { rejectWithValue, dispatch }
   ) => {

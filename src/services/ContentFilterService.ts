@@ -1,4 +1,5 @@
 import { NativeModules, Platform } from 'react-native';
+import BlockedLinksManager from '../utils/BlockedLinksManager';
 
 const { ContentFilterManager } = NativeModules;
 
@@ -10,11 +11,24 @@ interface ContentFilterServiceInterface {
 
 class ContentFilterService implements ContentFilterServiceInterface {
   private isInitialized = false;
+  private blockedLinksManager = BlockedLinksManager.getInstance();
 
   constructor() {
     this.isInitialized = !!ContentFilterManager;
     if (!this.isInitialized) {
       console.warn('ContentFilterManager native module not available');
+    }
+    
+    // Initialize the blocked links manager
+    this.initializeBlockedLinks();
+  }
+
+  private async initializeBlockedLinks() {
+    try {
+      await this.blockedLinksManager.initialize();
+      console.log(`ContentFilterService: Loaded ${this.blockedLinksManager.getBlockedLinksCount()} blocked domains`);
+    } catch (error) {
+      console.error('Failed to initialize blocked links manager:', error);
     }
   }
 
@@ -33,29 +47,57 @@ class ContentFilterService implements ContentFilterServiceInterface {
   }
 
   public async isDomainBlocked(url: string): Promise<boolean> {
-    if (!this.isInitialized || !ContentFilterManager) {
-      return false;
-    }
-
     try {
-      const isBlocked = await ContentFilterManager.isDomainBlocked(url);
-      return isBlocked;
+      // First check using CSV data (always available)
+      const csvBlocked = this.blockedLinksManager.isUrlBlocked(url);
+      if (csvBlocked) {
+        return true;
+      }
+
+      // Then check using native module if available
+      if (this.isInitialized && ContentFilterManager) {
+        const nativeBlocked = await ContentFilterManager.isDomainBlocked(url);
+        return nativeBlocked;
+      }
+
+      return false;
     } catch (error) {
       console.error('Failed to check if domain is blocked:', error);
-      return false;
+      // Fallback to CSV check only
+      return this.blockedLinksManager.isUrlBlocked(url);
     }
   }
 
   public async getBlockedDomains(): Promise<string[]> {
-    if (!this.isInitialized || !ContentFilterManager) {
-      return [];
-    }
-
     try {
-      const domains = await ContentFilterManager.getBlockedDomains();
-      return domains || [];
+      // Start with CSV domains (always available)
+      const csvDomains = this.blockedLinksManager.getBlockedDomains();
+      
+      // Get native domains if available
+      if (this.isInitialized && ContentFilterManager) {
+        try {
+          const nativeDomains = await ContentFilterManager.getBlockedDomains();
+          // Combine and deduplicate domains
+          const allDomains = [...csvDomains, ...(nativeDomains || [])];
+          return Array.from(new Set(allDomains));
+        } catch (nativeError) {
+          console.warn('Failed to get native blocked domains, using CSV only:', nativeError);
+        }
+      }
+
+      return csvDomains;
     } catch (error) {
       console.error('Failed to get blocked domains:', error);
+      return [];
+    }
+  }
+
+  public async getDefaultBlockedDomains(): Promise<string[]> {
+    try {
+      // Return CSV domains as the default list
+      return this.blockedLinksManager.getBlockedDomains();
+    } catch (error) {
+      console.error('Failed to get default blocked domains:', error);
       return [];
     }
   }

@@ -42,7 +42,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLIconFile</key>
-			<string/>
+			<string></string>
 			<key>CFBundleURLName</key>
 			<string>GoogleSign-In</string>
 			<key>CFBundleURLSchemes</key>

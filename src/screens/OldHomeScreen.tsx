@@ -418,6 +418,7 @@ const OldHomeScreen: React.FC<OldHomeScreenProps> = ({ navigation }) => {
         mood: Math.max(0, Math.min(1, moodValue)),
         note: note?.trim() || undefined,
         status: 'victory', // Explicitly set status to victory for normal check-ins
+        isAutomatic: false, // Explicitly set to false for manual check-ins
       };
       
       if (visibilityOption === 'private') {

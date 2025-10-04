@@ -10,3 +10,6 @@ export type { ColorKeys, ThemeKeys, ComponentColorKeys } from './Colors';
 
 export { Icons, IconNames, IconSizes, DefaultIconProps } from './Icons';
 export type { IconName, IconLibrary, IconSize, IconConfig } from './Icons';
+
+export { StorageKeys } from './StorageKeys';
+export type { UserType } from './StorageKeys';

@@ -69,22 +69,8 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.root}>
-      {/* Background gradient */}
-      <LinearGradient
-        colors={["#0f172a", "#1e293b", "#334155", "#475569", "#64748b"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
-  {/* Stars removed */}
-
-  {/* Moon removed per design request */}
-
-  {/* Mountains removed */}
-
-  {/* Fixed Screen Header (outside scroll) */}
-  <ScreenHeader title="Library" navigation={navigation} showBackButton={false} />
+      {/* Fixed Screen Header (outside scroll) */}
+      <ScreenHeader title="Library" navigation={navigation} showBackButton={false} />
 
   <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
@@ -130,7 +116,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           </TouchableOpacity>
           <View style={styles.leaderboardList}>
             {leaders.length === 0 ? (
-              <Text style={{ color: '#fff', opacity: 0.8, paddingVertical: 10 }}>No streaks yet</Text>
+              <Text style={{ color: Colors.text.secondary, opacity: 0.8, paddingVertical: 10 }}>No streaks yet</Text>
             ) : (
               leaders.map((u, i) => (
                 <View key={`${u.username}-${i}`} style={[styles.leaderboardItem, i === leaders.length - 2 && { borderBottomWidth: 0 }]}> 
@@ -179,7 +165,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: Colors.background.primary },
   content: { paddingHorizontal: 20, paddingBottom: 120, paddingTop: 16, maxWidth: 420, alignSelf: 'center', width: '100%' },
 
   // Moon (removed)
@@ -188,15 +174,15 @@ const styles = StyleSheet.create({
 
   // Header
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, marginTop: 4 },
-  appTitle: { fontSize: 28, fontWeight: '800', color: '#ffffff' },
-  websiteLink: { fontSize: 16, color: 'rgba(255,255,255,0.9)' },
+  appTitle: { fontSize: 28, fontWeight: '800', color: Colors.text.primary },
+  websiteLink: { fontSize: 16, color: Colors.text.secondary },
 
   // Icon Grid
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 24 },
   iconItem: { width: '22%', alignItems: 'center', marginBottom: 16, position: 'relative' },
-  iconCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  iconCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: Colors.background.secondary, borderWidth: 1, borderColor: Colors.border.primary, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   iconEmoji: { fontSize: 22 },
-  iconText: { marginTop: 8, fontSize: 12, textAlign: 'center', color: '#ffffff', opacity: 0.9 },
+  iconText: { marginTop: 8, fontSize: 12, textAlign: 'center', color: Colors.text.primary, opacity: 0.9 },
   comingSoonBadge: { position: 'absolute', top: -6, alignSelf: 'center', backgroundColor: '#F59E0B', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, zIndex: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.25, shadowRadius: 2, elevation: 3 },
   comingSoonText: { fontSize: 9, fontWeight: '800', color: '#ffffff', letterSpacing: 0.6 },
 
@@ -204,27 +190,27 @@ const styles = StyleSheet.create({
   buttonGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 5 },
   featureButtonWrapper: { width: '48%', marginBottom: 14 },
   featureButton: { width: '100%', minHeight: 100, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  featureButtonText: { color: '#ffffff', fontWeight: '700', fontSize: 18 },
+  featureButtonText: { color: Colors.white, fontWeight: '700', fontSize: 18 },
 
   // Relaxation
-  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#ffffff', marginBottom: 6 },
-  sectionDescription: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginBottom: 16 },
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: Colors.text.primary, marginBottom: 6 },
+  sectionDescription: { fontSize: 14, color: Colors.text.secondary, marginBottom: 16 },
   relaxationGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  relaxationItem: { width: '48%', alignItems: 'center', gap: 12 as any, padding: 14, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 14, marginBottom: 14 },
-  relaxationIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
-  relaxationText: { color: '#ffffff', fontWeight: '700', textAlign: 'center' },
+  relaxationItem: { width: '48%', alignItems: 'center', gap: 12 as any, padding: 14, backgroundColor: Colors.background.secondary, borderWidth: 1, borderColor: Colors.border.primary, borderRadius: 14, marginBottom: 14 },
+  relaxationIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.background.tertiary, borderWidth: 1, borderColor: Colors.border.primary, alignItems: 'center', justifyContent: 'center' },
+  relaxationText: { color: Colors.text.primary, fontWeight: '700', textAlign: 'center' },
 
   // Leaderboard
   leaderboardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 12 },
-  leaderboardTitle: { fontSize: 20, fontWeight: '700', color: '#ffffff' },
-  leaderboardChevron: { fontSize: 20, color: 'rgba(255,255,255,0.9)' },
-  leaderboardList: { backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 8 },
-  leaderboardItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.15)' },
+  leaderboardTitle: { fontSize: 20, fontWeight: '700', color: Colors.text.primary },
+  leaderboardChevron: { fontSize: 20, color: Colors.text.secondary },
+  leaderboardList: { backgroundColor: Colors.background.secondary, borderWidth: 1, borderColor: Colors.border.primary, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 8 },
+  leaderboardItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border.primary },
   userInfo: { flexDirection: 'row', alignItems: 'center', gap: 10 as any },
   trophyIcon: { fontSize: 18 },
-  userName: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+  userName: { color: Colors.text.primary, fontSize: 16, fontWeight: '600' },
   userDays: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14 },
-  userDaysText: { color: '#ffffff', fontWeight: '800', fontSize: 12 },
+  userDaysText: { color: Colors.white, fontWeight: '800', fontSize: 12 },
   daysGold: { backgroundColor: '#D97706' },
   daysSilver: { backgroundColor: '#6B7280' },
 

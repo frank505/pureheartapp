@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 
 // Import our screen components
 import LibraryStack from './LibraryStack';
@@ -8,7 +9,13 @@ import AccountabilityNavigator from './AccountabilityNavigator';
 import FastingNavigator from './FastingNavigator';
 import HubScreen from '../screens/HubScreen';
 import SettingsTabScreen from '../screens/SettingsTabScreen';
-import WebViewBrowserScreen from '../screens/WebViewBrowserScreen';
+import TabbedWebViewBrowserScreen from '../screens/TabbedWebViewBrowserScreen';
+
+// Redux imports
+import { useAppSelector } from '../store/hooks';
+
+// Import user type utilities
+import { getUserType } from '../utils/userTypeUtils';
 
 // These imports will be removed as they'll be moved to root navigator
 // import InvitePartnerScreen from '../screens/InvitePartnerScreen';
@@ -69,6 +76,46 @@ const CustomTabIcon: React.FC<{ iconName: string; focused: boolean; color: strin
 );
 
 const TabNavigator: React.FC = () => {
+  // Get current user and onboarding data from Redux
+  const currentUser = useAppSelector(state => state.user.currentUser);
+  const onboardingUserType = useAppSelector(state => state.onboarding.userType);
+  
+  // Local state for user type from AsyncStorage (fallback)
+  const [asyncStorageUserType, setAsyncStorageUserType] = useState<'partner' | 'user' | null>(null);
+  
+  // Load user type from AsyncStorage on mount and when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadUserType = async () => {
+        const userType = await getUserType();
+        console.log('[TabNavigator] Loaded user type from AsyncStorage:', userType);
+        setAsyncStorageUserType(userType);
+      };
+      loadUserType();
+    }, [])
+  );
+  
+  // Also reload when Redux state changes (from toggle)
+  useEffect(() => {
+    const loadUserType = async () => {
+      const userType = await getUserType();
+      console.log('[TabNavigator] Redux changed, reloading from AsyncStorage:', userType);
+      setAsyncStorageUserType(userType);
+    };
+    loadUserType();
+  }, [currentUser?.userType, onboardingUserType]);
+  
+  // Determine if user is a partner/accountability buddy
+  // Priority: 1) AsyncStorage (most reliable), 2) currentUser.userType, 3) onboarding store
+  const isPartner = asyncStorageUserType === 'partner' || 
+                    (!asyncStorageUserType && currentUser?.userType === 'partner') ||
+                    (!asyncStorageUserType && !currentUser?.userType && onboardingUserType === 'partner');
+  
+  // Debug log to track isPartner changes
+  useEffect(() => {
+    console.log('[TabNavigator] isPartner changed to:', isPartner, '{ asyncStorage:', asyncStorageUserType, 'redux:', currentUser?.userType, 'onboarding:', onboardingUserType, '}');
+  }, [isPartner, asyncStorageUserType, currentUser?.userType, onboardingUserType]);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -123,73 +170,81 @@ const TabNavigator: React.FC = () => {
         }}
       /> */}
 
-      {/* Home Tab */}
-      <Tab.Screen
-        name="Home"
-        component={AccountabilityNavigator}
-        options={{
-          headerShown: false, // Custom header in AccountabilityScreen
-          tabBarIcon: ({ focused, color }) => (
-            <CustomTabIcon 
-              iconName={Icons.tabs.home.name} 
-              focused={focused} 
-              color={color} 
-            />
-          ),
-          tabBarLabel: 'Home',
-        }}
-      />
+      {/* Home Tab - Hidden for partners */}
+      {!isPartner && (
+        <Tab.Screen
+          name="Home"
+          component={AccountabilityNavigator}
+          options={{
+            headerShown: false, // Custom header in AccountabilityScreen
+            tabBarIcon: ({ focused, color }) => (
+              <CustomTabIcon 
+                iconName={Icons.tabs.home.name} 
+                focused={focused} 
+                color={color} 
+              />
+            ),
+            tabBarLabel: 'Home',
+          }}
+        />
+      )}
 
-       {/* Fasting Tab */}
-      <Tab.Screen
-        name="Fasting"
-        component={FastingNavigator}
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ focused, color }) => (
-            <CustomTabIcon 
-              iconName="hourglass-outline"
-              focused={focused} 
-              color={color} 
-            />
-          ),
-          tabBarLabel: 'Fasting',
-        }}
-      />
+       {/* Fasting Tab - Hidden for partners */}
+      {!isPartner && (
+        <Tab.Screen
+          name="Fasting"
+          component={FastingNavigator}
+          options={{
+            headerShown: false,
+            tabBarIcon: ({ focused, color }) => (
+              <CustomTabIcon 
+                iconName="hourglass-outline"
+                focused={focused} 
+                color={color} 
+              />
+            ),
+            tabBarLabel: 'Fasting',
+          }}
+        />
+      )}
 
-      {/* Browse Safely Tab */}
-      <Tab.Screen
-        name="BrowseSafely"
-        component={WebViewBrowserScreen}
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ focused, color }) => (
-            <CustomTabIcon 
-              iconName="shield-checkmark-outline"
-              focused={focused} 
-              color={color} 
-            />
-          ),
-          tabBarLabel: 'Browse Safely',
-        }}
-      />
+      {/* Browse Safely Tab - Hidden for partners */}
+      {!isPartner && (
+        <Tab.Screen
+          name="BrowseSafely"
+          component={TabbedWebViewBrowserScreen}
+          options={{
+            headerShown: false,
+            tabBarIcon: ({ focused, color }) => (
+              <CustomTabIcon 
+                iconName="shield-checkmark-outline"
+                focused={focused} 
+                color={color} 
+              />
+            ),
+            tabBarLabel: 'Browse Safely',
+          }}
+        />
+      )}
 
-      {/* Library Tab */}
-      <Tab.Screen
-        name="Library"
-        component={LibraryStack}
-        options={{ 
-          headerShown: false, // Custom header in LibraryScreen
-          tabBarIcon: ({ focused, color }) => (
-            <CustomTabIcon 
-              iconName={'library-outline'} 
-              focused={focused} 
-              color={color} 
-            />
-          ),
-          tabBarLabel: 'Library',
-        }}
-      />
+      {/* Library Tab - Hidden for partners */}
+      {!isPartner && (
+        <Tab.Screen
+          name="Library"
+          component={LibraryStack}
+          options={{ 
+            headerShown: false, // Custom header in LibraryScreen
+            tabBarIcon: ({ focused, color }) => (
+              <CustomTabIcon 
+                iconName={'library-outline'} 
+                focused={focused} 
+                color={color} 
+              />
+            ),
+            tabBarLabel: 'Library',
+          }}
+        />
+      )}
 
       
 

@@ -34,26 +34,10 @@ class ContentFilterAccessibilityService : AccessibilityService() {
         private const val NOTIFICATION_ID = 1002
         private const val CHANNEL_ID = "content_filter_service"
 
-        // URL patterns that indicate inappropriate content
-        private val INAPPROPRIATE_PATTERNS = listOf(
-            Pattern.compile(".*porn.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*xxx.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*sex.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*adult.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*nude.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*cam.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*tube.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*redtube.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*youporn.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*xvideos.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*xnxx.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*pornhub.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*xhamster.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*chaturbate.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*livejasmin.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*stripchat.*", Pattern.CASE_INSENSITIVE),
-            Pattern.compile(".*onlyfans.*", Pattern.CASE_INSENSITIVE)
-        )
+        // Generate patterns dynamically from comprehensive CSV data (3000+ entries)
+        private val INAPPROPRIATE_PATTERNS = BlockedContent.domains.map { domain ->
+            Pattern.compile(".*${Pattern.quote(domain.replace(".", "\\."))}.*", Pattern.CASE_INSENSITIVE)
+        }
 
         // Text content patterns
         private val INAPPROPRIATE_TEXT_PATTERNS = listOf(
@@ -408,22 +392,22 @@ class ContentFilterAccessibilityService : AccessibilityService() {
 
         val lowerText = text.lowercase()
 
-        // Check against hardcoded blocked domains first
-        val blockedDomains = listOf(
-            "pornhub.com", "pornhub", "www.pornhub.com",
-            "xvideos.com", "xvideos", "www.xvideos.com",
-            "xnxx.com", "xnxx", "www.xnxx.com",
-            "redtube.com", "redtube", "www.redtube.com",
-            "youporn.com", "youporn", "www.youporn.com",
-            "tube8.com", "tube8", "www.tube8.com",
-            "spankbang.com", "spankbang", "www.spankbang.com",
-            "xhamster.com", "xhamster", "www.xhamster.com"
-        )
+        // Check against comprehensive CSV data (3000+ URLs and domains)
+        val blockedDomains = BlockedContent.domains + BlockedContent.domains.map { "www.$it" }
+        val blockedUrls = BlockedContent.urls
 
-        // Check if text contains any blocked domain (more aggressive matching)
+        // Check if text contains any blocked domain or URL (comprehensive matching)
         for (domain in blockedDomains) {
             if (lowerText.contains(domain)) {
                 Log.w(TAG, "🚫 BLOCKED DOMAIN DETECTED: '$domain' found in: $lowerText")
+                return true
+            }
+        }
+        
+        // Also check against full URLs for more comprehensive blocking
+        for (url in blockedUrls) {
+            if (lowerText.contains(url.lowercase())) {
+                Log.w(TAG, "🚫 BLOCKED URL DETECTED: '$url' found in: $lowerText")
                 return true
             }
         }

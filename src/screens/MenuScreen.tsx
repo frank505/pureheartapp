@@ -93,6 +93,12 @@ const MenuScreen = () => {
                 onPress: () => navigation?.navigate('Truth', { screen: 'TruthList' }),
                 color: Colors.primary.dark
               },
+              { 
+                icon: 'camera-outline', 
+                label: 'Screenshots & Reports', 
+                onPress: () => navigation?.navigate('ScreenshotsMain'),
+                color: Colors.warning.dark
+              },
               
             ].map((action, index) => (
               <TouchableOpacity

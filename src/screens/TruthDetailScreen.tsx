@@ -91,7 +91,7 @@ const TruthDetailScreen: React.FC<TruthDetailScreenProps> = ({ navigation, route
         </SafeAreaView>
         {/* Display the Lie */}
         <ImageBackground
-          source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDJ87m37g4Nzqol-5HwrAqG5tuz0iLsPn6SlN35g7W0m2rmY8KkqJlTjnc1A7Q-zJbqa6R3MC9cS-3-_VoMJmZwvNw8-6voNswPtWixjoA1u4DTs_1QOXXUj0vKfxcSVm3QAuzhRSo_VkjTCc0qkgWXkQRnKhG1_7GxhxY3602QraOfB2RjNFdz7Id7Q1Y-BAMTF3Q9tjV_aNoAypAWaV2tuPszKiclQGk60gOhMsDuKJ9XcKnI4Ts41zKaYl5wVpxkw3GonWSgnp47' }}
+          source={require('../../assets/images/appbackgroundimage.png')}
           style={styles.lieCard}
           imageStyle={styles.lieImage}
         >

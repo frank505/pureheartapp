@@ -53,9 +53,7 @@ const AICompanionScreen: React.FC<AICompanionScreenProps> = ({ navigation }) => 
       >
         {/* Hero Section */}
         <ImageBackground
-          source={{
-            uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC7yxow3F4n-FXQPJyOGj-H56KRvQ77ZJ1pcKKPLZ0Sba1029-_gWjZhAsVLQHNk5LxnCklIcq0XDOKwoZMiDrO9iCmuL1tGWY2b4HOfPUBG1AzBk7gk-gaxBlQAcbBy5Lfnzw-Vy8cIZpKnbKPh3SGfk8yw3kTQr30Tb5My5G38TeVHsL5liokU1fSyY2xsMNWV10pTVnbnAGPzl-CHk7TA6et_0Up_qsC_eT2C803qZWpjm9BrZClHgY9RBjdQxiQrrlqzEffsaQS'
-          }}
+          source={require('../../assets/images/appbackgroundimage.png')}
           style={styles.heroSection}
           imageStyle={styles.heroImage}
         >

@@ -103,9 +103,7 @@ const AnalyticsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.root}>
-      <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} start={{x:0,y:0}} end={{x:1,y:1}} style={StyleSheet.absoluteFill} />
-
-  <ScreenHeader title="Analytics" navigation={navigation} showBackButton={true} />
+      <ScreenHeader title="Analytics" navigation={navigation} showBackButton={true} />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.container, { paddingBottom: Math.max(80, insets.bottom + 24) }]}> 
         {/* Header Tabs */}
@@ -130,7 +128,7 @@ const AnalyticsScreen: React.FC = () => {
                     <Stop offset="100%" stopColor="#22c55e" />
                   </SvgLinearGradient>
                 </Defs>
-                <Circle cx={100} cy={100} r={80} stroke={ColorUtils.withOpacity('#ffffff',0.1)} strokeWidth={8} fill="none" />
+                <Circle cx={100} cy={100} r={80} stroke={Colors.border.primary} strokeWidth={8} fill="none" />
                 <AnimatedCircle
                   cx={100}
                   cy={100}
@@ -159,7 +157,7 @@ const AnalyticsScreen: React.FC = () => {
                     <Stop offset="100%" stopColor="#4ade80" stopOpacity={0.1} />
                   </SvgLinearGradient>
                 </Defs>
-                <G stroke={ColorUtils.withOpacity('#ffffff',0.2)}>
+                <G stroke={Colors.border.secondary}>
                   {createRings(150, 150, 100, axes.length, [1, 0.75, 0.5, 0.25]).map((pts, idx) => (
                     <Polygon key={`ring-${idx}`} points={pts} fill="none" />
                   ))}
@@ -171,7 +169,7 @@ const AnalyticsScreen: React.FC = () => {
                 {axes.map((a, i) => {
                   const { x, y, anchor } = labelPos(150, 150, 110, i, axes.length);
                   return (
-                    <SvgText key={`lbl-${a.key}`} x={x} y={y} textAnchor={anchor as any} fill="#fff" fontSize={11} fontWeight={500}>{a.label}</SvgText>
+                    <SvgText key={`lbl-${a.key}`} x={x} y={y} textAnchor={anchor as any} fill={Colors.text.primary} fontSize={11} fontWeight={500}>{a.label}</SvgText>
                   );
                 })}
               </Svg>
@@ -241,7 +239,7 @@ const AnalyticsScreen: React.FC = () => {
 
         {/* Sources */}
         <View style={{ marginBottom: 32 }}>
-          <Text style={{ color: '#fff', fontWeight: '700', marginBottom: 8 }}>Sources</Text>
+          <Text style={{ color: Colors.text.primary, fontWeight: '700', marginBottom: 8 }}>Sources</Text>
           <TouchableOpacity onPress={() => Linking.openURL('https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3671693/')}>
             <Text style={styles.sourceLink}>Koenig H G. Religion, spirituality, and health. ISRN Psychiatry 2012.</Text>
           </TouchableOpacity>
@@ -303,48 +301,48 @@ const AnalyticsScreen: React.FC = () => {
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0f172a' },
+  root: { flex: 1, backgroundColor: Colors.background.primary },
   container: { padding: 20 },
   headerRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 16 },
-  tabSwitcher: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 25, padding: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  tabSwitcher: { flexDirection: 'row', backgroundColor: Colors.background.secondary, borderRadius: 25, padding: 4, borderWidth: 1, borderColor: Colors.border.primary },
   tab: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 },
-  tabActive: { backgroundColor: ColorUtils.withOpacity('#667eea', 0.6) },
-  tabText: { color: ColorUtils.withOpacity('#ffffff', 0.7), fontWeight: '600' },
-  tabTextActive: { color: '#fff' },
+  tabActive: { backgroundColor: Colors.primary.main },
+  tabText: { color: Colors.text.secondary, fontWeight: '600' },
+  tabTextActive: { color: Colors.white },
 
   visualWrap: { alignItems: 'center', marginBottom: 24 },
   ringWrap: { width: 250, height: 250, justifyContent: 'center', alignItems: 'center' },
   ringCenter: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  centerTitle: { fontSize: 14, color: ColorUtils.withOpacity('#ffffff', 0.8), marginBottom: 6 },
-  centerPct: { fontSize: 48, fontWeight: '700', color: '#fff' },
-  centerStreak: { fontSize: 12, letterSpacing: 2, color: ColorUtils.withOpacity('#ffffff', 0.6) },
+  centerTitle: { fontSize: 14, color: Colors.text.secondary, marginBottom: 6 },
+  centerPct: { fontSize: 48, fontWeight: '700', color: Colors.text.primary },
+  centerStreak: { fontSize: 12, letterSpacing: 2, color: Colors.text.tertiary },
 
   radarWrap: { width: 280, height: 280, alignItems: 'center', justifyContent: 'center' },
   radarCenter: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  radarPct: { fontSize: 36, fontWeight: '700', color: '#22c55e' },
+  radarPct: { fontSize: 36, fontWeight: '700', color: Colors.secondary.main },
 
   motivation: { alignItems: 'center', marginBottom: 24 },
-  motivationLead: { fontSize: 16, marginBottom: 12, color: '#fff' },
-  dateBadge: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 25, paddingVertical: 8, paddingHorizontal: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', marginBottom: 12 },
-  dateBadgeText: { color: '#fff', fontWeight: '600' },
-  journeyText: { textAlign: 'center', color: ColorUtils.withOpacity('#ffffff', 0.7), lineHeight: 20 },
+  motivationLead: { fontSize: 16, marginBottom: 12, color: Colors.text.primary },
+  dateBadge: { backgroundColor: Colors.background.secondary, borderRadius: 25, paddingVertical: 8, paddingHorizontal: 16, borderWidth: 1, borderColor: Colors.border.primary, marginBottom: 12 },
+  dateBadgeText: { color: Colors.text.primary, fontWeight: '600' },
+  journeyText: { textAlign: 'center', color: Colors.text.secondary, lineHeight: 20 },
 
-  progressCard: { backgroundColor: ColorUtils.withOpacity('#ffffff', 0.05), borderWidth: 1, borderColor: ColorUtils.withOpacity('#ffffff', 0.1), borderRadius: 20, padding: 20, marginBottom: 24 },
-  progressTitle: { color: '#fff', fontWeight: '600', fontSize: 18, marginBottom: 12 },
+  progressCard: { backgroundColor: Colors.background.secondary, borderWidth: 1, borderColor: Colors.border.primary, borderRadius: 20, padding: 20, marginBottom: 24 },
+  progressTitle: { color: Colors.text.primary, fontWeight: '600', fontSize: 18, marginBottom: 12 },
   chartBox: { height: 120, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   chartLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-  chartLabelText: { color: ColorUtils.withOpacity('#ffffff', 0.6), fontSize: 12 },
+  chartLabelText: { color: Colors.text.secondary, fontSize: 12 },
 
   benefits: { marginBottom: 24 },
-  benefitItem: { flexDirection: 'row', backgroundColor: ColorUtils.withOpacity('#ffffff', 0.05), borderRadius: 15, padding: 16, borderWidth: 1, borderColor: ColorUtils.withOpacity('#ffffff', 0.1), marginBottom: 12 },
+  benefitItem: { flexDirection: 'row', backgroundColor: Colors.background.secondary, borderRadius: 15, padding: 16, borderWidth: 1, borderColor: Colors.border.primary, marginBottom: 12 },
   benefitIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   benefitIconGrad: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   benefitIconEmoji: { fontSize: 18 },
-  benefitTitle: { color: '#fff', fontWeight: '600', fontSize: 16, marginBottom: 4 },
-  benefitText: { color: ColorUtils.withOpacity('#ffffff', 0.7), fontSize: 14 },
-  progressBar: { height: 4, backgroundColor: ColorUtils.withOpacity('#ffffff', 0.1), borderRadius: 2, marginTop: 10, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#22c55e', borderRadius: 2 },
-  sourceLink: { color: ColorUtils.withOpacity('#93c5fd', 0.95), textDecorationLine: 'underline', marginBottom: 6 },
+  benefitTitle: { color: Colors.text.primary, fontWeight: '600', fontSize: 16, marginBottom: 4 },
+  benefitText: { color: Colors.text.secondary, fontSize: 14 },
+  progressBar: { height: 4, backgroundColor: Colors.background.tertiary, borderRadius: 2, marginTop: 10, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: Colors.secondary.main, borderRadius: 2 },
+  sourceLink: { color: Colors.primary.main, textDecorationLine: 'underline', marginBottom: 6 },
 });
 
 export default AnalyticsScreen;

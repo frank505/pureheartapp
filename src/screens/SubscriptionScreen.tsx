@@ -158,15 +158,11 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation }) =
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={["#0f172a", "#1e293b", "#334155"]}
-        style={StyleSheet.absoluteFill}
-      />
       
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-          <Icon name={Icons.navigation.back.name} color={Colors.white} size="md" />
+          <Icon name={Icons.navigation.back.name} color={Colors.text.primary} size="md" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Premium Subscription</Text>
         <View style={styles.headerSpacer} />
@@ -269,7 +265,7 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation }) =
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: Colors.white,
   },
   header: {
     flexDirection: 'row',
@@ -277,7 +273,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: 'transparent',
+    backgroundColor: Colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
   },
   backButton: {
     padding: 8,
@@ -285,7 +283,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: Colors.white,
+    color: Colors.text.primary,
     textAlign: 'center',
     flex: 1,
   },
@@ -297,10 +295,12 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   statusCard: {
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   statusTitle: {
     fontSize: 18,
@@ -336,13 +336,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   loadingCard: {
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   loadingText: {
     color: Colors.text.secondary,
@@ -354,14 +356,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: Colors.white,
+    color: Colors.text.primary,
     marginBottom: 16,
   },
   planCard: {
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 20,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   planHeader: {
     marginBottom: 16,
@@ -404,10 +408,12 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   featuresCard: {
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 20,
     marginBottom: 32,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   featuresTitle: {
     fontSize: 18,

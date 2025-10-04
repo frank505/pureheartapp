@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Switch, Platform, Linking } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { ScreenHeader } from '../components';
@@ -14,18 +14,22 @@ import { fetchSettings, updateSettings } from '../services/settingsService';
 import { ContentFilter } from '../services/contentFilter';
 import { AppBlocking, AppBlockingData } from '../services/appBlocking';
 import messaging, { AuthorizationStatus } from '@react-native-firebase/messaging';
+import { getUserType } from '../utils/userTypeUtils';
 
 const SettingsTabScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<any>();
   const dispatch = useAppDispatch();
   const { currentUser, loading } = useAppSelector((s) => s.user);
+  const onboardingUserType = useAppSelector((s) => s.onboarding.userType);
+  
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [enablePushNotifications, setEnablePushNotifications] = useState(false);
   const [weeklyEmailNotifications, setWeeklyEmailNotifications] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');
+  const [asyncStorageUserType, setAsyncStorageUserType] = useState<'partner' | 'user' | null>(null);
 
   const [contentFilterEnabled, setContentFilterEnabled] = useState(false);
   const [contentFilterLoading, setContentFilterLoading] = useState(true);
@@ -41,6 +45,39 @@ const SettingsTabScreen: React.FC = () => {
   // Rate app state
   const [rating, setRating] = useState<number>(0);
   const [submittingRating, setSubmittingRating] = useState(false);
+
+  // Load user type from AsyncStorage on mount and when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadUserType = async () => {
+        const userType = await getUserType();
+        console.log('[SettingsTabScreen] Loaded user type from AsyncStorage:', userType);
+        setAsyncStorageUserType(userType);
+      };
+      loadUserType();
+    }, [])
+  );
+  
+  // Also reload when Redux state changes (from toggle)
+  useEffect(() => {
+    const loadUserType = async () => {
+      const userType = await getUserType();
+      console.log('[SettingsTabScreen] Redux changed, reloading from AsyncStorage:', userType);
+      setAsyncStorageUserType(userType);
+    };
+    loadUserType();
+  }, [currentUser?.userType, onboardingUserType]);
+
+  // Determine if user is a partner/accountability buddy
+  // Priority: 1) AsyncStorage (most reliable), 2) currentUser.userType, 3) onboarding store
+  const isPartner = asyncStorageUserType === 'partner' || 
+                    (!asyncStorageUserType && currentUser?.userType === 'partner') ||
+                    (!asyncStorageUserType && !currentUser?.userType && onboardingUserType === 'partner');
+  
+  // Debug log to track isPartner changes
+  useEffect(() => {
+    console.log('[SettingsTabScreen] isPartner changed to:', isPartner, '{ asyncStorage:', asyncStorageUserType, 'redux:', currentUser?.userType, 'onboarding:', onboardingUserType, '}');
+  }, [isPartner, asyncStorageUserType, currentUser?.userType, onboardingUserType]);
 
   // Store links (update APP_STORE_ID when available)
   const APP_STORE_ID = '123456789'; // TODO: replace with real App Store ID
@@ -300,14 +337,7 @@ const SettingsTabScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
-      {/* Background gradient to match LibraryScreen vibe */}
-      <LinearGradient
-        colors={["#0f172a", "#1e293b", "#334155", "#475569", "#64748b"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
       <ScreenHeader title="Account" navigation={navigation} showGrowthTracker={false} />
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Quick account actions moved from profile dropdown */}
@@ -330,21 +360,26 @@ const SettingsTabScreen: React.FC = () => {
 
             <View style={styles.divider} />
 
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={() => navigation.navigate('Subscription' as never)}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <Icon name="diamond-outline" color={Colors.primary.main} size={22} />
-                <View>
-                  <Text style={styles.settingTitle}>Subscription</Text>
-                  <Text style={styles.settingDescription}>Manage your plan and billing</Text>
-                </View>
-              </View>
-              <Icon name="chevron-forward" color={Colors.text.secondary} size={20} />
-            </TouchableOpacity>
+            {/* Subscription - Hidden for partners */}
+            {!isPartner && (
+              <>
+                <TouchableOpacity
+                  style={styles.settingItem}
+                  onPress={() => navigation.navigate('Subscription' as never)}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Icon name="diamond-outline" color={Colors.primary.main} size={22} />
+                    <View>
+                      <Text style={styles.settingTitle}>Subscription</Text>
+                      <Text style={styles.settingDescription}>Manage your plan and billing</Text>
+                    </View>
+                  </View>
+                  <Icon name="chevron-forward" color={Colors.text.secondary} size={20} />
+                </TouchableOpacity>
 
-            <View style={styles.divider} />
+                <View style={styles.divider} />
+              </>
+            )}
 
             <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>

@@ -19,18 +19,18 @@
 export const Colors = {
   // Background colors
   background: {
-  primary: '#0f172a',      // Deep slate (ocean start)
-  secondary: '#1e293b',    // Dark slate (ocean step)
-  tertiary: '#334155',     // Slate (ocean step)
-  quaternary: '#475569',   // Lighter slate (ocean step)
+  primary: '#ffffff',      // Pure white primary background
+  secondary: '#f8f9fa',    // Light gray secondary background
+  tertiary: '#f1f3f4',     // Slightly darker gray tertiary background
+  quaternary: '#e9ecef',   // Medium gray quaternary background
   },
 
   // Text colors
   text: {
-    primary: '#ffffff',      // Main text content - matches --text-primary
-    secondary: '#a0a0a0',    // Secondary text, subtitles - matches --text-secondary
-    tertiary: '#6b7280',     // Placeholder text, disabled text
-    inverse: '#121212',      // Text on light backgrounds
+    primary: '#212529',      // Dark gray for main text content
+    secondary: '#6c757d',    // Medium gray for secondary text, subtitles
+    tertiary: '#adb5bd',     // Light gray for placeholder text, disabled text
+    inverse: '#ffffff',      // White text on dark backgrounds
   },
 
   // Primary brand colors (PureHeart orange/yellow theme)
@@ -43,33 +43,33 @@ export const Colors = {
 
   // Secondary colors
   secondary: {
-    main: '#2ecc71',         // Success, positive actions
-    light: '#4ade80',        // Success hover states
-    dark: '#16a34a',         // Success pressed states
-    container: '#064e3b',    // Success container backgrounds
+    main: '#28a745',         // Success, positive actions (green)
+    light: '#d4edda',        // Success hover states (light green)
+    dark: '#155724',         // Success pressed states (dark green)
+    container: '#d4edda',    // Success container backgrounds (light green)
   },
 
   // Error/Warning colors
   error: {
-    main: '#ef4444',         // Error text, destructive actions
-    light: '#f87171',        // Error hover states
-    dark: '#dc2626',         // Error pressed states
-    container: '#7f1d1d',    // Error container backgrounds
+    main: '#dc3545',         // Error text, destructive actions
+    light: '#f8d7da',        // Error hover states (light red)
+    dark: '#721c24',         // Error pressed states (dark red)
+    container: '#f8d7da',    // Error container backgrounds (light red)
   },
 
   warning: {
-    main: '#f59e0b',         // Warning text, caution
-    light: '#fbbf24',        // Warning hover states
-    dark: '#d97706',         // Warning pressed states
-    container: '#78350f',    // Warning container backgrounds
+    main: '#ffc107',         // Warning text, caution
+    light: '#fff3cd',        // Warning hover states (light yellow)
+    dark: '#856404',         // Warning pressed states (dark yellow)
+    container: '#fff3cd',    // Warning container backgrounds (light yellow)
   },
 
   // Border and outline colors
   border: {
-    primary: '#374151',      // Default borders
-    secondary: '#4b5563',    // Subtle borders
-    focus: '#3b82f6',        // Focus rings, active borders
-    error: '#ef4444',        // Error borders
+    primary: '#dee2e6',      // Light gray default borders
+    secondary: '#e9ecef',    // Very light gray subtle borders
+    focus: '#3b82f6',        // Blue focus rings, active borders
+    error: '#dc3545',        // Red error borders
   },
 
   // Shadow colors
@@ -88,12 +88,20 @@ export const Colors = {
     twitter: '#1da1f2',      // Twitter brand color
   },
 
+  // Success colors (for commitments system)
+  success: {
+    main: '#28a745',         // Success actions, completed states
+    light: '#d4edda',        // Success backgrounds, light states  
+    dark: '#155724',         // Success text, dark states
+    container: '#d4edda',    // Success container backgrounds
+  },
+
   // Special colors
   overlay: 'rgba(0, 0, 0, 0.5)',    // Modal overlays, backdrops
   transparent: 'transparent',        // Transparent backgrounds
   white: '#ffffff',                  // Pure white
   black: '#000000',                  // Pure black
-  inactiveTab: '#93acc8',           // Inactive tab color
+  inactiveTab: '#6c757d',           // Medium gray inactive tab color
 } as const;
 
 /**
@@ -116,16 +124,16 @@ export const Theme = {
   onSurfaceVariant: Colors.text.secondary,
   
   // Primary colors
-  primary: Colors.secondary.main,                // Switch primary to green accent
+  primary: Colors.secondary.main,                // Green accent for primary
   primaryContainer: Colors.secondary.container,
   onPrimary: Colors.white,
-  onPrimaryContainer: Colors.white,
+  onPrimaryContainer: Colors.text.primary,
   
   // Secondary colors
   secondary: Colors.primary.main,                // Orange moved to secondary accent role
   secondaryContainer: Colors.primary.container,
   onSecondary: Colors.white,
-  onSecondaryContainer: Colors.white,
+  onSecondaryContainer: Colors.text.primary,
   
   // Error colors
   error: Colors.error.main,
@@ -141,8 +149,8 @@ export const Theme = {
   surfaceTint: Colors.primary.main,
   
   // Inverse colors
-  inverseSurface: Colors.white,
-  inverseOnSurface: Colors.text.inverse,
+  inverseSurface: Colors.text.primary,
+  inverseOnSurface: Colors.white,
   
   // Scrim
   scrim: Colors.black,
@@ -156,28 +164,28 @@ export const Theme = {
 export const ComponentColors = {
   // Navigation
   tabBar: {
-  background: Colors.background.secondary,
+  background: Colors.background.primary,
   border: Colors.border.primary,
   activeTint: Colors.secondary.main, // green accent
   inactiveTint: Colors.text.secondary,
   },
   
   header: {
-  background: Colors.background.secondary,
-  text: Colors.white,
+  background: Colors.background.primary,
+  text: Colors.text.primary,
   border: Colors.border.primary,
   },
   
   // Cards
   card: {
-    background: Colors.background.secondary,
+    background: Colors.background.primary,
     border: Colors.border.primary,
     shadow: Colors.shadow.light,
   },
   
   // Input fields
   input: {
-    background: Colors.background.secondary,
+    background: Colors.background.primary,
     border: Colors.border.primary,
     borderFocus: Colors.border.focus,
     borderError: Colors.border.error,
@@ -193,7 +201,7 @@ export const ComponentColors = {
       border: Colors.primary.main,
     },
     secondary: {
-      background: Colors.background.tertiary,
+      background: Colors.background.secondary,
       text: Colors.text.primary,
       border: Colors.border.primary,
     },
@@ -206,8 +214,8 @@ export const ComponentColors = {
   
   // Status indicators
   status: {
-    liked: Colors.background.quaternary,
-    bookmarked: Colors.background.quaternary,
+    liked: Colors.error.main,
+    bookmarked: Colors.primary.main,
     online: Colors.secondary.main,
     offline: Colors.text.tertiary,
   },

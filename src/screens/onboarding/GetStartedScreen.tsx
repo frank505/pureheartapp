@@ -12,7 +12,7 @@
  * - Primary and secondary action buttons
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -28,10 +28,13 @@ import LinearGradient from 'react-native-linear-gradient';
 import OnboardingButton from '../../components/OnboardingButton';
 import OnboardingCard from '../../components/OnboardingCard';
 import { Colors } from '../../constants';
+import type { UserType } from '../../constants';
+import { saveUserType as saveUserTypeToStorage } from '../../utils/userTypeUtils';
 
 // Redux imports
 import { useAppDispatch } from '../../store/hooks';
 import { completeOnboarding, completeFirstLaunch } from '../../store/slices/appSlice';
+import { saveUserType as saveUserTypeToRedux } from '../../store/slices/onboardingSlice';
 
 interface GetStartedScreenProps {
   navigation: any;
@@ -46,14 +49,27 @@ const { height: screenHeight } = Dimensions.get('window');
  */
 const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
+  const [selectedUserType, setSelectedUserType] = useState<UserType | null>(null);
   
-  const handleBeginJourney = () => {
-    // Mark first launch as completed when user begins the journey
-    dispatch(completeFirstLaunch());
-    navigation.navigate('Onboarding1');
+  const handleUserTypeSelection = async (userType: UserType) => {
+    try {
+      // Save user type to AsyncStorage using utility function
+      await saveUserTypeToStorage(userType);
+      
+      // Save user type to Redux store
+      dispatch(saveUserTypeToRedux(userType));
+      
+      setSelectedUserType(userType);
+      
+      // Mark first launch as completed when user selects their type
+      dispatch(completeFirstLaunch());
+       dispatch(completeOnboarding());
+    } catch (error) {
+      console.error('Error saving user type:', error);
+    }
   };
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     // Complete first launch and onboarding, then go to auth flow
     dispatch(completeFirstLaunch());
     dispatch(completeOnboarding());
@@ -62,9 +78,7 @@ const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={{
-          uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAhmN_zYCw9ezjTt-o30zHTGxhk_aYEspPWeORup_LReTd5D5QRc8yoyKIz7Nu78hLQVWQWBrr2BHP0aZlyrVASQS9_J6nhsNnK5OoMMHr4FyDx4YcQgjFs3upR9Ke2BC6xxPk_g1h25cV90aJu8exfkUi45FtJFaGwD21ufpkJwbCoD8wuQm_N9qOO04dYFjSwvWWpMfTAy9FnK5Mr-Qdy0Ld7_JLV_1C28hgXJCIj8CiFU55nVwlQtOXMQk7VEsUyX66T8FSOKdKd'
-        }}
+        source={require('../../../assets/images/appbackgroundimage.png')}
         style={styles.backgroundImage}
         resizeMode="cover"
       >
@@ -93,7 +107,7 @@ const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ navigation }) => {
 
             {/* App Logo */}
             <Image
-              source={require('../../../store-assets/final_form_image_101_cropped_to_be_used.png')}
+              source={require('../../../assets/images/logo.png')}
               style={styles.appLogo}
               resizeMode="contain"
             />
@@ -133,13 +147,37 @@ const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ navigation }) => {
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>
+          {/* User Type Selection Header */}
+          <View style={styles.selectionHeader}>
+            <Text style={styles.selectionTitle}>Get Started</Text>
+            <Text style={styles.selectionSubtitle}>
+              Choose how you'd like to begin
+            </Text>
+          </View>
+         {/* User Sign Up Button */}
           <OnboardingButton
             title="Begin Your Freedom Journey"
-            onPress={handleBeginJourney}
+            onPress={() => handleUserTypeSelection('user')}
             variant="primary"
             style={styles.primaryButton}
           />
+
+          {/* Partner Sign Up Button */}
+          <OnboardingButton
+            title="I'm an Accountability Buddy"
+            onPress={() => handleUserTypeSelection('partner')}
+            variant="primary"
+            style={styles.primaryButton}
+          />     
           
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Sign In Button */}
           <OnboardingButton
             title="I Already Have an Account"
             onPress={handleSignIn}
@@ -151,7 +189,7 @@ const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ navigation }) => {
             Trusted by thousands on their path to recovery.
           </Text>
         </View>
-          </ScrollView>
+        </ScrollView>
         </SafeAreaView>
       </ImageBackground>
     </View>
@@ -280,8 +318,40 @@ const styles = StyleSheet.create({
     gap: 16,
     zIndex: 10,
   },
+  selectionHeader: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  selectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.text.primary,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  selectionSubtitle: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+  },
   primaryButton: {
     marginBottom: 8,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(163, 163, 163, 0.3)',
+  },
+  dividerText: {
+    fontSize: 12,
+    color: Colors.text.secondary,
+    marginHorizontal: 12,
+    fontWeight: '600',
   },
   secondaryButton: {
     marginBottom: 16,

@@ -12,6 +12,11 @@ import { setCurrentStep } from '../../store/slices/onboardingSlice';
 interface Props { navigation: any }
 
 const GOALS = [
+  'Grow closer to God',
+  'Honor God with my body',
+  'Live in purity and holiness',
+  'Restore spiritual sensitivity',
+  'Strengthen prayer life',
   'Stronger relationships',
   'Improved self-confidence',
   'Better mood and happiness',

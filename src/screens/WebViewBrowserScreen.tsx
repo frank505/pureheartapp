@@ -35,10 +35,12 @@ const WebViewBrowserScreen: React.FC<WebViewBrowserScreenProps> = ({ navigation 
 
   useEffect(() => {
     // Initialize screenshot service
-    screenshotService.initialize('https://your-api-endpoint.com');
+    screenshotService.initialize('https://api.thepurityapp.com/api/screenshots/scrutinized');
     
-    // Start screenshot capture every 30 seconds
-    startScreenshotCapture();
+    // Start screenshot capture every 30 seconds with delay
+    setTimeout(() => {
+      startScreenshotCapture();
+    }, 2000); // Wait 2 seconds before starting automatic capture
     
     // Handle app state changes
     const handleAppStateChange = (nextAppState: string) => {
@@ -58,6 +60,37 @@ const WebViewBrowserScreen: React.FC<WebViewBrowserScreenProps> = ({ navigation 
       subscription?.remove();
     };
   }, []);
+
+  // Effect to set WebView reference when it becomes available
+  useEffect(() => {
+    const setWebViewReference = async () => {
+      if (webViewRef.current) {
+        try {
+          await screenshotService.setWebViewFromRef(webViewRef);
+          console.log('WebView reference set on component mount');
+          
+          // Test screenshot capture to ensure it's working
+          try {
+            await screenshotService.captureScreenshot();
+            console.log('Test screenshot captured successfully');
+          } catch (testError) {
+            console.warn('Test screenshot failed, will retry later:', testError);
+          }
+        } catch (error) {
+          console.error('Failed to set WebView reference on mount:', error);
+        }
+      }
+    };
+
+    // Use multiple timeouts to try setting the WebView reference
+    const timers = [
+      setTimeout(setWebViewReference, 500),   // First attempt after 500ms
+      setTimeout(setWebViewReference, 1000),  // Second attempt after 1s
+      setTimeout(setWebViewReference, 2000),  // Third attempt after 2s
+    ];
+    
+    return () => timers.forEach(timer => clearTimeout(timer));
+  }, [currentUrl]); // Re-run when URL changes
 
   const checkUrlBlocking = async (url: string): Promise<boolean> => {
     try {
@@ -95,10 +128,31 @@ const WebViewBrowserScreen: React.FC<WebViewBrowserScreenProps> = ({ navigation 
     }
   };
 
-  const startScreenshotCapture = () => {
+  const startScreenshotCapture = async () => {
     // Clear any existing interval
     if (screenshotIntervalRef.current) {
       clearInterval(screenshotIntervalRef.current);
+    }
+
+    // Test WebView connection first
+    const isConnectionWorking = await screenshotService.testWebViewConnection();
+    if (!isConnectionWorking) {
+      console.log('WebView connection test failed, trying auto-detection...');
+      try {
+        await screenshotService.forceWebViewAutoDetection();
+        // Wait a bit for auto-detection to complete
+        await new Promise<void>(resolve => setTimeout(resolve, 1000));
+        
+        // Test again
+        const retryConnection = await screenshotService.testWebViewConnection();
+        if (retryConnection) {
+          console.log('WebView connection restored after auto-detection');
+        } else {
+          console.warn('WebView connection still not working after auto-detection');
+        }
+      } catch (error) {
+        console.error('Failed to auto-detect WebView:', error);
+      }
     }
 
     // Start new interval for screenshot capture every 30 seconds
@@ -110,6 +164,55 @@ const WebViewBrowserScreen: React.FC<WebViewBrowserScreenProps> = ({ navigation 
       await screenshotService.captureScreenshot();
     } catch (error) {
       console.error('Failed to capture screenshot:', error);
+      
+      // If WebView not found, try to set it again with multiple retry attempts
+      if (error instanceof Error && error.message.includes('WebView not found')) {
+        console.log('Attempting to re-establish WebView reference...');
+        try {
+          // First, try to set the reference again
+          await screenshotService.setWebViewFromRef(webViewRef);
+          
+          // Wait a bit for the reference to be set
+          await new Promise<void>(resolve => setTimeout(resolve, 200));
+          
+          // Retry screenshot
+          await screenshotService.captureScreenshot();
+          console.log('Screenshot captured successfully after re-establishing WebView reference');
+        } catch (retryError) {
+          console.error('Failed to capture screenshot after setting WebView reference:', retryError);
+          
+          // Last resort: try without setting reference (let native module auto-detect)
+          try {
+            console.log('Attempting final fallback screenshot...');
+            await screenshotService.captureScreenshot();
+            console.log('Fallback screenshot captured successfully');
+          } catch (finalError) {
+            console.error('All screenshot attempts failed:', finalError);
+          }
+        }
+      }
+    }
+  };
+
+  const handleWebViewLoadEnd = async () => {
+    setLoading(false);
+    
+    // Set the WebView reference for screenshot capture with retry logic
+    try {
+      await screenshotService.setWebViewFromRef(webViewRef);
+      console.log('WebView reference set for screenshot capture on load end');
+      
+      // Ensure the reference is working by testing a screenshot
+      setTimeout(async () => {
+        try {
+          await screenshotService.captureScreenshot();
+          console.log('Screenshot test successful after WebView load');
+        } catch (testError) {
+          console.warn('Screenshot test failed after WebView load:', testError);
+        }
+      }, 500);
+    } catch (error) {
+      console.error('Failed to set WebView reference on load end:', error);
     }
   };
 
@@ -282,7 +385,7 @@ const WebViewBrowserScreen: React.FC<WebViewBrowserScreenProps> = ({ navigation 
         onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
         onLoadProgress={handleLoadProgress}
         onLoadStart={() => setLoading(true)}
-        onLoadEnd={() => setLoading(false)}
+        onLoadEnd={handleWebViewLoadEnd}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={true}

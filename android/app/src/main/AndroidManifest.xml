@@ -22,7 +22,7 @@
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:exported="true"
-            android:theme="@style/AppTheme"
+            android:theme="@style/BootTheme"
             android:noHistory="false"
             android:excludeFromRecents="false">
             <intent-filter>
@@ -50,7 +50,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Content Filter Accessibility Service -->
         <service
             android:name=".contentfilter.ContentFilterAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
@@ -67,7 +66,6 @@
                 android:value="accessibility_content_filter" />
         </service>
 
-        <!-- Content Overlay Service -->
         <service
             android:name=".contentfilter.ContentOverlayService"
             android:enabled="true"
@@ -78,7 +76,6 @@
                 android:value="content_overlay_blocking" />
         </service>
 
-        <!-- App Blocking Service -->
         <service
             android:name=".contentfilter.AppBlockingService"
             android:enabled="true"

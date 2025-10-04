@@ -5,12 +5,16 @@
  * Features an icon on the left, title in the center, and profile dropdown on the right.
  */
 
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Text } from 'react-native-paper';
-import LinearGradient from 'react-native-linear-gradient';
 import { Colors, ColorUtils } from '../constants';
 import Icon from './Icon';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { getUserType, saveUserType } from '../utils/userTypeUtils';
+import { saveUserType as saveUserTypeToRedux } from '../store/slices/onboardingSlice';
+import type { UserType } from '../constants';
+import { useFocusEffect } from '@react-navigation/native';
 // Profile dropdown removed from header per design update
 
 interface ScreenHeaderProps {
@@ -25,7 +29,42 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   navigation,
   showBackButton = false,
   showGrowthTracker = true
-}) => {
+}) => { 
+
+  const dispatch = useAppDispatch();
+  const currentUser = useAppSelector((s) => s.user.currentUser);
+  const onboardingUserType = useAppSelector((s) => s.onboarding.userType);
+  const [asyncStorageUserType, setAsyncStorageUserType] = useState<'partner' | 'user' | null>(null);
+  const [isTogglingUI, setIsTogglingUI] = useState(false);
+
+  // Load user type from AsyncStorage on mount and when it changes
+  const loadUserTypeFromStorage = async () => {
+    try {
+      const userType = await getUserType();
+      console.log('[ScreenHeader] Loaded user type from AsyncStorage:', userType);
+      setAsyncStorageUserType(userType);
+    } catch (error) {
+      console.error('[ScreenHeader] Error loading user type:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadUserTypeFromStorage();
+  }, []);
+
+  // Also reload when screen comes into focus to catch changes from other screens
+  useFocusEffect(
+    React.useCallback(() => {
+      loadUserTypeFromStorage();
+    }, [])
+  );
+
+  // Determine if user is a partner/accountability buddy
+  // Priority: 1) AsyncStorage (most reliable), 2) currentUser.userType, 3) onboarding store
+  const isPartner = asyncStorageUserType === 'partner' || 
+                    (!asyncStorageUserType && currentUser?.userType === 'partner') ||
+                    (!asyncStorageUserType && !currentUser?.userType && onboardingUserType === 'partner');
+
   const handleGrowthTracker = () => {
     navigation?.navigate('GrowthTracker');
   };
@@ -38,16 +77,76 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     navigation?.navigate('DailyDose');
   };
 
-  // Hide growth tracker icon if title is longer than 11 characters
-  const shouldShowGrowthTracker = showGrowthTracker && title.length <= 11;
+  const handleToggleUI = async () => {
+    try {
+      setIsTogglingUI(true);
+      const newUserType: UserType = isPartner ? 'user' : 'partner';
+      const uiMode = isPartner ? 'Normal User' : 'Partner';
+      
+      Alert.alert(
+        'Switch UI Mode',
+        `Switch to ${uiMode} UI? This will change the available features.`,
+        [
+          { 
+            text: 'Cancel', 
+            style: 'cancel',
+            onPress: () => setIsTogglingUI(false)
+          },
+          {
+            text: 'Switch',
+            onPress: async () => {
+              try {
+                console.log('[ScreenHeader] Switching UI to:', newUserType);
+                
+                // Save to AsyncStorage first (primary source of truth)
+                await saveUserType(newUserType);
+                console.log('[ScreenHeader] Saved to AsyncStorage');
+                
+                // Save to Redux
+                dispatch(saveUserTypeToRedux(newUserType));
+                console.log('[ScreenHeader] Saved to Redux');
+                
+                // Force reload from AsyncStorage to ensure state is in sync
+                await loadUserTypeFromStorage();
+                console.log('[ScreenHeader] Reloaded from AsyncStorage');
+                
+                // Force navigation to reset and remount all screens
+                // This ensures TabNavigator and all screens re-read the user type
+                if (navigation) {
+                  // Navigate to a dummy route and back to force remount
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'MainTabs' as any }],
+                  });
+                }
+                
+                Alert.alert(
+                  'UI Switched',
+                  `You're now viewing the ${uiMode} interface. Reloading...`
+                );
+              } catch (error) {
+                console.error('[ScreenHeader] Error during switch:', error);
+                Alert.alert('Error', 'Failed to switch UI mode. Please try again.');
+              } finally {
+                setIsTogglingUI(false);
+              }
+            }
+          }
+        ],
+        { cancelable: false }
+      );
+    } catch (error) {
+      console.error('[ScreenHeader] Error in handleToggleUI:', error);
+      Alert.alert('Error', 'Failed to switch UI mode. Please try again.');
+      setIsTogglingUI(false);
+    }
+  };
+
+  // Hide growth tracker icon if title is longer than 11 characters OR if user is a partner
+  const shouldShowGrowthTracker = showGrowthTracker && title.length <= 11 && !isPartner;
 
   return (
-    <LinearGradient
-      colors={["#0f172a", "#1e293b", "#334155"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.headerContainer}
-    >
+    <View style={styles.headerContainer}>
       <View style={styles.headerContent}>
         <View style={styles.leftHeaderContainer}>
           {showBackButton && (
@@ -57,7 +156,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             > 
               <Icon 
                 name="arrow-back" 
-                color={Colors.white}
+                color={Colors.text.primary}
                 size="sm" 
               />
             </TouchableOpacity>
@@ -66,19 +165,35 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         </View>
 
   <View style={styles.rightIconsContainer}>
-          {/* Bible/Daily Dose icon - first */}
+          {/* UI Toggle icon - first - Shows current mode */}
+          <TouchableOpacity
+            style={[
+              styles.headerIconContainer,
+              { backgroundColor: isPartner ? Colors.primary.main : Colors.secondary.main }
+            ]}
+            onPress={handleToggleUI}
+            disabled={isTogglingUI}
+          > 
+            <Icon 
+              name={isPartner ? "person-outline" : "people-outline"}
+              color={Colors.white}
+              size="sm" 
+            />
+          </TouchableOpacity>
+
+          {/* Bible/Daily Dose icon - second */}
           <TouchableOpacity
             style={styles.headerIconContainer}
             onPress={handleDailyDose}
           > 
             <Icon 
               name="book-outline" 
-              color={Colors.white}
+              color={Colors.text.primary}
               size="sm" 
             />
           </TouchableOpacity>
           
-          {/* Plant/Growth Tracker icon - second */}
+          {/* Plant/Growth Tracker icon - third */}
           {shouldShowGrowthTracker && (
             <TouchableOpacity
               style={styles.headerIconContainer}
@@ -86,43 +201,46 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             > 
               <Icon 
                 name="leaf-outline" 
-                color={Colors.white}
+                color={Colors.text.primary}
                 size="sm" 
               />
             </TouchableOpacity>
           )}
           
-          {/* Progress icon - third */}
-          <TouchableOpacity
-            style={styles.headerIconContainer}
-            onPress={handleProgress}
-          > 
-            <Icon 
-              name="analytics-outline" 
-              color={Colors.white}
-              size="sm" 
-            />
-          </TouchableOpacity>
+          {/* Progress icon - fourth - Hidden for partners */}
+          {!isPartner && (
+            <TouchableOpacity
+              style={styles.headerIconContainer}
+              onPress={handleProgress}
+            > 
+              <Icon 
+                name="analytics-outline" 
+                color={Colors.text.primary}
+                size="sm" 
+              />
+            </TouchableOpacity>
+          )}
 
         </View>
       </View>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   headerContainer: {
+    backgroundColor: Colors.background.primary,
     marginHorizontal: 12,
     marginTop: 4,
     marginBottom: 8,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: ColorUtils.withOpacity(Colors.secondary.main, 0.25),
+    borderColor: Colors.border.primary,
     shadowColor: Colors.black,
-    shadowOpacity: 0.25,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerContent: {
     flexDirection: 'row',
@@ -141,9 +259,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: ColorUtils.withOpacity(Colors.white, 0.08),
+    backgroundColor: Colors.background.secondary,
     borderWidth: 1,
-    borderColor: ColorUtils.withOpacity(Colors.white, 0.18),
+    borderColor: Colors.border.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -156,7 +274,7 @@ const styles = StyleSheet.create({
   minWidth: 0,
     fontSize: 20,
     fontWeight: '700',
-    color: Colors.white,
+    color: Colors.text.primary,
     letterSpacing: 0.5,
   },
   rightIconsContainer: {

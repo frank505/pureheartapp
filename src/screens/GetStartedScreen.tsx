@@ -21,6 +21,7 @@ import {
   ImageBackground,
   StatusBar,
   Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from 'react-native-paper';
@@ -60,9 +61,7 @@ const GetStartedScreen: React.FC = () => {
       
       {/* Background Image with Overlay */}
       <ImageBackground
-        source={{
-          uri: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
-        }}
+        source={require('../../assets/images/appbackgroundimage.png')}
         style={styles.backgroundImage}
         resizeMode="cover"
       >
@@ -76,12 +75,12 @@ const GetStartedScreen: React.FC = () => {
         <SafeAreaView style={styles.contentContainer}>
           {/* Main Content */}
           <View style={styles.heroSection}>
-            {/* App Icon/Logo */}
+            {/* App Logo */}
             <View style={styles.logoContainer}>
-              <Icon 
-                name="heart"
-                size={60}
-                color={Colors.primary.main}
+              <Image
+                source={require('../../assets/images/logo.png')}
+                style={styles.appLogo}
+                resizeMode="contain"
               />
             </View>
 
@@ -175,6 +174,10 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     borderWidth: 2,
     borderColor: Colors.primary.main,
+  },
+  appLogo: {
+    width: 80,
+    height: 80,
   },
   heroTitle: {
     fontSize: 36,

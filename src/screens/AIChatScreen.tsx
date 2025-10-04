@@ -115,9 +115,9 @@ const AIChatScreen: React.FC<AIChatScreenProps> = ({ navigation, route }) => {
         keyExtractor={(m) => m.id}
         renderItem={({ item }) => (
           <View style={[styles.msgRow, item.role === 'user' ? styles.right : styles.left]}>
-            <Surface style={[styles.bubble, item.role === 'user' ? styles.userBubble : styles.assistantBubble]} elevation={1}>
+            <View style={[styles.bubble, item.role === 'user' ? styles.userBubble : styles.assistantBubble]}>
               <Text style={item.role === 'user' ? styles.userText : styles.assistantText}>{item.text}</Text>
-            </Surface>
+            </View>
           </View>
         )}
         contentContainerStyle={styles.messages}

@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   progressWrapper: { flex: 1, alignItems: 'center' },
   content: { flex: 1, paddingHorizontal: responsiveSpacing.lg, paddingTop: 8 },
   title: { fontSize: responsiveFontSizes.mainTitle, fontWeight: '800', color: Colors.text.primary, textAlign: 'center' },
-  subtitle: { fontSize: responsiveFontSizes.headerSubtitle, color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginBottom: 24 },
+  subtitle: { fontSize: responsiveFontSizes.headerSubtitle, color: Colors.text.secondary, textAlign: 'center', marginBottom: 24 },
   inputWrapper: { backgroundColor: Colors.background.secondary, borderColor: Colors.border.primary, borderWidth: 1, borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 14, marginBottom: 16 },
   input: { color: Colors.text.primary, fontSize: responsiveFontSizes.body },
 });
